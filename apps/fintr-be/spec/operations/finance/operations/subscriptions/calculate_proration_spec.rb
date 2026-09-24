@@ -5,8 +5,8 @@ require "rails_helper"
 RSpec.describe Finance::Operations::Subscriptions::CalculateProration, type: :operation do
   let(:operation) { described_class.new }
   let(:space) { create(:space) }
-  let(:old_plan) { create(:subscription_plan, slug: "basic", token_limit: 50, price_cents: 10_000, interval: "month") }
-  let(:new_plan) { create(:subscription_plan, slug: "premium", token_limit: 100, price_cents: 20_000, interval: "month") }
+  let(:old_plan) { create(:subscription_plan, slug: "basic", price_cents: 10_000, interval: "month") }
+  let(:new_plan) { create(:subscription_plan, slug: "premium", price_cents: 20_000, interval: "month") }
   let(:space_subscription) do
     create(
       :space_subscription,
@@ -171,7 +171,7 @@ RSpec.describe Finance::Operations::Subscriptions::CalculateProration, type: :op
     end
 
     context "when downgrading to a cheaper plan" do
-      let(:downgrade_plan) { create(:subscription_plan, slug: "starter", token_limit: 25, price_cents: 5_000, interval: "month") }
+      let(:downgrade_plan) { create(:subscription_plan, slug: "starter", price_cents: 5_000, interval: "month") }
       let(:downgrade_params) do
         {
           current_subscription: space_subscription,
@@ -198,7 +198,7 @@ RSpec.describe Finance::Operations::Subscriptions::CalculateProration, type: :op
     end
 
     context "when plans have the same price" do
-      let(:same_price_plan) { create(:subscription_plan, slug: "same_price", token_limit: 75, price_cents: 10_000, interval: "month") }
+      let(:same_price_plan) { create(:subscription_plan, slug: "same_price", price_cents: 10_000, interval: "month") }
       let(:same_price_params) do
         {
           current_subscription: space_subscription,
@@ -389,7 +389,7 @@ RSpec.describe Finance::Operations::Subscriptions::CalculateProration, type: :op
       end
 
       it "calculates prorated amount for downgrade correctly" do
-        downgrade_plan = create(:subscription_plan, slug: "starter", token_limit: 25, price_cents: 5_000, interval: "month")
+        downgrade_plan = create(:subscription_plan, slug: "starter", price_cents: 5_000, interval: "month")
         downgrade_params = params_mid_month.merge(new_plan: downgrade_plan)
 
         result = operation.call(downgrade_params)

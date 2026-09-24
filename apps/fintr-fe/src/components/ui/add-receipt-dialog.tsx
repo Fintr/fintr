@@ -10,8 +10,10 @@ interface AddReceiptDialogProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  title?: string;
+  title?: React.ReactNode;
   className?: string;
+  footer?: React.ReactNode;
+  fullScreen?: boolean;
 }
 
 export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
@@ -20,6 +22,8 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
   children,
   title,
   className,
+  footer,
+  fullScreen = false,
 }) => {
   const isTutorialActive = useAtomValue(isTutorialActiveAtom);
   const [mounted, setMounted] = useState(false);
@@ -181,6 +185,8 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
 
   if (!isOpen || !mounted) return null;
 
+  const fillsViewport = fullScreen && isMobile;
+
   const isJoyrideElement = (target: EventTarget | null): boolean => {
     if (!target || !(target instanceof Element)) return false;
     
@@ -212,8 +218,9 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
   const modalContent = (
     <div
       className={cn(
-        "fixed inset-0 z-[100] flex items-center justify-center",
-        isMobile ? "p-0" : "p-4"
+        "fixed inset-0 z-[100]",
+        fillsViewport ? "flex flex-col" : "flex items-center justify-center",
+        !fillsViewport && (isMobile ? "p-0" : "p-4"),
       )}
       onPointerDown={(e) => {
         if (isTutorialActive && !isJoyrideElement(e.target)) {
@@ -223,44 +230,50 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
       }}
       style={isTutorialActive ? { pointerEvents: 'none' } : undefined}
     >
-      <div
-        className={cn(
-          "fixed inset-0 bg-black/50 z-[100]",
-          "transition-opacity duration-200",
-          isTutorialActive ? "pointer-events-none" : "cursor-pointer"
-        )}
-        onClick={(e) => {
-          if (isTutorialActive) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-          }
-          
-          const target = e.target as HTMLElement;
-          const lightbox = document.querySelector(".lightbox-container");
-          
-          if (lightbox && (lightbox.contains(target) || target.closest(".lightbox-container"))) {
-            return;
-          }
+      {!fillsViewport && (
+        <div
+          className={cn(
+            "fixed inset-0 bg-black/50 z-[100]",
+            "transition-opacity duration-200",
+            isTutorialActive ? "pointer-events-none" : "cursor-pointer"
+          )}
+          onClick={(e) => {
+            if (isTutorialActive) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            
+            const target = e.target as HTMLElement;
+            const lightbox = document.querySelector(".lightbox-container");
+            
+            if (lightbox && (lightbox.contains(target) || target.closest(".lightbox-container"))) {
+              return;
+            }
 
-          // Close dialog when clicking directly on the overlay
-          if (e.target === e.currentTarget) {
-            onClose();
-          }
-        }}
-      />
+            if (e.target === e.currentTarget) {
+              onClose();
+            }
+          }}
+        />
+      )}
       <div
         data-add-receipt-dialog-content
         className={cn(
           "relative z-[101] bg-background shadow-lg text-primary",
-          "w-full max-w-md",
-          isMobile ? "rounded-none" : "rounded-lg",
-          "overflow-hidden flex flex-col",
+          fillsViewport
+            ? "flex h-dvh w-full flex-col overflow-hidden"
+            : cn(
+              "flex w-full max-w-md flex-col overflow-hidden",
+              isMobile
+                ? "rounded-none"
+                : "max-h-[calc(100dvh-2rem)] rounded-lg",
+            ),
           "transition-opacity duration-200",
           className
         )}
         style={{
-          ...(isMobile && viewportHeightRef.current
+          ...(!fullScreen && isMobile && viewportHeightRef.current
             ? { maxHeight: `${viewportHeightRef.current}px` }
             : {}),
           ...(isTutorialActive ? { pointerEvents: 'auto' } : {})
@@ -279,12 +292,23 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         }}
       >
         {title && (
-          <div className="px-6 pt-6 pb-4 flex items-center justify-between flex-shrink-0">
-            <h2 className="text-lg font-semibold">{title}</h2>
+          <div
+            className={cn(
+              "flex flex-shrink-0 items-center justify-between",
+              fillsViewport
+                ? "border-b px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]"
+                : "px-6 pb-2 pt-6",
+            )}
+          >
+            <h2 className="flex min-w-0 items-center gap-2 text-lg font-semibold text-primary">
+              {title}
+            </h2>
           </div>
         )}
         <div 
-          className="overflow-y-auto"
+          className={cn(
+            fillsViewport ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "overflow-y-auto",
+          )}
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
@@ -292,6 +316,16 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         >
           {children}
         </div>
+        {footer ? (
+          <div
+            className={cn(
+              "flex-shrink-0 border-t bg-background",
+              "px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]",
+            )}
+          >
+            {footer}
+          </div>
+        ) : null}
       </div>
     </div>
   );

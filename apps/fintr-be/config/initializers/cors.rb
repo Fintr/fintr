@@ -35,6 +35,7 @@ cors_configuration = proc do
       headers: %w[
         Authorization
         X-Space-Code
+        X-Client-Tab-Id
         X-Requested-With
         Content-Type
         Accept

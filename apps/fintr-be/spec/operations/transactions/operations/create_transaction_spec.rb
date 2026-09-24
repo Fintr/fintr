@@ -51,6 +51,57 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         expect(result.schedule_type).to eq('one_time')
         expect(result.balance_state).to eq('calculated')
       end
+
+      context 'when entity_name is provided' do
+        let(:income_params) do
+          super().merge(entity_name: 'Acme Corp')
+        end
+
+        it 'associates a transaction entity' do
+          result = call_operation.value!
+          expect(result.entity_name).to eq('Acme Corp')
+        end
+
+        it 'creates a transaction-type entity' do
+          expect { call_operation }.to change {
+            Entities::Entity.where(entity_type: 'transaction', full_name: 'Acme Corp').count
+          }.by(1)
+        end
+
+        it 'includes entity_name in the broadcast payload' do
+          expect { call_operation }.to have_broadcasted_to(
+            "transactions:#{space.id}",
+          ).with(
+            hash_including(
+              type: "sync_change",
+              op: "transaction.created",
+              payload: hash_including(
+                transaction: hash_including(
+                  entityName: 'Acme Corp',
+                ),
+              ),
+            ),
+          )
+        end
+      end
+
+      it "broadcasts sync_change on the space transactions channel" do
+        expect { call_operation }.to have_broadcasted_to(
+          "transactions:#{space.id}",
+        ).with(
+          hash_including(
+            type: "sync_change",
+            op: "transaction.created",
+            spaceId: space.id.to_s,
+            payload: hash_including(
+              transaction: hash_including(
+                description: "Salary payment",
+                type: "income",
+              ),
+            ),
+          ),
+        )
+      end
     end
 
     context "when original_currency matches account currency (manual rate still sent)" do
@@ -213,6 +264,25 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         expect(result.category_id).to eq(expense_category.id)
         expect(result.schedule_type).to eq('one_time')
       end
+
+      context 'when receipt_merchant_detected is provided' do
+        let(:expense_params) do
+          super().merge(
+            entity_name: 'SM Cinema',
+            receipt_merchant_detected: '1855 photo/cinema',
+          )
+        end
+
+        it { is_expected.to be_success }
+
+        it 'remembers the scanned merchant as an alias of the entity' do
+          call_operation
+
+          alias_record = Entities::MerchantAlias.find_by(space_id: space.id)
+          expect(alias_record&.label).to eq('1855 photo/cinema')
+          expect(alias_record&.entity&.full_name).to eq('SM Cinema')
+        end
+      end
     end
 
     context 'with draft transaction parameters' do
@@ -254,6 +324,20 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         expect(result.category_id).to eq(expense_category.id)
         expect(result.schedule_type).to eq('one_time')
         expect(result.balance_state).to eq('pending')
+      end
+
+      context 'when receipt_merchant_detected is provided' do
+        let(:draft_params) do
+          super().merge(receipt_merchant_detected: '1855 photo/cinema')
+        end
+
+        it { is_expected.to be_success }
+
+        it 'creates a draft without storing the scanned merchant name' do
+          result = call_operation.value!
+          expect(result).to be_a(Transactions::Draft)
+          expect(result).not_to respond_to(:receipt_merchant_detected)
+        end
       end
     end
 
@@ -414,6 +498,23 @@ RSpec.describe Transactions::Operations::CreateTransaction do
         expect(result.repeat_interval).to eq('every_2_weeks')
         expect(result.repeat_count).to eq(1)
       end
+
+      it 'applies only the calculated occurrence to the account' do
+        expect { call_operation }.to change { account.reload.balance.amount }.by(-50.0)
+      end
+
+      it 'restores the account when the series is deleted' do
+        transaction = call_operation.value!
+        expect(account.reload.balance.amount).to eq(950.0)
+
+        delete_result = Transactions::Operations::DeleteTransaction.new.call(
+          id: transaction.id,
+          delete_scope: "all_in_series"
+        )
+
+        expect(delete_result).to be_success
+        expect(account.reload.balance.amount).to eq(1000.0)
+      end
     end
 
     context 'with repeated expense transaction parameters and a file' do
@@ -474,16 +575,116 @@ RSpec.describe Transactions::Operations::CreateTransaction do
       it { is_expected.to be_success }
 
       it 'creates an installment expense transaction' do
-        expect { call_operation }.to change(Transactions::Expense, :count).by(2)
+        expect { call_operation }.to change(Transactions::Expense, :count).by(12)
       end
 
       it 'sets the installment transaction attributes correctly' do
         result = call_operation.value!
         expect(result).to be_a(Transactions::Expense)
         expect(result.amount.amount).to eq(150.0 / 12)
+        expect(result.installment_total.amount).to eq(150.0)
         expect(result.schedule_type).to eq('installment')
         expect(result.installment_period).to eq(12)
         expect(result.installment_count).to eq(1)
+      end
+    end
+
+    context "with a past-starting repeat expense and tag_ids" do
+      subject(:call_operation) { operation.call(tagged_repeat_params) }
+
+      let!(:tag) { create(:transaction_tag, space:, name: "Japan 2026") }
+      let(:tagged_repeat_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 50.0,
+          date: 14.days.ago.to_date,
+          description: "Weekly gym",
+          transaction_type: "expense",
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: "repeat",
+          repeat_interval: "every_week",
+          tag_ids: [tag.id],
+        }
+      end
+
+      it { is_expected.to be_success }
+
+      it "assigns the tag to the parent transaction" do
+        expect(call_operation.value!.tag_ids).to eq([tag.id])
+      end
+
+      it "assigns the tag to every generated occurrence" do
+        parent = call_operation.value!
+
+        expect(parent.series_records.map { |tx| tx.tag_ids }).to all(eq([tag.id]))
+      end
+    end
+
+    context "with an installment expense and tag_ids" do
+      subject(:call_operation) { operation.call(tagged_installment_params) }
+
+      let!(:tag) { create(:transaction_tag, space:, name: "Japan 2026") }
+      let(:tagged_installment_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 150.0,
+          date: Date.current,
+          description: "Phone payment",
+          transaction_type: "expense",
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: "installment",
+          installment_period: 12,
+          tag_ids: [tag.id],
+        }
+      end
+
+      it { is_expected.to be_success }
+
+      it "assigns the tag to every installment occurrence" do
+        parent = call_operation.value!
+
+        expect(parent.series_records.map { |tx| tx.tag_ids }).to all(eq([tag.id]))
+      end
+    end
+
+    context 'with foreign-currency installment expense' do
+      let(:installment_gbp_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 24_000.0,
+          date: Date.current,
+          description: "INSTALL5",
+          transaction_type: "expense",
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: "installment",
+          installment_period: 24,
+          original_currency: "GBP",
+          exchange_rate: 70.0,
+          exchange_rate_source: "manual",
+        }
+      end
+
+      it "stores per-payment conversion metadata, not the plan total" do
+        result = operation.call(installment_gbp_params)
+        expect(result).to be_success
+
+        parent = result.value!
+        expect(parent.amount.amount).to eq(70_000.0)
+        expect(parent.installment_total.amount).to eq(1_680_000.0)
+        expect(parent.currency_conversion).to be_present
+        expect(parent.currency_conversion.original_money.amount).to eq(1_000.0)
+        expect(parent.currency_conversion.original_currency).to eq("GBP")
+
+        child = parent.children.first
+        expect(child.currency_conversion).to be_present
+        expect(child.currency_conversion.original_money.amount).to eq(1_000.0)
+        expect(child.currency_conversion.original_currency).to eq("GBP")
       end
     end
 
@@ -844,6 +1045,44 @@ RSpec.describe Transactions::Operations::CreateTransaction do
           result = call_operation
           expect(result.failure).to include(:installment_period)
         end
+      end
+    end
+
+    context "with client_mutation_id idempotency" do
+      let(:mutation_id) { SecureRandom.uuid }
+      let(:create_params) do
+        {
+          user_id: user.id,
+          space_id: space.id,
+          amount: 40.0,
+          date: Date.current,
+          description: "Idempotent expense",
+          transaction_type: "expense",
+          category_name: expense_category.name,
+          account_name: account.name,
+          schedule_type: "one_time",
+          client_mutation_id: mutation_id,
+        }
+      end
+
+      it "creates once and returns the same transaction on replay" do
+        first = operation.call(create_params)
+        expect(first).to be_success
+
+        expect do
+          second = operation.call(create_params)
+          expect(second).to be_success
+          expect(second.value!.id).to eq(first.value!.id)
+        end.not_to change(Transactions::Expense, :count)
+      end
+
+      it "creates distinct rows for distinct client_mutation_id values" do
+        first = operation.call(create_params)
+        second = operation.call(create_params.merge(client_mutation_id: SecureRandom.uuid))
+
+        expect(first).to be_success
+        expect(second).to be_success
+        expect(second.value!.id).not_to eq(first.value!.id)
       end
     end
   end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -22,7 +22,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
   # Note that some types may not work with other database engines. Be careful if changing database.
   create_enum "account_category", ["cash", "savings", "debit", "credit_card", "e_wallet", "loan", "investment"]
   create_enum "ai_usages_ai_status", ["pending", "success", "failure"]
-  create_enum "ai_usages_ai_type", ["pure_ai_ocr", "ai_chat"]
+  create_enum "ai_usages_ai_type", ["pure_ai_ocr", "ai_chat", "tag_style_image"]
   create_enum "balance_state", ["pending", "calculated"]
   create_enum "category_type_enum", ["income", "expense"]
   create_enum "crm_priority", ["low", "medium", "high", "urgent"]
@@ -65,6 +65,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["discarded_at"], name: "index_accounts_on_discarded_at"
     t.index ["space_id", "name"], name: "index_accounts_on_space_id_and_name_where_not_discarded", unique: true, where: "(discarded_at IS NULL)"
     t.index ["space_id"], name: "index_accounts_on_space_id"
+  end
+
+  create_table "achievements", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "category", default: "transactions", null: false
+    t.datetime "created_at", null: false
+    t.text "description", default: "", null: false
+    t.string "image_key", null: false
+    t.string "key", null: false
+    t.string "kind", default: "collectible", null: false
+    t.integer "position", default: 0, null: false
+    t.string "rarity", default: "common", null: false
+    t.string "title", null: false
+    t.string "unlock_event", null: false
+    t.jsonb "unlock_threshold", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.integer "xp_reward", default: 50, null: false
+    t.index ["active"], name: "index_achievements_on_active"
+    t.index ["category", "position"], name: "index_achievements_on_category_and_position"
+    t.index ["key"], name: "index_achievements_on_key", unique: true
+    t.index ["unlock_event"], name: "index_achievements_on_unlock_event"
   end
 
   create_table "active_storage_attachments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -152,7 +173,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.uuid "space_id", null: false
     t.enum "status", default: "pending", null: false, enum_type: "ai_usages_ai_status"
     t.decimal "time_seconds", precision: 6, scale: 2, default: "0.0", null: false
-    t.integer "tokens_used", default: 1, null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["space_id"], name: "index_ai_usages_on_space_id"
@@ -254,6 +274,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["space_id"], name: "index_entities_on_space_id"
   end
 
+  create_table "entity_merchant_aliases", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "entity_id", null: false
+    t.string "label"
+    t.string "scanned_name", null: false
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_entity_merchant_aliases_on_entity_id"
+    t.index ["space_id", "scanned_name"], name: "index_entity_merchant_aliases_on_space_and_scanned_name", unique: true
+    t.index ["space_id"], name: "index_entity_merchant_aliases_on_space_id"
+  end
+
   create_table "finance_billing_cycles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "action_url"
     t.datetime "created_at", null: false
@@ -264,7 +296,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.uuid "space_subscription_id", null: false
     t.tstzrange "span", null: false
     t.enum "status", default: "pending", null: false, enum_type: "finance_billing_cycle_status"
-    t.integer "tokens_allocated", null: false
     t.datetime "updated_at", null: false
     t.string "xendit_cycle_id"
     t.index ["space_subscription_id", "cycle_number"], name: "index_finance_billing_cycles_on_subscription_and_cycle", unique: true
@@ -296,6 +327,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["space_subscription_id"], name: "index_finance_payments_on_space_subscription_id"
     t.index ["status"], name: "index_finance_payments_on_status"
     t.index ["xendit_cycle_id"], name: "index_finance_payments_on_xendit_cycle_id", unique: true
+  end
+
+  create_table "finance_pro_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "acknowledged_at"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.uuid "granted_by_id", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["granted_by_id"], name: "index_finance_pro_grants_on_granted_by_id"
+    t.index ["user_id"], name: "index_finance_pro_grants_on_user_id", unique: true
+  end
+
+  create_table "finance_revenuecat_customers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "app_user_id", null: false
+    t.string "auto_renewal_status"
+    t.datetime "created_at", null: false
+    t.datetime "current_period_ends_at"
+    t.boolean "gives_access", default: false, null: false
+    t.string "management_url"
+    t.boolean "pro_active", default: false, null: false
+    t.datetime "pro_expires_at"
+    t.string "product_identifier"
+    t.string "revenuecat_subscription_id"
+    t.datetime "starts_at"
+    t.string "store"
+    t.string "subscription_status"
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id"], name: "index_finance_revenuecat_customers_on_user_id", unique: true
   end
 
   create_table "finance_space_subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -360,7 +422,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.bigint "price_cents", default: 0, null: false
     t.string "price_currency", default: "PHP", null: false
     t.string "slug", null: false
-    t.integer "token_limit", null: false
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_finance_subscription_plans_on_active"
     t.index ["slug"], name: "index_finance_subscription_plans_on_slug", unique: true
@@ -570,6 +631,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["resource_type", "resource_id"], name: "index_roles_on_resource"
   end
 
+  create_table "space_change_log", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "actor_user_id"
+    t.datetime "created_at", null: false
+    t.uuid "entity_id"
+    t.string "entity_type"
+    t.string "op", null: false
+    t.string "origin_client_mutation_id"
+    t.jsonb "payload", default: {}, null: false
+    t.bigint "seq", null: false
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_space_change_log_on_entity_id"
+    t.index ["space_id", "created_at"], name: "index_space_change_log_on_space_id_and_created_at"
+    t.index ["space_id", "seq"], name: "index_space_change_log_on_space_id_and_seq", unique: true
+  end
+
+  create_table "space_sync_sequences", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "last_seq", default: 0, null: false
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id"], name: "index_space_sync_sequences_on_space_id", unique: true
+  end
+
   create_table "space_users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "access_code"
     t.datetime "created_at", null: false
@@ -611,6 +696,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["xendit_customer_reference_id"], name: "index_spaces_on_xendit_customer_reference_id"
   end
 
+  create_table "sync_client_mutations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "client_mutation_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "resource_id", null: false
+    t.string "resource_type", null: false
+    t.jsonb "response_snapshot", default: {}, null: false
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["resource_id"], name: "index_sync_client_mutations_on_resource_id"
+    t.index ["space_id", "client_mutation_id"], name: "index_sync_client_mutations_on_space_and_client_mutation", unique: true
+  end
+
+  create_table "transaction_taggings", id: false, force: :cascade do |t|
+    t.uuid "tag_id", null: false
+    t.uuid "transaction_id", null: false
+    t.index ["tag_id"], name: "index_transaction_taggings_on_tag_id"
+    t.index ["transaction_id", "tag_id"], name: "index_transaction_taggings_on_transaction_id_and_tag_id", unique: true
+  end
+
   create_table "transaction_versions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "cause"
     t.datetime "created_at"
@@ -639,8 +743,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.datetime "date", null: false
     t.string "description"
     t.uuid "effective_parent_id"
+    t.uuid "entity_id"
     t.integer "installment_count"
     t.integer "installment_period"
+    t.bigint "installment_total_cents"
     t.uuid "parent_id"
     t.integer "repeat_count"
     t.enum "repeat_interval", enum_type: "repeat_interval"
@@ -657,6 +763,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["date", "type", "amount_currency", "amount_cents"], name: "idx_on_date_type_amount_currency_amount_cents_5ec151a267"
     t.index ["effective_parent_id", "date"], name: "index_transactions_on_effective_parent_id_and_date"
     t.index ["effective_parent_id"], name: "index_transactions_on_effective_parent_id"
+    t.index ["entity_id"], name: "index_transactions_on_entity_id"
     t.index ["parent_id", "date"], name: "index_transactions_on_parent_id_and_date"
     t.index ["parent_id"], name: "index_transactions_on_parent_id"
     t.index ["space_id"], name: "index_transactions_on_space_id"
@@ -668,7 +775,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
 
   create_table "transactions_categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.enum "category_type", null: false, enum_type: "category_type_enum"
+    t.string "color"
     t.datetime "created_at", null: false
+    t.string "icon"
     t.string "name", null: false
     t.uuid "parent_id"
     t.uuid "space_id", null: false
@@ -677,6 +786,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["space_id", "category_type", "name"], name: "index_tx_categories_roots_on_space_type_name", unique: true, where: "(parent_id IS NULL)"
     t.index ["space_id", "category_type", "parent_id", "name"], name: "index_tx_categories_subs_on_space_type_parent_name", unique: true, where: "(parent_id IS NOT NULL)"
     t.index ["space_id"], name: "index_transactions_categories_on_space_id"
+  end
+
+  create_table "transactions_tags", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "color", null: false
+    t.datetime "created_at", null: false
+    t.boolean "is_default", default: false, null: false
+    t.string "name", null: false
+    t.uuid "space_id", null: false
+    t.string "style_preset_key"
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "name"], name: "index_transactions_tags_on_space_id_and_name", unique: true
+    t.index ["space_id"], name: "index_transactions_tags_on_space_id_default", unique: true, where: "(is_default = true)"
   end
 
   create_table "transfer_versions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -730,6 +851,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["user_id"], name: "index_transfers_on_user_id"
   end
 
+  create_table "user_achievements", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "achievement_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "earned_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.uuid "space_id"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["achievement_id"], name: "index_user_achievements_on_achievement_id"
+    t.index ["earned_at"], name: "index_user_achievements_on_earned_at"
+    t.index ["space_id"], name: "index_user_achievements_on_space_id"
+    t.index ["user_id", "achievement_id"], name: "index_user_achievements_on_user_and_achievement", unique: true
+    t.index ["user_id"], name: "index_user_achievements_on_user_id"
+  end
+
   create_table "user_activities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.date "activity_date", null: false
     t.integer "api_request_count", default: 0, null: false
@@ -746,6 +882,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.index ["user_id"], name: "index_user_activities_on_user_id"
   end
 
+  create_table "user_gamification_stats", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "backfilled_at"
+    t.datetime "created_at", null: false
+    t.integer "level", default: 1, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.integer "xp", default: 0, null: false
+    t.index ["user_id"], name: "index_user_gamification_stats_on_user_id", unique: true
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "auth_id", null: false
     t.datetime "created_at", null: false
@@ -754,9 +900,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
     t.string "full_name"
     t.datetime "mobile_tutorial"
     t.string "photo_url"
+    t.datetime "trial_ends_at"
     t.datetime "updated_at", null: false
     t.index ["auth_id"], name: "index_users_on_auth_id", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["trial_ends_at"], name: "index_users_on_trial_ends_at"
   end
 
   create_table "users_roles", id: false, force: :cascade do |t|
@@ -786,9 +934,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
   add_foreign_key "crm_tickets", "users"
   add_foreign_key "currency_conversions", "spaces"
   add_foreign_key "entities", "spaces"
+  add_foreign_key "entity_merchant_aliases", "entities"
+  add_foreign_key "entity_merchant_aliases", "spaces"
   add_foreign_key "finance_billing_cycles", "finance_space_subscriptions", column: "space_subscription_id"
   add_foreign_key "finance_payments", "finance_billing_cycles", column: "biling_cycle_id"
   add_foreign_key "finance_payments", "finance_space_subscriptions", column: "space_subscription_id"
+  add_foreign_key "finance_pro_grants", "users"
+  add_foreign_key "finance_pro_grants", "users", column: "granted_by_id"
+  add_foreign_key "finance_revenuecat_customers", "users"
   add_foreign_key "finance_space_subscriptions", "finance_sponsor_codes", column: "sponsor_code_id"
   add_foreign_key "finance_space_subscriptions", "finance_subscription_plans", column: "subscription_plan_id"
   add_foreign_key "finance_space_subscriptions", "spaces"
@@ -812,11 +965,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
   add_foreign_key "product_pulse_feedbacks", "spaces"
   add_foreign_key "product_pulse_feedbacks", "users"
   add_foreign_key "rag_embeddings", "spaces"
+  add_foreign_key "space_change_log", "spaces"
+  add_foreign_key "space_change_log", "users", column: "actor_user_id"
+  add_foreign_key "space_sync_sequences", "spaces"
   add_foreign_key "space_users", "spaces"
   add_foreign_key "space_users", "users"
   add_foreign_key "space_users", "users", column: "invited_by_id"
   add_foreign_key "spaces", "users", column: "owner_id"
+  add_foreign_key "sync_client_mutations", "spaces"
+  add_foreign_key "transaction_taggings", "transactions"
+  add_foreign_key "transaction_taggings", "transactions_tags", column: "tag_id"
   add_foreign_key "transactions", "accounts"
+  add_foreign_key "transactions", "entities"
   add_foreign_key "transactions", "transactions", column: "effective_parent_id"
   add_foreign_key "transactions", "transactions", column: "parent_id"
   add_foreign_key "transactions", "transactions_categories", column: "category_id"
@@ -825,13 +985,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
   add_foreign_key "transactions", "users"
   add_foreign_key "transactions_categories", "spaces"
   add_foreign_key "transactions_categories", "transactions_categories", column: "parent_id"
+  add_foreign_key "transactions_tags", "spaces"
   add_foreign_key "transfers", "accounts", column: "from_account_id"
   add_foreign_key "transfers", "accounts", column: "to_account_id"
   add_foreign_key "transfers", "spaces"
   add_foreign_key "transfers", "transfers", column: "effective_parent_id"
   add_foreign_key "transfers", "transfers", column: "parent_id"
   add_foreign_key "transfers", "users"
+  add_foreign_key "user_achievements", "achievements"
+  add_foreign_key "user_achievements", "spaces"
+  add_foreign_key "user_achievements", "users"
   add_foreign_key "user_activities", "users"
+  add_foreign_key "user_gamification_stats", "users"
 
   create_view "account_activities", sql_definition: <<-SQL
       SELECT ((transactions.id)::text || ':tx'::text) AS id,
@@ -864,13 +1029,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
               ELSE NULL::text
           END AS activity_kind,
       NULL::uuid AS loan_id,
-      NULL::character varying AS entity_name,
+      entities.full_name AS entity_name,
       NULL::character varying AS loan_type,
       transactions.created_at
-     FROM (((transactions
+     FROM ((((transactions
        JOIN accounts ON ((accounts.id = transactions.account_id)))
        JOIN spaces ON ((spaces.id = transactions.space_id)))
        JOIN transactions_categories ON ((transactions_categories.id = transactions.category_id)))
+       LEFT JOIN entities ON ((entities.id = transactions.entity_id)))
     WHERE (((transactions.type)::text = ANY ((ARRAY['Transactions::Income'::character varying, 'Transactions::Expense'::character varying])::text[])) AND (NOT (EXISTS ( SELECT 1
              FROM loan_payments
             WHERE (loan_payments.transaction_id = transactions.id)))))
@@ -939,7 +1105,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
       (loans.date)::timestamp without time zone AS date,
       loans.principal_amount_cents AS amount_cents,
       loans.currency AS amount_currency,
-      COALESCE(loans.description, ('Loan — '::text || (entities.full_name)::text)) AS description,
+      COALESCE(NULLIF(btrim(loans.description), ''::text), ('Loan — '::text || (entities.full_name)::text)) AS description,
           CASE
               WHEN ((loans.loan_type)::text = 'borrowed'::text) THEN accounts.name
               ELSE NULL::character varying
@@ -974,7 +1140,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
       (loan_payments.date)::timestamp without time zone AS date,
       loan_payments.total_payment_cents AS amount_cents,
       loan_payments.currency AS amount_currency,
-      COALESCE(loan_payments.notes, ('Loan payment — '::text || (entities.full_name)::text)) AS description,
+      COALESCE(NULLIF(btrim(loan_payments.notes), ''::text), ('Loan payment — '::text || COALESCE(NULLIF(btrim(loans.description), ''::text), (entities.full_name)::text))) AS description,
           CASE
               WHEN ((loans.loan_type)::text = 'lent'::text) THEN accounts.name
               ELSE NULL::character varying
@@ -1051,12 +1217,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
       transactions.balance_state,
       transactions.created_at,
       NULL::uuid AS loan_id,
-      NULL::character varying AS entity_name,
+      entities.full_name AS entity_name,
       NULL::character varying AS loan_type
-     FROM (((transactions
+     FROM ((((transactions
        JOIN accounts ON ((accounts.id = transactions.account_id)))
        JOIN spaces ON ((spaces.id = transactions.space_id)))
        JOIN transactions_categories ON ((transactions_categories.id = transactions.category_id)))
+       LEFT JOIN entities ON ((entities.id = transactions.entity_id)))
     WHERE (((transactions.type)::text = ANY ((ARRAY['Transactions::Income'::character varying, 'Transactions::Expense'::character varying])::text[])) AND (NOT (EXISTS ( SELECT 1
              FROM loan_payments
             WHERE (loan_payments.transaction_id = transactions.id)))))
@@ -1067,7 +1234,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
       loans.date,
       loans.principal_amount_cents AS amount_cents,
       loans.currency AS amount_currency,
-      COALESCE(loans.description, ('Loan — '::text || (entities.full_name)::text)) AS description,
+      COALESCE(NULLIF(btrim(loans.description), ''::text), ('Loan — '::text || (entities.full_name)::text)) AS description,
           CASE
               WHEN ((loans.loan_type)::text = 'borrowed'::text) THEN accounts.name
               ELSE NULL::character varying
@@ -1099,7 +1266,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_120001) do
       loan_payments.date,
       loan_payments.total_payment_cents AS amount_cents,
       loan_payments.currency AS amount_currency,
-      COALESCE(loan_payments.notes, ('Loan payment — '::text || (entities.full_name)::text)) AS description,
+      COALESCE(NULLIF(btrim(loan_payments.notes), ''::text), ('Loan payment — '::text || COALESCE(NULLIF(btrim(loans.description), ''::text), (entities.full_name)::text))) AS description,
           CASE
               WHEN ((loans.loan_type)::text = 'lent'::text) THEN accounts.name
               ELSE NULL::character varying

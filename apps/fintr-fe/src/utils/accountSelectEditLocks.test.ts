@@ -31,29 +31,18 @@ describe("accountSelectEditLocks", () => {
       { value: "USD Wallet", currency: "USD" },
     ];
 
-    it("resolves lock from the initial account row (USD wallet)", () => {
+    it("returns undefined so edit mode does not lock account currency", () => {
       expect(
         editLockedAccountLedgerCurrency(true, "USD Wallet", options, phpSpace),
-      ).toBe("USD");
-    });
-
-    it("uses space currency for an initial account row without currency metadata", () => {
-      expect(
-        editLockedAccountLedgerCurrency(
-          true,
-          "Legacy",
-          [{ value: "Legacy" }],
-          phpSpace,
-        ),
-      ).toBe(phpSpace);
+      ).toBeUndefined();
     });
   });
 
-  describe("edit list: every option stays in the list; wrong currency is disabled only", () => {
+  describe("edit list: every option stays selectable across currencies", () => {
     const usdOption = { value: "USD Wallet", currency: "USD" };
     const phpOption = { value: "PHP Cash", currency: "PHP" };
 
-    it("outside edit mode, no row is currency-disabled (all remain selectable)", () => {
+    it("outside edit mode, no row is currency-disabled", () => {
       const lock = editLockedAccountLedgerCurrency(false, "Cash", [], phpSpace);
       expect(
         isAccountSelectOptionDisabledForEdit(false, lock, usdOption, phpSpace),
@@ -63,34 +52,12 @@ describe("accountSelectEditLocks", () => {
       ).toBe(false);
     });
 
-    it("in edit mode with a PHP lock, USD rows are disabled and PHP rows stay enabled", () => {
-      const lock = "PHP";
+    it("in edit mode, accounts in other currencies remain selectable", () => {
       expect(
-        isAccountSelectOptionDisabledForEdit(true, lock, usdOption, phpSpace),
-      ).toBe(true);
-      expect(
-        isAccountSelectOptionDisabledForEdit(true, lock, phpOption, phpSpace),
+        isAccountSelectOptionDisabledForEdit(true, "PHP", usdOption, phpSpace),
       ).toBe(false);
-    });
-
-    it("in edit mode with a USD lock, PHP rows are disabled and USD rows stay enabled", () => {
-      const lock = "USD";
       expect(
-        isAccountSelectOptionDisabledForEdit(true, lock, phpOption, phpSpace),
-      ).toBe(true);
-      expect(
-        isAccountSelectOptionDisabledForEdit(true, lock, usdOption, phpSpace),
-      ).toBe(false);
-    });
-
-    it("when no currency lock applies, no row is disabled by currency (all stay selectable)", () => {
-      expect(
-        isAccountSelectOptionDisabledForEdit(
-          true,
-          undefined,
-          usdOption,
-          phpSpace,
-        ),
+        isAccountSelectOptionDisabledForEdit(true, "USD", phpOption, phpSpace),
       ).toBe(false);
     });
   });

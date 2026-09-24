@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 export const useImport = (importId?: string) => {
   const { api } = useAuthApi();
   const { spaceCode } = useGetSpaceCode(api!, true);
+  const queryClient = useQueryClient();
 
   const {
     data: importData,
@@ -36,6 +37,22 @@ export const useImport = (importId?: string) => {
       return status === 'processing' || status === 'pending' ? 2000 : false;
     },
   });
+
+  React.useEffect(() => {
+    const status = importData?.data?.import?.status;
+
+    if (status !== 'completed') {
+      return;
+    }
+
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
+    if (spaceCode) {
+      void queryClient.invalidateQueries({
+        queryKey: ['dashboard', 'shell', spaceCode],
+      });
+    }
+  }, [importData?.data?.import?.status, queryClient, spaceCode]);
 
   return {
     import: importData?.data?.import,

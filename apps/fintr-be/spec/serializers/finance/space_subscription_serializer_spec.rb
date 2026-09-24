@@ -6,7 +6,7 @@ RSpec.describe Finance::SpaceSubscriptionSerializer do
   subject(:serialized_hash) { described_class.render_as_hash(space_subscription) }
 
   let(:space) { create(:space) }
-  let(:subscription_plan) { create(:subscription_plan, slug: "basic", token_limit: 50, price_cents: 14_900) }
+  let(:subscription_plan) { create(:subscription_plan, slug: "basic", price_cents: 14_900) }
   let(:space_subscription) do
     create(
       :space_subscription,
@@ -96,7 +96,6 @@ RSpec.describe Finance::SpaceSubscriptionSerializer do
           cycle_number: 1,
           span: (cycle_start..cycle_end),
           status: "paid",
-          tokens_allocated: 100,
           paid_at: cycle_start,
           xendit_cycle_id: "cycle-1"
         )

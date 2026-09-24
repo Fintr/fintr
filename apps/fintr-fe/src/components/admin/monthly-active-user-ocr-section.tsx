@@ -45,8 +45,8 @@ export function MonthlyActiveUserOcrSection({
         <p className="text-sm text-muted-foreground">
           An <span className="font-medium text-foreground">active user</span> for a calendar month is anyone
           with authenticated app activity on at least {summary.minActiveDaysRequired} distinct days that
-          month. OCR totals are <span className="font-mono text-xs">pure_ai_ocr</span> token usage in that
-          month, only for those active users. The headline average is the mean of the monthly
+          month. OCR totals are <span className="font-mono text-xs">pure_ai_ocr</span> receipt scans in that
+          month for those active users. The headline average is the mean of the monthly
           per-active-user averages, counting only months with at least one qualifying user.
         </p>
       </CardHeader>
@@ -84,7 +84,7 @@ export function MonthlyActiveUserOcrSection({
               <TableRow>
                 <TableHead>Month</TableHead>
                 <TableHead className="text-right tabular-nums">Active users</TableHead>
-                <TableHead className="text-right tabular-nums">Total OCR tokens</TableHead>
+                <TableHead className="text-right tabular-nums">Total OCR scans</TableHead>
                 <TableHead className="text-right tabular-nums">Avg OCR / active user</TableHead>
               </TableRow>
             </TableHeader>
@@ -93,9 +93,9 @@ export function MonthlyActiveUserOcrSection({
                 <TableRow key={row.month}>
                   <TableCell className="font-medium">{row.monthLabel}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.activeUserCount}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.totalOcrTokens}</TableCell>
+                  <TableCell className="text-right tabular-nums">{row.totalOcrScans}</TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {row.activeUserCount > 0 ? row.averageOcrTokensPerActiveUser.toFixed(2) : "—"}
+                    {row.activeUserCount > 0 ? row.averageOcrScansPerActiveUser.toFixed(2) : "—"}
                   </TableCell>
                 </TableRow>
               ))}

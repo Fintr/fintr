@@ -236,6 +236,21 @@ RSpec.describe "API V1 Transaction Accounts", type: :request do
     end
 
     context "when deletion is successful" do
+      it "forwards remove_transactions to the operation" do
+        operation_result = Dry::Monads::Result::Success.new(account_to_delete)
+        expect(operation_double).to receive(:call) do |args|
+          expect(ActiveModel::Type::Boolean.new.cast(args[:remove_transactions])).to be(true)
+          operation_result
+        end
+
+        delete "/api/v1/transactions/accounts/#{account_to_delete.id}",
+          headers: headers,
+          params: { remove_transactions: true },
+          as: :json
+
+        expect(response).to have_http_status(:ok)
+      end
+
       it "discards the account" do
         operation_result = Dry::Monads::Result::Success.new(account_to_delete)
         allow(operation_double).to receive(:call).and_return(operation_result)

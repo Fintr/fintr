@@ -107,7 +107,7 @@ async function selectGridPickerValue(page: Page, triggerId: string, label: strin
 async function selectEntity(page: Page, entityName: string) {
   await page.getByRole("button", { name: "+ Add New Lender" }).click()
   await page.locator("#new-entity-name").fill(entityName)
-  await page.getByRole("button", { name: "Add", exact: true }).click()
+  await page.getByRole("button", { name: "Save", exact: true }).click()
 }
 
 test.describe("Loan creation toast", () => {

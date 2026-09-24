@@ -6,6 +6,16 @@ RSpec.describe 'Api::V1::Insights', type: :request do
   describe 'GET /api/v1/insights' do
     let!(:user) { create(:user) }
     let!(:space) { create(:personal_space, users: [user]) } # Assuming personal_space or similar factory
+    let!(:subscription_plan) { create(:subscription_plan, slug: "pro-#{SecureRandom.hex(4)}") }
+    let!(:space_subscription) do
+      create(
+        :space_subscription,
+        space:,
+        subscription_plan:,
+        status: :active,
+        subscription_type: :paid,
+      )
+    end
 
     let!(:auth) { setup_authentication(user:, space:) }
     let(:headers) { auth[:headers].merge({ 'Accept' => 'application/json' }) }
@@ -133,6 +143,23 @@ RSpec.describe 'Api::V1::Insights', type: :request do
       it 'calls the CreateInsightsData operation with category_name' do
         expect(mock_insights_operation).to have_received(:call).with(expected_operation_params_with_category).once
         expect(response).to have_http_status(:ok) # Ensure it still succeeds
+      end
+    end
+
+    context 'when the account only has the trial' do
+      let(:mock_insights_operation) { instance_double(Insights::Operations::CreateInsightsData) }
+
+      before do
+        space_subscription.destroy!
+        allow(Insights::Operations::CreateInsightsData).to receive(:new).and_return(mock_insights_operation)
+        allow(mock_insights_operation).to receive(:call)
+          .and_return(Dry::Monads::Result::Success.new(insights_operation_output))
+
+        get api_v1_insights_path, params: request_params, headers: headers
+      end
+
+      it 'returns insights during the trial' do
+        expect(response).to have_http_status(:ok)
       end
     end
 

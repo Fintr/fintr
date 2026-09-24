@@ -1,10 +1,12 @@
 "use client";
 
-import * as Ariakit from "@ariakit/react";
 import { matchSorter } from "match-sorter";
-import { startTransition, useCallback, useMemo, useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { comboboxInputClassName } from "@/components/ui/combobox";
+import {
+  FilterPickerItem,
+  FilterPickerShell,
+} from "@/components/ui/filter-picker-shell";
 import {
   FilterSelectionPill,
   FilterSelectionPills,
@@ -31,10 +33,13 @@ import {
   removeSubcategoriesForParent,
 } from "@/utils/categoryFilterOptions";
 
+const ALL_CATEGORIES_VALUE = "__all_categories__";
+
 export interface CategoryFilterComboBoxProps {
   expenseOptions: CategoryTreeOption[];
   incomeOptions: CategoryTreeOption[];
   placeholder?: string;
+  searchPlaceholder?: string;
   value?: string;
   onChange?: (value: string) => void;
   multiple?: boolean;
@@ -49,7 +54,8 @@ export interface CategoryFilterComboBoxProps {
 export const CategoryFilterComboBox = ({
   expenseOptions,
   incomeOptions,
-  placeholder = "Select categories",
+  placeholder,
+  searchPlaceholder = "Search categories",
   value,
   onChange,
   multiple = false,
@@ -60,6 +66,9 @@ export const CategoryFilterComboBox = ({
   disabled = false,
   showAllOnFocus = true,
 }: CategoryFilterComboBoxProps) => {
+  const closedPlaceholder =
+    placeholder ?? (multiple ? "Select categories" : "All categories");
+
   const allOptions = useMemo(
     () => buildCategoryFilterOptions(expenseOptions, incomeOptions),
     [expenseOptions, incomeOptions],
@@ -75,11 +84,6 @@ export const CategoryFilterComboBox = ({
     [expenseOptions, incomeOptions],
   );
 
-  const [searchValue, setSearchValue] = useState(
-    () => (!multiple && value ? resolveDisplayLabel(value) : ""),
-  );
-  const [open, setOpen] = useState(false);
-
   const selectedSet = useMemo(
     () => new Set(multiple ? values : []),
     [multiple, values],
@@ -90,6 +94,13 @@ export const CategoryFilterComboBox = ({
     [multiple, values],
   );
 
+  const hasSelectedValue =
+    !multiple && Boolean(value) && value !== "all";
+
+  const selectedLabel = hasSelectedValue
+    ? resolveDisplayLabel(value as string)
+    : "";
+
   const isOptionAvailable = useCallback(
     (option: CategoryFilterOption) => {
       if (option.disabled) {
@@ -97,6 +108,10 @@ export const CategoryFilterComboBox = ({
       }
 
       if (option.sectionHeader) {
+        if (!multiple) {
+          return true;
+        }
+
         if (option.value === EXPENSE_SECTION_VALUE) {
           return !areAllExpenseCategoriesSelected(values, expenseOptions);
         }
@@ -153,7 +168,7 @@ export const CategoryFilterComboBox = ({
 
     const parentIds = collectSelectedParentCategoryIds(values);
     const normalized = values.filter(
-      (value) => !isCategoryOptionCoveredByParentSelection(value, parentIds),
+      (current) => !isCategoryOptionCoveredByParentSelection(current, parentIds),
     );
 
     if (normalized.length !== values.length) {
@@ -161,59 +176,22 @@ export const CategoryFilterComboBox = ({
     }
   }, [values, multiple, onValuesChange]);
 
-  useEffect(() => {
-    if (multiple || open) {
-      return;
-    }
-
-    if (value !== undefined && value !== null) {
-      setSearchValue(
-        value === "all" || value === ""
-          ? ""
-          : resolveDisplayLabel(value),
-      );
-    }
-  }, [value, open, resolveDisplayLabel, multiple]);
-
-  const prevOpen = useRef(open);
-  useEffect(() => {
-    if (multiple || !open || !prevOpen.current) {
-      prevOpen.current = open;
-      return;
-    }
-
-    if (value != null && value !== "all") {
-      setSearchValue(resolveDisplayLabel(value));
-    }
-
-    prevOpen.current = open;
-  }, [open, value, resolveDisplayLabel, multiple]);
-
-  const filteredOptions = useMemo(() => {
+  const getFilteredOptions = (searchValue: string, open: boolean) => {
     const selectable = allOptions.filter(
       (option) => !option.disabled && isOptionAvailable(option),
     );
 
     if (showAllOnFocus && open && searchValue.length === 0) {
-      return allOptions.filter(
-        (option) =>
-          (option.sectionHeader && isOptionAvailable(option))
-          || (!option.sectionHeader && isOptionAvailable(option)),
-      );
+      return allOptions.filter((option) => isOptionAvailable(option));
+    }
+
+    if (searchValue.length === 0) {
+      return allOptions.filter((option) => isOptionAvailable(option));
     }
 
     const matched = matchSorter(selectable, searchValue, {
       keys: ["label", "value"],
     });
-
-    if (searchValue.length === 0) {
-      return allOptions.filter(
-        (option) =>
-          (option.sectionHeader && isOptionAvailable(option))
-          || (!option.sectionHeader && isOptionAvailable(option)),
-      );
-    }
-
     const matchedValues = new Set(matched.map((option) => option.value));
     const result: CategoryFilterOption[] = [];
     let currentSection: CategoryFilterOption | null = null;
@@ -224,11 +202,7 @@ export const CategoryFilterComboBox = ({
         continue;
       }
 
-      if (!matchedValues.has(option.value)) {
-        continue;
-      }
-
-      if (!isOptionAvailable(option)) {
+      if (!matchedValues.has(option.value) || !isOptionAvailable(option)) {
         continue;
       }
 
@@ -244,49 +218,19 @@ export const CategoryFilterComboBox = ({
     }
 
     return result;
-  }, [
-    allOptions,
-    searchValue,
-    open,
-    showAllOnFocus,
-    isOptionAvailable,
-  ]);
-
-  const handleSingleChange = (nextValue: string) => {
-    setSearchValue(nextValue);
-    onChange?.(nextValue);
-  };
-
-  const isSelectableOptionValue = useCallback(
-    (nextValue: string) =>
-      allOptions.some(
-        (option) =>
-          !option.disabled
-          && option.value === nextValue
-          && isOptionAvailable(option),
-      ),
-    [allOptions, isOptionAvailable],
-  );
-
-  const handleComboboxValueChange = (nextValue: string) => {
-    if (multiple) {
-      startTransition(() => {
-        setSearchValue(isSelectableOptionValue(nextValue) ? "" : nextValue);
-      });
-      return;
-    }
-
-    startTransition(() => handleSingleChange(nextValue));
   };
 
   const handleSingleSelect = (option: CategoryFilterOption) => {
-    if (option.disabled) {
+    if (option.disabled || option.sectionHeader) {
       return;
     }
 
-    setSearchValue(resolveDisplayLabel(option.value));
+    if (option.value === ALL_CATEGORIES_VALUE) {
+      onChange?.("");
+      return;
+    }
+
     onChange?.(option.value);
-    setOpen(false);
   };
 
   const handleMultiSelect = (option: CategoryFilterOption) => {
@@ -305,7 +249,6 @@ export const CategoryFilterComboBox = ({
           : expandIncomeCategorySelection(values, incomeOptions);
 
       onValuesChange?.(nextValues);
-      setSearchValue("");
       return;
     }
 
@@ -319,11 +262,24 @@ export const CategoryFilterComboBox = ({
         : [...values, option.value];
 
     onValuesChange?.(nextValues);
-    setSearchValue("");
   };
 
   const handleRemove = (pickerValue: string) => {
     onValuesChange?.(values.filter((current) => current !== pickerValue));
+  };
+
+  const showAllOption = (searchValue: string) => {
+    if (!hasSelectedValue) {
+      return false;
+    }
+
+    if (searchValue.length === 0) {
+      return true;
+    }
+
+    return matchSorter([{ label: "All categories" }], searchValue, {
+      keys: ["label"],
+    }).length > 0;
   };
 
   return (
@@ -332,69 +288,100 @@ export const CategoryFilterComboBox = ({
         <FilterSelectionPills selections={pills} onRemove={handleRemove} />
       ) : null}
 
-      <Ariakit.ComboboxProvider
-        setValue={handleComboboxValueChange}
-        value={searchValue}
-        open={open}
-        setOpen={setOpen}
+      <FilterPickerShell
+        placeholder={closedPlaceholder}
+        searchPlaceholder={searchPlaceholder}
+        triggerLabel={selectedLabel}
+        hasValue={hasSelectedValue}
+        onClear={
+          hasSelectedValue
+            ? () => onChange?.("")
+            : undefined
+        }
+        clearAriaLabel="Clear category"
+        disabled={disabled}
+        className={className}
+        popoverClassName={popoverClassName}
       >
-        <Ariakit.Combobox
-          placeholder={placeholder}
-          className={cn(
-            comboboxInputClassName,
-            disabled && "cursor-not-allowed bg-gray-100 dark:bg-muted/50",
-            className,
-          )}
-          disabled={disabled}
-          onClick={() => setOpen(true)}
-        />
-        <Ariakit.ComboboxPopover
-          gutter={8}
-          sameWidth
-          className={cn(
-            "relative z-[100] max-h-96 min-w-[8rem] overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 py-1",
-            popoverClassName,
-          )}
-        >
-          {filteredOptions.length > 0 ? (
-            filteredOptions.map((option) => (
-              <Ariakit.ComboboxItem
-                key={option.value}
-                value={option.value}
-                disabled={option.disabled}
-                setValueOnClick={!multiple}
-                hideOnClick={!multiple}
-                className={cn(
-                  "relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none focus:text-accent-foreground data-[disabled]:pointer-events-none",
-                  option.sectionHeader
-                    ? "text-muted-foreground font-semibold uppercase tracking-wide text-xs py-2"
-                    : "data-[disabled]:opacity-50",
-                )}
-                onClick={() =>
-                  multiple
-                    ? handleMultiSelect(option)
-                    : handleSingleSelect(option)
-                }
-              >
-                <span
-                  className={cn(
-                    "w-full px-2 py-1 rounded-sm",
-                    !option.disabled && "hover:bg-accent",
-                    option.sectionHeader && "font-semibold uppercase tracking-wide text-xs",
-                    option.indentLevel === 1 && "pl-6",
-                  )}
+        {({ searchValue, open }) => {
+          const filteredOptions = getFilteredOptions(searchValue, open);
+
+          return (
+            <>
+              {showAllOption(searchValue) ? (
+                <FilterPickerItem
+                  value={ALL_CATEGORIES_VALUE}
+                  setValueOnClick={false}
+                  hideOnClick
+                  className="relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none data-[active-item]:bg-accent"
+                  onClick={() =>
+                    handleSingleSelect({
+                      label: "All categories",
+                      value: ALL_CATEGORIES_VALUE,
+                    })
+                  }
                 >
-                  {option.label}
-                </span>
-              </Ariakit.ComboboxItem>
-            ))
-          ) : (
-            <div className="p-2 text-center text-gray-300 text-sm">
-              No results found
-            </div>
-          )}
-        </Ariakit.ComboboxPopover>
-      </Ariakit.ComboboxProvider>
+                  <span className="w-full px-2 py-1.5 rounded-sm">
+                    All categories
+                  </span>
+                </FilterPickerItem>
+              ) : null}
+
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option) => {
+                  if (option.sectionHeader && !multiple) {
+                    return (
+                      <div
+                        key={option.value}
+                        className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                      >
+                        {option.label}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <FilterPickerItem
+                      key={option.value}
+                      value={option.value}
+                      disabled={option.disabled}
+                      setValueOnClick={false}
+                      hideOnClick={!multiple}
+                      className={cn(
+                        "relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none focus:text-accent-foreground data-[disabled]:pointer-events-none",
+                        option.sectionHeader
+                          ? "text-muted-foreground font-semibold uppercase tracking-wide text-xs py-2"
+                          : "data-[disabled]:opacity-50",
+                      )}
+                      onClick={() =>
+                        multiple
+                          ? handleMultiSelect(option)
+                          : handleSingleSelect(option)
+                      }
+                    >
+                      <span
+                        className={cn(
+                          "w-full px-2 py-1 rounded-sm",
+                          !option.disabled && "hover:bg-accent",
+                          option.sectionHeader
+                            && "font-semibold uppercase tracking-wide text-xs",
+                          option.indentLevel === 1 && "pl-6",
+                        )}
+                      >
+                        {option.label}
+                      </span>
+                    </FilterPickerItem>
+                  );
+                })
+              ) : (
+                <div className="p-2 text-center text-sm text-muted-foreground">
+                  No results found
+                </div>
+              )}
+            </>
+          );
+        }}
+      </FilterPickerShell>
     </div>
   );
 };

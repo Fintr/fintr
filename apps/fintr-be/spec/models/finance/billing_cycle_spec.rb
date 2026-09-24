@@ -40,16 +40,13 @@ RSpec.describe Finance::BillingCycle, type: :model do
         space_subscription: space_subscription,
         cycle_number: 1,
         span: span,
-        tokens_allocated: 100
       )
     end
 
     it { is_expected.to validate_presence_of(:cycle_number) }
     it { is_expected.to validate_presence_of(:span) }
-    it { is_expected.to validate_presence_of(:tokens_allocated) }
 
     it { is_expected.to validate_numericality_of(:cycle_number).is_greater_than(0) }
-    it { is_expected.to validate_numericality_of(:tokens_allocated).is_greater_than(0) }
 
     describe "cycle_number uniqueness scoped to space_subscription_id" do
       let!(:existing_cycle) do

@@ -7,8 +7,8 @@ RSpec.describe Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSess
   # rubocop:enable RSpec/SpecFilePathFormat
   let(:operation) { described_class.new }
   let(:space) { create(:personal_space) }
-  let(:old_plan) { create(:subscription_plan, slug: "basic", token_limit: 50, price_cents: 14_900, interval: "month") }
-  let(:new_plan) { create(:subscription_plan, slug: "premium", token_limit: 200, price_cents: 29_900, interval: "month") }
+  let(:old_plan) { create(:subscription_plan, slug: "basic", price_cents: 14_900, interval: "month") }
+  let(:new_plan) { create(:subscription_plan, slug: "premium", price_cents: 29_900, interval: "month") }
 
   describe "upgrade with proration on days 29-31" do
     context "when subscription started on day 31 of January" do
@@ -44,7 +44,6 @@ RSpec.describe Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSess
           cycle_number: 1,
           span: (cycle_start..cycle_end),
           status: "paid",
-          tokens_allocated: old_plan.token_limit,
           paid_at: cycle_start,
           xendit_cycle_id: "recy_original_123"
         )
@@ -116,9 +115,6 @@ RSpec.describe Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSess
         expect(prorated_cycle.ends_at.month).to eq(2)
         expect(prorated_cycle.ends_at.year).to eq(2025)
 
-        # Prorated cycle should have new plan tokens
-        expect(prorated_cycle.tokens_allocated).to eq(new_plan.token_limit)
-
         # Original cycle should be ended early
         expect(current_cycle.ends_at).to be < Time.zone.parse("2025-02-28 23:59:59")
         expect(current_cycle.ends_at).to be >= upgrade_requested_at
@@ -157,7 +153,6 @@ RSpec.describe Finance::Operations::PaymentSessions::Webhooks::HandlePaymentSess
           cycle_number: 1,
           span: (cycle_start..cycle_end),
           status: "paid",
-          tokens_allocated: old_plan.token_limit,
           paid_at: cycle_start,
           xendit_cycle_id: "recy_original_456"
         )

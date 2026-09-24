@@ -27,3 +27,22 @@ export const formControlInteractiveSurfaceClassName = cn(
   formControlSurfaceClassName,
   formControlFillHoverClassName,
 );
+
+/** Inline field validation error callout (FormError). */
+export const formFieldErrorSurfaceClassName =
+  "flex items-center mt-1.5 mb-1 rounded-md border border-red-300 bg-red-100/50 p-2 dark:border-red-800/40 dark:bg-red-950/40";
+
+/** Text and icon color for field validation errors. */
+export const formFieldErrorTextClassName =
+  "text-xs font-medium text-red-900 dark:text-red-400";
+
+/** Plain field error line (no callout box), e.g. GridPicker. */
+export const formFieldErrorInlineTextClassName =
+  "text-sm text-red-900 dark:text-red-400";
+
+/** Floating label field fill (onboarding; matches tax calculator gross-income row). */
+export const floatingLabelFieldSurfaceClassName =
+  "border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-950/40";
+
+/** Label chip on floating fields — same fill as the control so the notch blends. */
+export const floatingLabelChipClassName = "bg-blue-50 dark:bg-blue-950/40";

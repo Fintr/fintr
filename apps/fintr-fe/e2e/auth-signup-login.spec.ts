@@ -187,6 +187,6 @@ test.describe("Username/password auth API contract", () => {
       )
       .toBe(true);
 
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard\/home/, { timeout: 15000 });
   });
 });

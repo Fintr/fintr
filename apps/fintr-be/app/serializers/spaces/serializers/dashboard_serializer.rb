@@ -27,13 +27,23 @@ module Spaces
           {
             label: account.name,
             value: account.name,
-            currency: account.balance_currency
+            currency: account.balance_currency,
+            account_category: account.account_category,
+            balance: account.balance.amount
           }
         end
       end
 
       field :financial_summary do |dashboard_data|
         dashboard_data[:financial_summary]
+      end
+
+      field :earliest_transaction_date do |space|
+        date = MonthlyFinancialSummaries::Queries::EarliestTransactionDateForSpace.call(
+          space:,
+        )
+
+        date&.iso8601
       end
 
       def self.serialize_category_tree(roots)
@@ -44,13 +54,17 @@ module Spaces
             value: parent.id,
             name: parent.name,
             parent_id: nil,
+            icon: parent.icon,
+            color: parent.color,
             children: parent.children.order(:name).map do |child|
               {
                 id: child.id,
                 label: child.name,
                 value: child.id,
                 name: child.name,
-                parent_id: parent.id
+                parent_id: parent.id,
+                icon: child.icon,
+                color: child.color
               }
             end
           }

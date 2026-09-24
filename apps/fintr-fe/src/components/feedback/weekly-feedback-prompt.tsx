@@ -21,6 +21,7 @@ export const WeeklyFeedbackPrompt = ({ api, enabled }: WeeklyFeedbackPromptProps
 
   useEffect(() => {
     if (!enabled) {
+      setOpen(false);
       return undefined;
     }
 

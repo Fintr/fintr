@@ -2,8 +2,6 @@ import { useCallback, useMemo } from 'react';
 import { createAuthenticatedClient } from '@/lib/api';
 import { AxiosInstance } from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import { isPublicPath } from '@/lib/public-routes';
 
 /**
  * Custom hook that provides an authenticated Axios instance using Auth0 tokens
@@ -26,7 +24,6 @@ export const useAuthApi = (options?: {
     isLoading,
     error,
   } = useAuth();
-  const router = useRouter();
 
   // Create a function to get tokens with error handling (compatible with web app)
   const getToken = useCallback(async (): Promise<string> => {
@@ -38,15 +35,9 @@ export const useAuthApi = (options?: {
       return token;
     } catch (e: any) {
       console.error('Error getting access token:', e);
-      if (
-        typeof window !== "undefined"
-        && !isPublicPath(window.location.pathname)
-      ) {
-        router.push("/login");
-      }
       throw e;
     }
-  }, [getAccessToken, router]);
+  }, [getAccessToken]);
 
   // Create an authenticated API client
   const api = useMemo(() => createAuthenticatedClient(getToken), [getToken]);

@@ -10,7 +10,7 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
 
   describe "GET /api/v1/finance/subscriptions" do
     let(:list_plans_query) { instance_double(Finance::Queries::ListSubscriptionPlans) }
-    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
+    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
 
     before do
       allow(Finance::Queries::ListSubscriptionPlans).to receive(:call).and_return(
@@ -73,6 +73,11 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
     before do
       allow(Finance::Operations::Subscriptions::GetCurrentSubscriptions).to receive(:new)
         .and_return(get_current_subscriptions_operation)
+      sync_customer = instance_double(Finance::Operations::Revenuecat::SyncCustomer)
+      allow(Finance::Operations::Revenuecat::SyncCustomer).to receive(:new).and_return(sync_customer)
+      allow(sync_customer).to receive(:call).and_return(
+        Dry::Monads::Failure(revenuecat: "not configured"),
+      )
     end
 
     context "when request is successful with subscriptions" do
@@ -114,6 +119,63 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
       end
     end
 
+    context "when the user has a RevenueCat subscription" do
+      let(:present_subscription) do
+        instance_double(Finance::Operations::Revenuecat::PresentSubscription)
+      end
+
+      before do
+        allow(get_current_subscriptions_operation).to receive(:call).and_return(
+          Dry::Monads::Success([])
+        )
+        sync_customer = instance_double(Finance::Operations::Revenuecat::SyncCustomer)
+        allow(Finance::Operations::Revenuecat::SyncCustomer).to receive(:new).and_return(sync_customer)
+        allow(sync_customer).to receive(:call).and_return(Dry::Monads::Success(:synced))
+        allow(Finance::Operations::Revenuecat::PresentSubscription).to receive(:new)
+          .and_return(present_subscription)
+        allow(present_subscription).to receive(:call).and_return(
+          Dry::Monads::Success(
+            id: "store-sub",
+            provider: "revenuecat",
+            status: "active",
+            subscription_plan: { name: "Pro Yearly" },
+          )
+        )
+      end
+
+      it "includes the store subscription on the same list" do
+        get "/api/v1/finance/subscriptions/current_subscriptions", headers: headers
+
+        json_response = JSON.parse(response.body)
+        subscription = json_response["data"]["subscriptions"].last
+        expect(subscription["provider"]).to eq("revenuecat")
+        expect(subscription["status"]).to eq("active")
+        expect(subscription["subscriptionPlan"]["name"]).to eq("Pro Yearly")
+      end
+    end
+
+    context "when the user has a complimentary Fintr Pro year" do
+      before do
+        allow(get_current_subscriptions_operation).to receive(:call).and_return(
+          Dry::Monads::Success([])
+        )
+        create(:pro_grant, user:, expires_at: 1.year.from_now)
+      end
+
+      it "includes the complimentary year as a subscription that does not renew" do
+        get "/api/v1/finance/subscriptions/current_subscriptions", headers: headers
+
+        json_response = JSON.parse(response.body)
+        subscription = json_response["data"]["subscriptions"].last
+        expect(subscription["provider"]).to eq("grant")
+        expect(subscription["status"]).to eq("active")
+        expect(subscription["totalCycles"]).to eq(1)
+        expect(subscription["subscriptionPlan"]["description"]).to eq(
+          "Included for one year. This does not renew.",
+        )
+      end
+    end
+
     context "when operation fails" do
       before do
         allow(get_current_subscriptions_operation).to receive(:call).and_return(
@@ -133,7 +195,7 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
     let(:create_subscription_operation) do
       instance_double(Finance::Operations::Subscriptions::CreateSubscription)
     end
-    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
+    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
     let(:space_subscription) do
       create(
         :space_subscription,
@@ -201,8 +263,8 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
     let(:update_subscription_operation) do
       instance_double(Finance::Operations::Subscriptions::UpdateSubscription)
     end
-    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
-    let(:new_plan) { create(:subscription_plan, slug: "premium-#{SecureRandom.hex(4)}", token_limit: 100, price_cents: 20_000, interval: "month") }
+    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
+    let(:new_plan) { create(:subscription_plan, slug: "premium-#{SecureRandom.hex(4)}", price_cents: 20_000, interval: "month") }
     let(:space_subscription) do
       create(
         :space_subscription,
@@ -290,7 +352,7 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
     let(:cancel_subscription_operation) do
       instance_double(Finance::Operations::Subscriptions::CancelSubscription)
     end
-    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
+    let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
     let(:space_subscription) do
       create(
         :space_subscription,

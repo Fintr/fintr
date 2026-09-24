@@ -6,10 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import LoanDetailContent from "@/components/dashboard/loan-detail-content";
+import { resolveDetailSearchParam } from "@/utils/detailSearchParam";
 
 const LoanDetailInner = () => {
   const searchParams = useSearchParams();
-  const loanId = searchParams.get("loanId") ?? "";
+  const loanId = resolveDetailSearchParam("loanId", searchParams);
 
   if (!loanId) {
     return (
@@ -23,7 +24,7 @@ const LoanDetailInner = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 pt-4 pb-24 md:pb-4">
+    <div className="min-h-screen bg-background px-3 pt-3 pb-24 md:px-4 md:pt-4 md:pb-4">
       <LoanDetailContent loanId={loanId} />
     </div>
   );

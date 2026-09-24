@@ -9,6 +9,9 @@ module Finance
                  blueprint: Finance::SubscriptionPlanSerializer
     field :status
     field :subscription_type, name: :subscriptionType
+    field :provider do
+      "xendit"
+    end
     field :started_at, name: :startedAt
     field :ended_at, name: :endedAt
     field :current_cycle_count, name: :currentCycleCount
@@ -80,7 +83,6 @@ module Finance
             cycleNumber: current_cycle.cycle_number,
             startedAt: current_cycle.started_at,
             endsAt: current_cycle.ends_at,
-            tokensAllocated: current_cycle.tokens_allocated
           } : nil,
           totalCycles: subscription.billing_cycles.paid.count,
           autoRenews: true

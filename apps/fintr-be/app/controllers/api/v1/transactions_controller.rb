@@ -53,6 +53,24 @@ module Api
         render_success(data: operation.value!)
       end
 
+      def materialize_series
+        operation = ::Transactions::Operations::MaterializeSeriesChildren.new.call(
+          transaction_id: params[:id],
+        )
+
+        return render_internal_server_error(details: operation.failure) unless operation.success?
+
+        records = Array(operation.value!)
+        render_success(
+          data: {
+            materialized_count: records.length,
+            transactions: ::Transactions::Broadcasts::TransactionChange.serialize_index_rows(
+              transactions: records,
+            ),
+          },
+        )
+      end
+
       def generate_csv
         query = ::Transactions::Queries::FilteredCombined.call(params: filter_params.merge(paginate: false))
         operation = ::Transactions::Operations::Reports::DownloadCsv.new.call(combined_transactions: query.value!)
@@ -88,14 +106,17 @@ module Api
           :min_amount,
           :max_amount,
           :search_query,
+          :entry_type,
           :page,
           category_filters: [],
           account_names: [],
+          tag_ids: [],
         ).to_h
       end
 
       def create_params
         params.permit(
+          :id,
           :amount,
           :date,
           :description,
@@ -109,13 +130,18 @@ module Api
           :repeat_count,
           :installment_period,
           :installment_count,
+          :installment_total,
+          :installment_revision_anchor,
           :draft_id,
           :file,
           :file_id,
           :original_currency,
           :exchange_rate,
           :exchange_rate_source,
-          :amount_in_currency
+          :amount_in_currency,
+          :client_mutation_id,
+          :entity_name,
+          tag_ids: [],
         )
       end
 
@@ -135,13 +161,17 @@ module Api
           :repeat_count,
           :installment_period,
           :installment_count,
+          :installment_total,
+          :installment_revision_anchor,
           :file,
           :remove_file,
           :update_scope,
           :original_currency,
           :exchange_rate,
           :exchange_rate_source,
-          :amount_in_currency
+          :amount_in_currency,
+          :entity_name,
+          tag_ids: [],
         )
       end
 

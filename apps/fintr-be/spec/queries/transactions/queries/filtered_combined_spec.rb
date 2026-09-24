@@ -92,6 +92,14 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         # The message includes all valid states; check for inclusion of the expected message part.
         expect(result.failure[:balance_state].first).to include("should be one of")
       end
+
+      it 'returns a failure for invalid entry_type' do
+        params = base_valid_params.merge(entry_type: 'invalid')
+        result = described_class.new(params: params).call
+
+        expect(result).to be_failure
+        expect(result.failure[:entry_type].first).to include("should be one of")
+      end
     end
 
     context 'with mocked queries' do
@@ -580,6 +588,70 @@ RSpec.describe Transactions::Queries::FilteredCombined, type: :query do
         result = described_class.new(params: params).call.value!
 
         expect(result.map(&:transactable)).to contain_exactly(income_s1_jan5)
+      end
+    end
+
+    context 'with entry_type filtering (real data)' do
+      it 'returns only expense transactions when entry_type is expense' do
+        params = default_params.merge(entry_type: 'expense')
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(expense_s1_jan15)
+      end
+
+      it 'returns only income transactions when entry_type is income' do
+        params = default_params.merge(entry_type: 'income')
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(income_s1_jan5)
+      end
+
+      it 'returns only transfers when entry_type is transfers' do
+        params = default_params.merge(entry_type: 'transfers')
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(transfer_s1_feb10)
+      end
+
+      it 'returns only recurring transactions when entry_type is recurring' do
+        recurring_expense = create(
+          :expense_transaction,
+          :repeat,
+          space: space1,
+          account: account1_s1,
+          category: category1_s1,
+          date: Date.new(2024, 1, 10),
+          amount_cents: 1200,
+        )
+        one_time_expense = create(
+          :expense_transaction,
+          :one_time,
+          space: space1,
+          account: account1_s1,
+          category: category1_s1,
+          date: Date.new(2024, 1, 11),
+          amount_cents: 900,
+        )
+        recurring_transfer = create(
+          :transfer,
+          space: space1,
+          from_account: account1_s1,
+          to_account: account2_s1,
+          date: Date.new(2024, 2, 11),
+          amount_cents: 300,
+          schedule_type: 'repeat',
+          repeat_interval: 'every_month',
+          repeat_count: 2,
+        )
+
+        params = default_params.merge(entry_type: 'recurring')
+        result = described_class.new(params: params).call.value!
+
+        expect(result.map(&:transactable)).to contain_exactly(
+          recurring_expense,
+          recurring_transfer,
+        )
+        expect(result.map(&:transactable)).not_to include(one_time_expense)
       end
     end
   end

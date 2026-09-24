@@ -6,12 +6,13 @@ import BottomNavigation from "@/components/dashboard/bottom-navigation";
 import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
 import { useAtomValue } from 'jotai';
 import { isAdminAtom } from '@/atoms/dashboardAtoms';
+import { isTutorialActiveAtom } from '@/atoms/tutorialAtoms';
 import { workspaceTransitionAtom } from '@/atoms/spaceAtoms';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
-import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
+import { useDashboardPathname } from "@/hooks/useDashboardPathname";
 import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
 import LoadingScreen from "@/components/ui/loading-screen";
 import { WorkspaceSetupGate } from "@/components/onboarding/workspace-setup-gate";
@@ -25,9 +26,31 @@ import {
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
 import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
+import {
+  shouldRunOfflineSync,
+  shouldShowOfflineSyncScreen,
+  shouldShowPrivateContextLoadingScreen,
+} from "@/lib/app-loading-gates";
+import { hasAppShellReady, markAppShellReady } from "@/lib/app-shell-state";
+import { useHydrationSafeValue } from "@/hooks/useHydrationSafeValue";
+import { offlineReimportRequiredAtom } from "@/atoms/offlineSyncAtoms";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
+import { ProGrantThankYouPrompt } from "@/components/settings/pro-grant-thank-you-prompt";
+import { useProAccess } from "@/hooks/async/useProAccess";
 import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
 import { isMaintenanceModeEnabled } from "@/lib/maintenance-mode";
+import { OfflineSyncScreen } from "@/components/offline/offline-sync-screen";
+import { useHydrateOfflineSyncReady } from "@/hooks/useHydrateOfflineSyncReady";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useOutboxDrain } from "@/hooks/useOutboxDrain";
+
+const PrivateShellReadyMarker = () => {
+  useEffect(() => {
+    markAppShellReady();
+  }, []);
+
+  return null;
+};
 
 const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   const {
@@ -38,7 +61,13 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   const isAdmin = useAtomValue(isAdminAtom);
-  const pathname = usePathname();
+  const isTutorialActive = useAtomValue(isTutorialActiveAtom);
+  const appShellReady = useHydrationSafeValue(hasAppShellReady, false);
+  const persistedSpaceCode = useHydrationSafeValue(
+    () => window.localStorage.getItem("spaceCode")?.trim() ?? "",
+    "",
+  );
+  const pathname = useDashboardPathname();
   const router = useRouter();
   const {
     spaceCode,
@@ -83,13 +112,45 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   // Dashboard shell layout already applies mobile bottom padding + BottomNavigation
   const isDashboardPage = isDashboardShellRoute(pathname);
+  const { data: proAccess } = useProAccess();
+  const grantNoticePending = proAccess?.grantNotice?.pending === true;
   const weeklyFeedbackEnabled =
     Boolean(spaceCode) &&
     !isOnOnboardingPage &&
     !isStandalonePage &&
     !transitionState.isTransitioning &&
-    !pathname.startsWith("/admin");
+    !pathname.startsWith("/admin") &&
+    !grantNoticePending;
+  const thankYouEnabled =
+    !isOnOnboardingPage &&
+    !isOnboardingIncomplete &&
+    !isTutorialActive &&
+    !transitionState.isTransitioning;
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  useHydrateOfflineSyncReady();
+  const requiresOfflineReimport = useAtomValue(offlineReimportRequiredAtom);
+  const canRunOfflineSync = shouldRunOfflineSync({
+    isAuthenticated,
+    isAuthLoading,
+    isOnOnboardingPage,
+    isOnAdminPage,
+    onboardingStep,
+  });
+
+  const {
+    status: offlineSyncStatus,
+    progress: offlineSyncProgress,
+    error: offlineSyncError,
+    retry: retryOfflineSync,
+  } = useOfflineSync(canRunOfflineSync);
+
+  useOutboxDrain(
+    isAuthenticated &&
+    !isAuthLoading &&
+    !isOnOnboardingPage &&
+    !isOnAdminPage,
+  );
 
   const {
     isAndroidNative,
@@ -131,9 +192,13 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
   ]);
 
   if (
-    !isOnOnboardingPage &&
-    !isOnAdminPage &&
-    shouldBlockOnContextLoading
+    shouldShowPrivateContextLoadingScreen({
+      appShellReady,
+      isOnOnboardingPage,
+      isOnAdminPage,
+      isResolvingWorkspaceContext: shouldBlockOnContextLoading,
+      hasPersistedSpaceCode: Boolean(persistedSpaceCode || spaceCode),
+    })
   ) {
     return (
       <div className="min-h-screen bg-background text-primary">
@@ -165,8 +230,27 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  if (
+    shouldShowOfflineSyncScreen({
+      requiresOfflineReimport,
+      offlineSyncStatus,
+      canRunOfflineSync,
+    })
+  ) {
+    return (
+      <div className="min-h-screen bg-background text-primary">
+        <OfflineSyncScreen
+          progress={offlineSyncProgress}
+          error={offlineSyncStatus === "error" ? offlineSyncError : null}
+          onRetry={retryOfflineSync}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-primary">
+      <PrivateShellReadyMarker />
       {!isOnOnboardingPage && !isStandalonePage && !transitionState.isTransitioning && (
         <>
           <DashboardNavigation hideActionButtons={hideActionButtons} isAdmin={isAdmin} />
@@ -215,9 +299,10 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
         workspaceName={transitionState.destinationSpace?.name}
         isOrganization={transitionState.destinationSpace?.isOrganization}
       />
-      {weeklyFeedbackEnabled ? (
+      {weeklyFeedbackEnabled && !isTutorialActive ? (
         <WeeklyFeedbackPrompt api={api} enabled={weeklyFeedbackEnabled} />
       ) : null}
+      {thankYouEnabled ? <ProGrantThankYouPrompt enabled={thankYouEnabled} /> : null}
     </div>
   );
 };

@@ -7,7 +7,6 @@ module Ai
       class ExtractReceiptDataVision < Dry::Operation
         DEFAULT_MAX_VISION_EDGE = 768  # Receipt text stays readable; smaller = faster upload + inference
         DEFAULT_JPEG_QUALITY    = 82
-        DEFAULT_IMAGE_DETAIL    = "low" # OpenAI-compatible; much faster than "high" for receipts
         DEFAULT_MAX_TOKENS      = 220
         class Contract < Dry::Validation::Contract
           params do
@@ -44,10 +43,21 @@ module Ai
           space               = step find_space(params:)
           space_categories    = step fetch_space_categories(space:)
           space_accounts      = step fetch_space_accounts(space:)
+          space_merchants     = step fetch_space_merchants(space:)
           base64_image        = step encode_image_to_base64(params:)
-          ai_response         = step call_openai_vision_api(base64_image:, space_categories:, space_accounts:)
+          ai_response         = step call_vision_chat(
+                                    base64_image:,
+                                    space_categories:,
+                                    space_accounts:,
+                                    space_merchants:,
+                                  )
           parsed_data         = step parse_ai_response(ai_response:)
-          validated_data      = step validate_extracted_data(parsed_data:, space_categories:, space_accounts:)
+          validated_data      = step validate_extracted_data(
+                                    parsed_data:,
+                                    space_categories:,
+                                    space_accounts:,
+                                    space_merchants:,
+                                  )
           final_result        = step prepare_extraction_result(validated_data:)
           final_result
         end
@@ -90,6 +100,32 @@ module Ai
           Failure(accounts_error: "Failed to fetch accounts", error: e)
         end
 
+        def fetch_space_merchants(space:)
+          entities = Entities::Entity
+            .transactions
+            .where(space_id: space.id)
+            .includes(:merchant_aliases)
+            .order(:full_name)
+
+          catalog = entities.map do |entity|
+            {
+              name: entity.full_name,
+              identifiers: merchant_identifier_labels(entity)
+            }
+          end
+
+          Success(catalog)
+        rescue StandardError => e
+          Failure(merchants_error: "Failed to fetch merchants", error: e)
+        end
+
+        def merchant_identifier_labels(entity)
+          entity.merchant_aliases
+            .sort_by(&:created_at)
+            .reverse
+            .filter_map { |alias_record| alias_record.label.presence || alias_record.scanned_name }
+        end
+
         def encode_image_to_base64(params:)
           image_path = params[:image_path]
 
@@ -130,70 +166,52 @@ module Ai
           end
         end
 
-        def call_openai_vision_api(base64_image:, space_categories:, space_accounts:)
-          system_prompt = build_vision_system_prompt(space_categories, space_accounts)
+        def call_vision_chat(base64_image:, space_categories:, space_accounts:, space_merchants: [])
+          instructions = build_vision_system_prompt(
+            space_categories,
+            space_accounts,
+            space_merchants,
+          )
 
           begin
-            client = ::Ai::Llm::VisionClient.client
-            model  = ::Ai::Llm::VisionClient.model
-
-            response = client.chat(
-              parameters: {
-                model: model,
-                messages: [
-                  {
-                    role: "system",
-                    content: system_prompt
-                  },
-                  {
-                    role: "user",
-                    content: [
-                      {
-                        type: "text",
-                        text: "Extract total, date, category, and account from this receipt."
-                      },
-                      {
-                        type: "image_url",
-                        image_url: {
-                          url: base64_image,
-                          detail: vision_image_detail
-                        }
-                      }
-                    ]
-                  }
-                ],
-                temperature: 0.0,
-                max_tokens: vision_max_tokens
-              }.merge(::Ai::Llm::VisionClient.openrouter_chat_extras)
+            ai_content = ::Ai::Llm::VisionClient.ask(
+              instructions: instructions,
+              prompt: "Extract total, date, category, account, and the matching merchant from this receipt.",
+              image: base64_image,
+              max_output_tokens: vision_max_tokens,
             )
-
-            ai_content = response.dig("choices", 0, "message", "content")&.strip
             return Failure(ai_error: "No response from vision API") if ai_content.blank?
 
             Success(ai_content)
           rescue StandardError => e
-            failure_message = vision_api_error_message(e)
             Failure(
-              ai_vision_error: failure_message,
-              error: e
+              ai_vision_error: vision_api_error_message(e),
+              error: e,
             )
           end
         end
 
         def vision_api_error_message(exception)
           msg = exception.message.to_s
-          return "Vision API payment required (402). Add credits or a payment method at https://openrouter.ai/credits" if msg.include?("402")
-          return "Vision API authentication failed (401). Check OPENROUTER_API_KEY or OPENAI_API_KEY." if msg.include?("401")
-          return "Vision API rate limit (429). Try again in a few moments." if msg.include?("429")
+          if exception.is_a?(RubyLLM::PaymentRequiredError) || msg.include?("402")
+            return "Vision API payment required (402). Add credits or a payment method at https://openrouter.ai/credits"
+          end
+          if exception.is_a?(RubyLLM::UnauthorizedError) || msg.include?("401")
+            return "Vision API authentication failed (401). Check OPENROUTER_API_KEY."
+          end
+          if exception.is_a?(RubyLLM::RateLimitError) || msg.include?("429")
+            return "Vision API rate limit (429). Try again in a few moments."
+          end
 
           "Vision API call failed"
         end
 
-        def build_vision_system_prompt(space_categories, space_accounts)
+        def build_vision_system_prompt(space_categories, space_accounts, space_merchants = [])
           category_list = space_categories.join(", ")
           default_category = space_categories.first || "Family"
           account_list = space_accounts.join(", ")
           default_account = space_accounts.first || "Cash"
+          merchant_rule = merchant_match_rule(space_merchants)
 
           <<~PROMPT.strip
             Receipt OCR. Reply with JSON only.
@@ -201,11 +219,45 @@ module Ai
             - date: YYYY-MM-DD or null. The date you see in the receipt.
             - category: exactly one of [#{category_list}]; default "#{default_category}". The category that the receipt is likely to be categorized under.
             - account: one of [#{account_list}]; default "#{default_account}". The account that the receipt is likely to be categorized under.
-            - merchant_detected: store name if visible. The name of the store or service that the receipt is for.
+            - merchant_detected: store name printed on the receipt, or null.
+            - merchant: #{merchant_rule}
             - confidence: high|medium|low
             Use merchant/service context (e.g. photo/cinema/wedding → photography, not dining).
-            {"total_amount":"..","date":"..","category":"..","account":"..","confidence":"..","merchant_detected":".."}
+            Match a merchant when the receipt text matches its name or an identifier in square brackets. Return the merchant name.
+            {"total_amount":"..","date":"..","category":"..","account":"..","confidence":"..","merchant_detected":"..","merchant":".."}
           PROMPT
+        end
+
+        def merchant_match_rule(space_merchants)
+          entries = merchant_entries(space_merchants)
+          return "null" if entries.blank?
+
+          formatted = entries.map { |entry| format_merchant_entry(entry) }
+          "exactly one of [#{formatted.join(", ")}] when the receipt matches a known merchant name or identifier; return the merchant name; null if none match"
+        end
+
+        def merchant_entries(space_merchants)
+          return [] if space_merchants.blank?
+
+          space_merchants.map do |merchant|
+            if merchant.is_a?(String)
+              { name: merchant, identifiers: [] }
+            else
+              {
+                name: merchant[:name] || merchant["name"],
+                identifiers: Array(merchant[:identifiers] || merchant["identifiers"])
+              }
+            end
+          end
+        end
+
+        def format_merchant_entry(entry)
+          identifiers = Array(entry[:identifiers]).filter_map do |identifier|
+            identifier.to_s.gsub(/[\r\n]+/, " ").strip.presence
+          end
+          return entry[:name].to_s if identifiers.empty?
+
+          "#{entry[:name]} [#{identifiers.join("; ")}]"
         end
 
         def max_vision_edge
@@ -218,13 +270,6 @@ module Ai
           raw = ENV["AI_VISION_JPEG_QUALITY"].to_s.strip
           quality = raw.present? ? raw.to_i : DEFAULT_JPEG_QUALITY
           quality.clamp(60, 95)
-        end
-
-        def vision_image_detail
-          detail = ENV["AI_VISION_IMAGE_DETAIL"].to_s.strip.downcase
-          return DEFAULT_IMAGE_DETAIL if detail.blank?
-
-          %w[low high auto].include?(detail) ? detail : DEFAULT_IMAGE_DETAIL
         end
 
         def vision_max_tokens
@@ -260,7 +305,7 @@ module Ai
           end
         end
 
-        def validate_extracted_data(parsed_data:, space_categories:, space_accounts:)
+        def validate_extracted_data(parsed_data:, space_categories:, space_accounts:, space_merchants: [])
           # Add nil check for parsed_data
           return Failure("Parsed data is missing") if parsed_data.nil?
 
@@ -310,6 +355,15 @@ module Ai
                 confidence_score: vision_confidence_to_score(parsed_data["confidence"])
               }
             end
+          end
+
+          matched_merchant = match_known_merchant(parsed_data["merchant"], space_merchants)
+          matched_merchant ||= match_known_merchant(parsed_data["merchant_detected"], space_merchants)
+          if matched_merchant
+            validated[:entity] = {
+              value: matched_merchant,
+              confidence_score: vision_confidence_to_score(parsed_data["confidence"])
+            }
           end
 
           Success(validated)
@@ -366,6 +420,41 @@ module Ai
 
           # Clean up and return the merchant name
           merchant_str.to_s.strip
+        end
+
+        def match_known_merchant(merchant_str, space_merchants)
+          return nil if merchant_str.blank? || merchant_str == "null"
+
+          entries = merchant_entries(space_merchants)
+          return nil if entries.blank?
+
+          item = merchant_str.to_s.strip
+          names = entries.filter_map { |entry| entry[:name].presence }
+          return item if names.include?(item)
+
+          matched_name = names.find { |name| name.casecmp?(item) }
+          return matched_name if matched_name
+
+          catalog_label = item.sub(/\s*\[[^\]]*\]\z/, "").strip
+          if catalog_label != item
+            matched_catalog_name = names.find { |name| name.casecmp?(catalog_label) }
+            return matched_catalog_name if matched_catalog_name
+          end
+
+          normalized = normalized_merchant_text(item)
+          return nil if normalized.blank?
+
+          matched_entry = entries.find do |entry|
+            Array(entry[:identifiers]).any? do |identifier|
+              normalized_merchant_text(identifier) == normalized
+            end
+          end
+
+          matched_entry&.dig(:name)
+        end
+
+        def normalized_merchant_text(value)
+          Entities::MerchantAlias.normalize_name(value.to_s.gsub(/[\r\n]+/, " "))
         end
 
         def clean_item(item_str, item_list)

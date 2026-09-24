@@ -1,5 +1,7 @@
 import { AxiosInstance } from "axios";
 
+import { clampEndDateToToday } from "@/utils/dateUtils";
+
 export interface InsightsQueryParams {
   filterType?: string;
   selectedMonth?: string;
@@ -8,9 +10,15 @@ export interface InsightsQueryParams {
   startYear?: string;
   endMonth?: string;
   endYear?: string;
+  /** Resolved query range (presets, custom, single month). Preferred over month/year reconstruction. */
+  startDate?: string;
+  endDate?: string;
   selectedCategory?: string;
   selectedCategoryId?: string | null;
   selectedSubcategoryId?: string | null;
+  /** Canonical category name from buildTransactionCategoryFields (primary offline filter key). */
+  selectedCategoryName?: string;
+  selectedTagIds?: string[];
 }
 
 const getMonthNumber = (monthName: string): string => {
@@ -49,7 +57,10 @@ export const buildInsightsApiParams = (params?: InsightsQueryParams) => {
   let categoryId: string | undefined;
   let subcategoryId: string | undefined;
 
-  if (params?.filterType === "range") {
+  if (params?.startDate && params?.endDate) {
+    startDate = params.startDate;
+    endDate = params.endDate;
+  } else if (params?.filterType === "range") {
     startDate = formatDateForAPI(
       params.startYear || new Date().getFullYear().toString(),
       params.startMonth || "january",
@@ -73,10 +84,10 @@ export const buildInsightsApiParams = (params?: InsightsQueryParams) => {
     endDate = formatDateForAPI(year, month, getLastDayOfMonth(year, month));
   }
 
-  if (params?.selectedCategoryId) {
-    categoryId = params.selectedCategoryId;
+  if (params?.selectedCategoryId || params?.selectedCategoryName) {
+    categoryId = params.selectedCategoryId ?? undefined;
     subcategoryId = params.selectedSubcategoryId ?? undefined;
-    categoryName = "";
+    categoryName = params.selectedCategoryName?.trim() ?? "";
   } else {
     categoryName =
       params?.selectedCategory === "all" || !params?.selectedCategory
@@ -86,10 +97,13 @@ export const buildInsightsApiParams = (params?: InsightsQueryParams) => {
 
   return {
     startDate,
-    endDate,
+    endDate: clampEndDateToToday(startDate, endDate),
     categoryName,
     categoryId,
     subcategoryId,
+    ...(params?.selectedTagIds?.length
+      ? { tagIds: params.selectedTagIds }
+      : {}),
   };
 };
 

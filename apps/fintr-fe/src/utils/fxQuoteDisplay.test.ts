@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   humanFxQuote,
+  operativeMultiplierFromFinalAmount,
   operativeMultiplierFromManualQuote,
+  formatFxQuoteCompact,
 } from "./fxQuoteDisplay";
 
 describe("humanFxQuote", () => {
@@ -19,6 +21,20 @@ describe("humanFxQuote", () => {
     expect(quote.unitCurrency).toBe("VND");
     expect(quote.baseCurrency).toBe("PHP");
     expect(quote.displayValue).toBeCloseTo(429.185, 1);
+  });
+});
+
+describe("formatFxQuoteCompact", () => {
+  it("shows PHP amount per 1 USD when multiplier is direct", () => {
+    expect(
+      formatFxQuoteCompact(62, "USD", "PHP", (n) => String(n)),
+    ).toBe("PHP 62 to 1 USD");
+  });
+
+  it("inverts when multiplier is fractional", () => {
+    expect(
+      formatFxQuoteCompact(1 / 62, "PHP", "USD", (n) => n.toFixed(0)),
+    ).toBe("PHP 62 to 1 USD");
   });
 });
 
@@ -43,5 +59,15 @@ describe("operativeMultiplierFromManualQuote", () => {
       1 / 405,
       6,
     );
+  });
+});
+
+describe("operativeMultiplierFromFinalAmount", () => {
+  it("returns target total divided by source amount", () => {
+    expect(operativeMultiplierFromFinalAmount(100, 8285)).toBe(82.85);
+  });
+
+  it("returns null when source amount is zero", () => {
+    expect(operativeMultiplierFromFinalAmount(0, 100)).toBeNull();
   });
 });

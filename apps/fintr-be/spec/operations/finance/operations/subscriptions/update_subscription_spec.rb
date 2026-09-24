@@ -6,8 +6,8 @@ RSpec.describe Finance::Operations::Subscriptions::UpdateSubscription, type: :op
   let(:operation) { described_class.new }
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
-  let(:old_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 10_000, interval: "month", active: true) }
-  let(:new_plan) { create(:subscription_plan, slug: "premium-#{SecureRandom.hex(4)}", token_limit: 100, price_cents: 20_000, interval: "month", active: true) }
+  let(:old_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 10_000, interval: "month", active: true) }
+  let(:new_plan) { create(:subscription_plan, slug: "premium-#{SecureRandom.hex(4)}", price_cents: 20_000, interval: "month", active: true) }
   let(:space_subscription) do
     create(
       :space_subscription,
@@ -164,7 +164,6 @@ RSpec.describe Finance::Operations::Subscriptions::UpdateSubscription, type: :op
         create(
           :subscription_plan,
           slug: "inactive-#{SecureRandom.hex(4)}",
-          token_limit: 100,
           price_cents: 20_000,
           interval: "month",
           active: false
@@ -347,7 +346,6 @@ RSpec.describe Finance::Operations::Subscriptions::UpdateSubscription, type: :op
           create(
             :subscription_plan,
             slug: "starter-#{SecureRandom.hex(4)}",
-            token_limit: 25,
             price_cents: 5_000,
             interval: "month",
             active: true
@@ -433,7 +431,6 @@ RSpec.describe Finance::Operations::Subscriptions::UpdateSubscription, type: :op
         create(
           :subscription_plan,
           slug: "starter-#{SecureRandom.hex(4)}",
-          token_limit: 25,
           price_cents: 5_000,
           interval: "month",
           active: true

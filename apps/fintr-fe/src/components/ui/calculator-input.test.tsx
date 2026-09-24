@@ -19,6 +19,77 @@ vi.mock("@/hooks/usePlatformDetection", () => ({
 }));
 
 describe("CalculatorInput", () => {
+  it("clamps a plain value to the minimum and maximum", () => {
+    const onChange = vi.fn();
+
+    render(
+      <CalculatorInput
+        value="50"
+        minValue={0.01}
+        maxValue={100}
+        onChange={onChange}
+        placeholder="0"
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("0");
+    fireEvent.change(input, { target: { value: "150" } });
+
+    expect(input).toHaveValue("100");
+    expect(onChange).toHaveBeenCalledWith("100");
+
+    fireEvent.change(input, { target: { value: "0.001" } });
+    expect(input).toHaveValue("0.01");
+    expect(onChange).toHaveBeenLastCalledWith("0.01");
+  });
+
+  it("shows the controlled value when a keystroke is rejected", () => {
+    const onChange = vi.fn();
+
+    render(
+      <CalculatorInput
+        value="40"
+        followValue
+        minValue={0.01}
+        maxValue={100}
+        onChange={onChange}
+        placeholder="0"
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("0"), {
+      target: { value: "90" },
+    });
+
+    expect(screen.getByPlaceholderText("0")).toHaveValue("40");
+    expect(onChange).toHaveBeenCalledWith("90");
+  });
+
+  it("raises a below-minimum draft to the minimum when the keypad closes", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <div>
+        <CalculatorInput
+          value=""
+          minValue={0.01}
+          maxValue={100}
+          onChange={onChange}
+          placeholder="0"
+        />
+        <button type="button">Outside</button>
+      </div>,
+    );
+
+    const input = screen.getByPlaceholderText("0");
+    fireEvent.change(input, { target: { value: "0" } });
+    await user.click(screen.getByRole("button", { name: "Outside" }));
+
+    expect(input).toHaveValue("0.01");
+    expect(onChange).toHaveBeenLastCalledWith("0.01");
+  });
+
   const mockOnChange = vi.fn();
 
   beforeEach(() => {
@@ -411,6 +482,43 @@ describe("CalculatorInput", () => {
       expect(mockOnChange).toHaveBeenCalledWith("15");
     });
 
+    it("does not click through to a submit button under equals when the keypad closes", async () => {
+      const onSubmit = vi.fn((event: SubmitEvent) => {
+        event.preventDefault();
+      });
+
+      await act(async () => {
+        render(
+          <form
+            onSubmit={(event) => {
+              onSubmit(event.nativeEvent);
+            }}
+          >
+            <CalculatorInput
+              value="100"
+              onChange={mockOnChange}
+              placeholder="0.00"
+            />
+            <button type="submit">Update Expense</button>
+          </form>,
+        );
+      });
+
+      fireEvent.focus(screen.getByPlaceholderText("0.00"));
+
+      const equals = screen.getByRole("button", { name: "=" });
+      fireEvent.pointerDown(equals, { button: 0 });
+
+      const submit = screen.getByRole("button", { name: "Update Expense" });
+      fireEvent.pointerUp(submit);
+      fireEvent.click(submit);
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(
+        document.body.querySelector("[data-calculator-click-guard]"),
+      ).toBeTruthy();
+    });
+
     it("calls onChange when typing numbers", () => {
       render(
         <CalculatorInput
@@ -424,6 +532,176 @@ describe("CalculatorInput", () => {
       fireEvent.change(input, { target: { value: "123" } });
 
       expect(mockOnChange).toHaveBeenCalledWith("123");
+    });
+
+    it("does not double-enter digits on a single mouse click", async () => {
+      const user = userEvent.setup();
+
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value=""
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />,
+        );
+      });
+
+      await user.click(screen.getByPlaceholderText("0.00"));
+
+      const findCalculatorButton = (label: string) => {
+        const buttons = document.body.querySelectorAll(
+          "[data-calculator-keyboard-button]",
+        );
+
+        return Array.from(buttons).find(
+          (button) => button.textContent === label,
+        ) as HTMLButtonElement;
+      };
+
+      await user.click(findCalculatorButton("7"));
+
+      expect(mockOnChange).toHaveBeenCalledTimes(1);
+      expect(mockOnChange).toHaveBeenCalledWith("7");
+    });
+
+    it("registers rapid sequential digit taps without dropping input", async () => {
+      await act(async () => {
+        render(
+          <CalculatorInput
+            value=""
+            onChange={mockOnChange}
+            placeholder="0.00"
+          />,
+        );
+      });
+
+      fireEvent.focus(screen.getByPlaceholderText("0.00"));
+
+      const findCalculatorButton = (label: string) => {
+        const buttons = document.body.querySelectorAll(
+          "[data-calculator-keyboard-button]",
+        );
+
+        return Array.from(buttons).find(
+          (button) => button.textContent === label,
+        ) as HTMLButtonElement;
+      };
+
+      fireEvent.pointerDown(findCalculatorButton("1"), {
+        button: 0,
+        pointerId: 1,
+      });
+      fireEvent.pointerDown(findCalculatorButton("2"), {
+        button: 0,
+        pointerId: 2,
+      });
+      fireEvent.pointerDown(findCalculatorButton("3"), {
+        button: 0,
+        pointerId: 3,
+      });
+
+      expect(mockOnChange).toHaveBeenLastCalledWith("123");
+    });
+  });
+
+  describe("History handoff when opening another overlay", () => {
+    const PARENT_SHEET_HISTORY_KEY = "__fintrAddTransactionSheet";
+    const RATES_HISTORY_KEY = "__fintrExchangeRateSelector";
+
+    it("does not history.back over a newer overlay that opened during calculator dismiss", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+      try {
+        await act(async () => {
+          render(
+            <div>
+              <CalculatorInput
+                value=""
+                onChange={mockOnChange}
+                placeholder="0.00"
+              />
+              <button type="button" data-testid="rates">
+                Rates
+              </button>
+            </div>,
+          );
+        });
+
+        const input = screen.getByPlaceholderText("0.00");
+        fireEvent.focus(input);
+        expect(
+          document.body.querySelector("[data-calculator-keyboard]"),
+        ).toBeTruthy();
+        expect(window.history.state?.__fintrCalculatorKeyboard).toBe(true);
+
+        fireEvent.mouseDown(screen.getByTestId("rates"));
+
+        window.history.pushState({ [RATES_HISTORY_KEY]: true }, "");
+        expect(window.history.state?.[RATES_HISTORY_KEY]).toBe(true);
+
+        const backSpy = vi.spyOn(window.history, "back");
+
+        await act(async () => {
+          vi.runAllTimers();
+        });
+
+        expect(backSpy).not.toHaveBeenCalled();
+        expect(window.history.state?.[RATES_HISTORY_KEY]).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not dismiss the parent sheet when Rates opens while the calculator is up", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const onParentClose = vi.fn();
+
+      window.history.pushState({ [PARENT_SHEET_HISTORY_KEY]: true }, "");
+
+      const handleParentPopState = (event: PopStateEvent) => {
+        if (event.state?.[PARENT_SHEET_HISTORY_KEY]) {
+          return;
+        }
+
+        onParentClose();
+      };
+
+      window.addEventListener("popstate", handleParentPopState);
+
+      try {
+        await act(async () => {
+          render(
+            <div>
+              <CalculatorInput
+                value=""
+                onChange={mockOnChange}
+                placeholder="0.00"
+              />
+              <button type="button" data-testid="rates">
+                Rates
+              </button>
+            </div>,
+          );
+        });
+
+        const input = screen.getByPlaceholderText("0.00");
+        fireEvent.focus(input);
+        expect(window.history.state?.__fintrCalculatorKeyboard).toBe(true);
+
+        fireEvent.mouseDown(screen.getByTestId("rates"));
+        window.history.pushState({ [RATES_HISTORY_KEY]: true }, "");
+
+        await act(async () => {
+          vi.runAllTimers();
+        });
+
+        expect(onParentClose).not.toHaveBeenCalled();
+        expect(window.history.state?.[RATES_HISTORY_KEY]).toBe(true);
+      } finally {
+        window.removeEventListener("popstate", handleParentPopState);
+        vi.useRealTimers();
+      }
     });
   });
 });

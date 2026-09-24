@@ -155,7 +155,8 @@ module Finance
             immediate_action_type: "FULL_AMOUNT",
             success_return_url: params[:success_return_url] || "#{base_url}/dashboard/subscriptions?success=true",
             failure_return_url: params[:failure_return_url] || "#{base_url}/dashboard/subscriptions?failure=true",
-            payment_link_for_failed_attempt: true
+            payment_link_for_failed_attempt: true,
+            description: subscription_plan.name
           }
 
           response = client.create_subscription_plan(params: xendit_params)

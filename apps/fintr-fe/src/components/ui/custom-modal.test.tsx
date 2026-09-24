@@ -265,4 +265,103 @@ describe("CustomModal mobile positioning", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(pushStateSpy).not.toHaveBeenCalled();
   });
+
+  it("does not close from a backdrop click in the first 500ms", async () => {
+    const onClose = vi.fn();
+    const openedAt = 1_000_000;
+    vi.spyOn(Date, "now").mockReturnValue(openedAt);
+
+    render(
+      <CustomModal
+        isOpen
+        onClose={onClose}
+        title="Add Transaction"
+      >
+        <div>content</div>
+      </CustomModal>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Transaction")).toBeInTheDocument();
+    });
+
+    screen.getByTestId("custom-modal-backdrop").click();
+    expect(onClose).not.toHaveBeenCalled();
+
+    vi.spyOn(Date, "now").mockReturnValue(openedAt + 501);
+    screen.getByTestId("custom-modal-backdrop").click();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("stacks companion overlays above the default modal layer", async () => {
+    render(
+      <CustomModal
+        isOpen
+        onClose={() => {}}
+        title="Crop photo"
+        companion
+        manageHistory={false}
+      >
+        <div>cropper</div>
+      </CustomModal>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Crop photo")).toBeInTheDocument();
+    });
+
+    const companion = document.querySelector("[data-image-crop-dialog]");
+    expect(companion).toBeTruthy();
+    expect(companion?.className).toContain("z-[120]");
+  });
+
+  it("skips history when manageHistory is false", async () => {
+    const pushStateSpy = vi.spyOn(window.history, "pushState");
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+
+    render(
+      <CustomModal
+        isOpen
+        onClose={() => {}}
+        title="Crop photo"
+        manageHistory={false}
+      >
+        <div>cropper</div>
+      </CustomModal>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Crop photo")).toBeInTheDocument();
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(pushStateSpy).not.toHaveBeenCalled();
+  });
+
+  it("closes from the header button the desktop tour targets", async () => {
+    const onClose = vi.fn();
+
+    render(
+      <CustomModal
+        isOpen
+        onClose={onClose}
+        title="Add Transaction"
+        closeButtonDataTarget="transaction-close"
+      >
+        <div>content</div>
+      </CustomModal>,
+    );
+
+    const close = await screen.findByRole("button", { name: "Close" });
+    expect(close).toHaveAttribute("data-tutorial-target", "transaction-close");
+
+    close.click();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

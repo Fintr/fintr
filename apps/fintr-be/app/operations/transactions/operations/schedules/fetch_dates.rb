@@ -30,17 +30,40 @@ module Transactions
         end
 
         def call(params)
-          params      = step validate(params:)
-          schedule    = step fetch_schedule(params:)
-          dates       = step fetch_dates(params:, schedule:)
+          params = step validate(params:)
+          return step fetch_installment_dates(params:) if installment_record?(params[:record])
 
-          dates
+          schedule = step fetch_schedule(params:)
+          step fetch_dates(params:, schedule:)
         end
 
         private
 
+        def installment_record?(record)
+          record.respond_to?(:installment?) && record.installment?
+        end
+
         def fetch_schedule(params:)
           Success(IceCube::Schedule.from_hash(params[:record].schedule))
+        end
+
+        def fetch_installment_dates(params:)
+          record = params[:record]
+          root = record
+          if record.respond_to?(:root_parent)
+            parent = record.root_parent
+            root = parent if parent
+          end
+          period = root.installment_period.to_i
+          return Success([]) if period <= 0
+
+          dates = Utils::InstallmentPlan.occurrence_dates(
+            parent_date: root.date.to_date,
+            period:,
+            from_date: params[:date_start].to_date,
+          ).select { |date| date <= params[:date_end].to_date }
+
+          Success(dates)
         end
 
         def fetch_dates(params:, schedule:)

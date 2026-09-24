@@ -4,6 +4,8 @@
 
 Dedicated **Goals** and **Investments** experiences are **not** part of the default app today; they are behind `NEXT_PUBLIC_SHOW_V2` (`shouldShowV2Features()` in `src/lib/utils.ts`). In-app weekly pulse chips do **not** list those areas. See the monorepo **[docs/CURRENT_PRODUCT_SCOPE.md](../../docs/CURRENT_PRODUCT_SCOPE.md)**.
 
+**Installment plans** (expense/income series, not loans): **[docs/installment_plans.md](../../docs/installment_plans.md)**.
+
 ## Project Structure
 
 **⚠️ Important:** This folder contains both web and mobile-responsive versions of the app.
@@ -27,6 +29,23 @@ pnpm dev
 ```
 
 This will start the Next.js development server on `http://localhost:5173`.
+
+## Testing
+
+Production changes follow **tests first → change → update tests → tests again**. See [TESTING.md](./TESTING.md) and skill `frontend-tdd`.
+
+```bash
+# Related files, non-watch (required before and after edits)
+pnpm test:ci src/path/to/file.test.ts
+
+# Full unit suite
+pnpm test:ci
+
+# E2E
+pnpm test:e2e
+```
+
+Do not use `pnpm test` for the change loop — that is Vitest watch mode.
 
 ## Mobile Development
 

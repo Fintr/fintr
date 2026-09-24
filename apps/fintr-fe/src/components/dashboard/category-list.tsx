@@ -10,6 +10,7 @@ import {
   CategoryKind,
   subcategoryCountLabel,
 } from "@/utils/categoryManagement";
+import { CategoryIconBadge } from "@/components/dashboard/category-icon-badge";
 
 type CategoryListProps = {
   categories: TransactionCategory[];
@@ -42,15 +43,22 @@ const CategoryList: React.FC<CategoryListProps> = ({
                 href={buildCategoryDetailHref(category.id, kind)}
                 className="group flex min-h-0 items-center justify-between gap-2 rounded-lg bg-white px-3 py-3.5 transition-colors hover:bg-muted/20 dark:bg-card dark:shadow-sm dark:hover:bg-accent/50"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate text-primary leading-tight">
-                    {category.name}
-                  </p>
-                  {hasSubcategories ? (
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {subcategoryCountLabel(subCount)}
+                <div className="min-w-0 flex-1 flex items-center gap-3">
+                  <CategoryIconBadge
+                    icon={category.icon}
+                    color={category.color}
+                    size="sm"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate text-primary leading-tight">
+                      {category.name}
                     </p>
-                  ) : null}
+                    {hasSubcategories ? (
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {subcategoryCountLabel(subCount)}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <ChevronRight
                   className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground"

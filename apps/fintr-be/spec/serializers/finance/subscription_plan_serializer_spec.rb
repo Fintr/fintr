@@ -11,7 +11,6 @@ RSpec.describe Finance::SubscriptionPlanSerializer do
       name: "Basic Plan",
       slug: "basic",
       description: "A basic subscription plan",
-      token_limit: 100,
       price_cents: 14_900,
       price_currency: "PHP",
       interval: "month",
@@ -33,10 +32,6 @@ RSpec.describe Finance::SubscriptionPlanSerializer do
 
   it "includes the description" do
     expect(serialized_hash[:description]).to eq("A basic subscription plan")
-  end
-
-  it "includes tokenLimit (camelCase for token_limit)" do
-    expect(serialized_hash[:tokenLimit]).to eq(100)
   end
 
   it "includes priceCents (camelCase for price_cents)" do
@@ -71,7 +66,6 @@ RSpec.describe Finance::SubscriptionPlanSerializer do
       :name,
       :slug,
       :description,
-      :tokenLimit,
       :priceCents,
       :priceCurrency,
       :interval,
@@ -89,7 +83,6 @@ RSpec.describe Finance::SubscriptionPlanSerializer do
         name: "Premium Plan",
         slug: "premium",
         description: "A premium subscription plan",
-        token_limit: 500,
         price_cents: 39_900,
         price_currency: "USD",
         interval: "year",
@@ -107,10 +100,6 @@ RSpec.describe Finance::SubscriptionPlanSerializer do
 
     it "includes the correct description" do
       expect(serialized_hash[:description]).to eq("A premium subscription plan")
-    end
-
-    it "includes the correct tokenLimit" do
-      expect(serialized_hash[:tokenLimit]).to eq(500)
     end
 
     it "includes the correct priceCents" do

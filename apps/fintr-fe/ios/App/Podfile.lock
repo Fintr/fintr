@@ -13,7 +13,28 @@ PODS:
     - Capacitor
   - CapacitorShare (7.0.4):
     - Capacitor
+  - CapgoCapacitorLlm (7.2.15):
+    - Capacitor
+    - MediaPipeTasksGenAI
+    - MediaPipeTasksGenAIC
   - IONFilesystemLib (1.1.2)
+  - MediaPipeTasksGenAI (0.10.21):
+    - MediaPipeTasksGenAIC (= 0.10.21)
+  - MediaPipeTasksGenAIC (0.10.21)
+  - PurchasesHybridCommon (17.25.0):
+    - RevenueCat (= 5.51.1)
+  - PurchasesHybridCommonUI (17.25.0):
+    - PurchasesHybridCommon (= 17.25.0)
+    - RevenueCatUI (= 5.51.1)
+  - RevenueCat (5.51.1)
+  - RevenuecatPurchasesCapacitor (11.3.2):
+    - Capacitor
+    - PurchasesHybridCommon (= 17.25.0)
+  - RevenuecatPurchasesCapacitorUi (11.3.2):
+    - Capacitor
+    - PurchasesHybridCommonUI (= 17.25.0)
+  - RevenueCatUI (5.51.1):
+    - RevenueCat (= 5.51.1)
   - Sentry (8.58.0):
     - Sentry/Core (= 8.58.0)
   - Sentry/Core (8.58.0)
@@ -26,11 +47,20 @@ DEPENDENCIES:
   - "CapacitorFilesystem (from `../../node_modules/.pnpm/@capacitor+filesystem@7.1.8_@capacitor+core@7.6.5/node_modules/@capacitor/filesystem`)"
   - "CapacitorKeyboard (from `../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.5/node_modules/@capacitor/keyboard`)"
   - "CapacitorShare (from `../../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.6.5/node_modules/@capacitor/share`)"
+  - "CapgoCapacitorLlm (from `../../node_modules/.pnpm/@capgo+capacitor-llm@7.2.15_@capacitor+core@7.6.5_@mediapipe+tasks-genai@0.10.29/node_modules/@capgo/capacitor-llm`)"
+  - "RevenuecatPurchasesCapacitor (from `../../node_modules/.pnpm/@revenuecat+purchases-capacitor@11.3.2_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor`)"
+  - "RevenuecatPurchasesCapacitorUi (from `../../node_modules/.pnpm/@revenuecat+purchases-capacitor-ui@11.3.2_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor-ui`)"
   - Sentry
 
 SPEC REPOS:
   trunk:
     - IONFilesystemLib
+    - MediaPipeTasksGenAI
+    - MediaPipeTasksGenAIC
+    - PurchasesHybridCommon
+    - PurchasesHybridCommonUI
+    - RevenueCat
+    - RevenueCatUI
     - Sentry
 
 EXTERNAL SOURCES:
@@ -48,6 +78,12 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.5/node_modules/@capacitor/keyboard"
   CapacitorShare:
     :path: "../../node_modules/.pnpm/@capacitor+share@7.0.4_@capacitor+core@7.6.5/node_modules/@capacitor/share"
+  CapgoCapacitorLlm:
+    :path: "../../node_modules/.pnpm/@capgo+capacitor-llm@7.2.15_@capacitor+core@7.6.5_@mediapipe+tasks-genai@0.10.29/node_modules/@capgo/capacitor-llm"
+  RevenuecatPurchasesCapacitor:
+    :path: "../../node_modules/.pnpm/@revenuecat+purchases-capacitor@11.3.2_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor"
+  RevenuecatPurchasesCapacitorUi:
+    :path: "../../node_modules/.pnpm/@revenuecat+purchases-capacitor-ui@11.3.2_@capacitor+core@7.6.5/node_modules/@revenuecat/purchases-capacitor-ui"
 
 SPEC CHECKSUMS:
   Capacitor: 358dd1c3fdd71d969547b17e159fd8a7736cb45f
@@ -57,9 +93,18 @@ SPEC CHECKSUMS:
   CapacitorFilesystem: c63fc54df41e5a6761785a7f3c49dc696c22e296
   CapacitorKeyboard: a2e0869edd229490ce36aed2549c0d6b95e27ee8
   CapacitorShare: 25f7fc5dd0e4edbde5d6801c6de5d14a8b450a41
+  CapgoCapacitorLlm: 5cb42c64f42203effe5a3da59331619d3cd45c10
   IONFilesystemLib: 21a63377696b2d8fab5632ecfb7d2ac67bddb68a
+  MediaPipeTasksGenAI: 64f91ec1f2666abeb6dc719a8e8d1e2bf36374c0
+  MediaPipeTasksGenAIC: 1df8d7c6fcbe797d2a04a514edd8b31445291ec8
+  PurchasesHybridCommon: 6a79a873ab52f777bfa36e9516f3fcd84d3b3428
+  PurchasesHybridCommonUI: 3c1f78addfb3f470713548b4eac8c59254d0efe6
+  RevenueCat: eab035bbab271faccfef5c36eaff2a1ffef14dc0
+  RevenuecatPurchasesCapacitor: fa376932f9967c7ab4b5eac477e824d90393b91a
+  RevenuecatPurchasesCapacitorUi: 969baeb81228e051e2b9e3e764f86f577e73a4b9
+  RevenueCatUI: c6acb3648fa58ccb4f0f178556ed0278b796234f
   Sentry: d587a8fe91ca13503ecd69a1905f3e8a0fcf61be
 
-PODFILE CHECKSUM: 85fb47b22eea08b8d6ce1190398021a6223e6048
+PODFILE CHECKSUM: b9a21e750eaacf46a8d44e5d4371381026b9ea53
 
 COCOAPODS: 1.16.2

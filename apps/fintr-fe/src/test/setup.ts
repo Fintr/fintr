@@ -65,6 +65,21 @@ Object.defineProperty(document, "documentElement", {
       getPropertyValue: vi.fn(() => ""),
       setProperty: vi.fn(),
     },
+    clientWidth: 1024,
+    clientHeight: 768,
+    clientLeft: 0,
+    clientTop: 0,
+    getBoundingClientRect: () => ({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      bottom: 768,
+      right: 1024,
+      width: 1024,
+      height: 768,
+      toJSON: () => ({}),
+    }),
   },
 })
 

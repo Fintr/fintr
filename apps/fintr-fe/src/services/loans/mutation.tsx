@@ -15,6 +15,8 @@ export interface CreateLoanType {
   adjustsAccountBalance?: boolean;
   file?: File;
   fileId?: string;
+  /** Client UUID for idempotent creates (offline outbox / retries). */
+  clientMutationId?: string;
 }
 
 // Type for updating a loan (only notes and entity are editable)
@@ -22,6 +24,7 @@ export interface UpdateLoanType {
   id: string;
   entityName?: string;
   description?: string;
+  status?: 'active' | 'defaulted';
 }
 
 /**
@@ -50,6 +53,9 @@ export const createLoan = async (
       description: loanData.description || '',
       adjusts_account_balance: loanData.adjustsAccountBalance !== false,
       ...(loanData.fileId && { file_id: loanData.fileId }),
+      ...(loanData.clientMutationId && {
+        client_mutation_id: loanData.clientMutationId,
+      }),
       ...(shouldUseMultipart && { file: loanData.file })
     };
 
@@ -103,6 +109,10 @@ export const updateLoan = async (
 
     if (loanData.description !== undefined) {
       backendData.description = loanData.description;
+    }
+
+    if (loanData.status !== undefined) {
+      backendData.status = loanData.status;
     }
 
     const response = await api.put(

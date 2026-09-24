@@ -37,7 +37,6 @@ export function SpaceSwitcher({
   const personalSpaces = spaces?.filter(space => space.isPersonal) || [];
   const organizationSpaces = spaces?.filter(space => space.isOrganization) || [];
   
-  // Check if any space (other than current) has a new invitation
   const hasNewInvitations = spaces?.some(space => space.code !== currentSpace?.code && space.hasNewInvitation) || false;
 
   if (!showSpaceSwitcher) {
@@ -66,7 +65,6 @@ export function SpaceSwitcher({
           </div>
         </div>
 
-        {/* Current Space Display */}
         <div className="rounded-lg bg-gray-50 p-2 dark:bg-muted">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${currentSpace?.isOrganization ? 'bg-blue-500' : 'bg-green-500'}`} />
@@ -94,11 +92,9 @@ export function SpaceSwitcher({
           </div>
         </div>
 
-        {/* Space List */}
         {showSpaceList && (
           <div className="mt-2 space-y-1">
             <div className="max-h-36 space-y-1 overflow-y-auto overscroll-contain pr-1">
-              {/* Personal Spaces */}
               {personalSpaces
                 .filter(space => space.code !== currentSpace?.code)
                 .map((space) => (
@@ -123,7 +119,6 @@ export function SpaceSwitcher({
                   </button>
                 ))
               }
-              {/* Organization Spaces */}
               {organizationSpaces
                 .filter(space => space.code !== currentSpace?.code)
                 .map((space) => (
@@ -152,7 +147,6 @@ export function SpaceSwitcher({
                 ))}
             </div>
 
-            {/* Create Organization Space */}
             <button
               onClick={() => setShowCreateDialog(true)}
               className="flex w-full items-center gap-2 rounded p-2 text-left text-sm text-blue-600 transition-colors hover:bg-gray-100 dark:text-primary-dark-mode dark:hover:bg-muted"
@@ -164,13 +158,11 @@ export function SpaceSwitcher({
         )}
       </div>
 
-      {/* Create Space Dialog */}
       <CreateSpaceDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
       />
 
-      {/* Grant Access Dialog */}
       <GrantAccessDialog
         open={showGrantAccessDialog}
         onOpenChange={setShowGrantAccessDialog}

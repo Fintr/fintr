@@ -15,7 +15,7 @@ RSpec.describe Finance::Operations::Webhooks::HandleWebhook, type: :operation do
   end
   let(:user) { create(:user) }
   let(:space) { create(:space) }
-  let(:subscription_plan) { create(:subscription_plan, slug: "basic", token_limit: 50, price_cents: 14_900) }
+  let(:subscription_plan) { create(:subscription_plan, slug: "basic", price_cents: 14_900) }
   let(:webhook_token) { "test_webhook_token" }
 
   before do

@@ -13,7 +13,6 @@ module Finance
           :subscription_plan,
           slug: "monthly-#{SecureRandom.hex(4)}",
           interval: "month",
-          token_limit: 1000,
           price_cents: 50000
         )
       end
@@ -23,7 +22,6 @@ module Finance
           :subscription_plan,
           slug: "yearly-#{SecureRandom.hex(4)}",
           interval: "year",
-          token_limit: 12000,
           price_cents: 500000
         )
       end
@@ -178,7 +176,6 @@ module Finance
           cycle_number: 2.0,
           span: (previous_cycle.ends_at..(previous_cycle.ends_at + 1.month)),
           status: "paid",
-          tokens_allocated: monthly_plan.token_limit,
           paid_at: Time.zone.now,
           xendit_cycle_id: nil,
           metadata: { free_subscription: true, auto_renewed: true }
@@ -345,7 +342,6 @@ module Finance
           cycle_number: 1.0,
           span: (cycle_start..cycle_end),
           status: "paid",
-          tokens_allocated: plan.token_limit,
           paid_at: cycle_start,
           xendit_cycle_id: nil,
           metadata: { free_subscription: true }
@@ -372,7 +368,6 @@ module Finance
           cycle_number: 1.0,
           span: (cycle_start..cycle_end),
           status: "paid",
-          tokens_allocated: plan.token_limit,
           paid_at: cycle_start,
           xendit_cycle_id: "cycle_123",
           metadata: {}

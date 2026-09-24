@@ -58,6 +58,15 @@ module Spaces
       field :owner_id do |space|
         space.owner_id
       end
+
+      field :member_count do |space|
+        space.member_count
+      end
+
+      field :composition_key do |space|
+        space.composition_key
+      end
     end
   end
 end
+

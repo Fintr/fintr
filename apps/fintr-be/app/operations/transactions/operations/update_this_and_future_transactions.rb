@@ -49,7 +49,11 @@ module Transactions
       end
 
       def find_previous_transactions(transaction:, params:)
-        previous_transactions = transaction.series_records.where.not(id: transaction.id)
+        root = transaction.root_parent
+        previous_transactions = Transactions::Transaction.records_in_series_tree(
+          root_id: root.id,
+          extra_ids: [transaction.id],
+        ).where.not(id: transaction.id)
         previous_transactions = previous_transactions.where(date: transaction.date..) unless params[:all_in_series]
         Success(previous_transactions)
       end
@@ -105,7 +109,8 @@ module Transactions
           transaction:,
           balance_state: "calculated",
           date_start: (transaction.date + 1.day).beginning_of_day.to_datetime,
-          date_end: Time.zone.today
+          date_end: Time.zone.today,
+          suppress_actor_toast: true,
         )
       end
 
@@ -115,7 +120,11 @@ module Transactions
           transaction:,
           balance_state: "pending",
           date_start: Time.zone.tomorrow,
-          date_end: Time.zone.today + 1.month
+          date_end: Utils::Recurrence.future_series_end_date(
+            record: transaction,
+            reference_date: Time.zone.today,
+          ),
+          suppress_actor_toast: true,
         )
       end
     end

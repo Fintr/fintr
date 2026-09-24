@@ -6,10 +6,11 @@ import AccountDetailContent from "@/components/dashboard/account-detail-content"
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { resolveDetailSearchParam } from "@/utils/detailSearchParam";
 
 const AccountDetailInner = () => {
   const searchParams = useSearchParams();
-  const accountId = searchParams.get("accountId") ?? "";
+  const accountId = resolveDetailSearchParam("accountId", searchParams);
 
   if (!accountId) {
     return (
@@ -23,7 +24,7 @@ const AccountDetailInner = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background px-2 pt-4 pb-24 md:pb-4">
+    <div className="min-h-screen bg-background p-0 pb-24 md:pb-4">
       <AccountDetailContent accountId={accountId} />
     </div>
   );

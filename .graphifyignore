@@ -1,0 +1,36 @@
+# Agent / skill markdown corpora (not product docs). Keep .ai JS tooling in the code graph.
+.ai/**/*.md
+.ai/**/*.mdc
+.ai/**/*.txt
+.ai/**/*.html
+.cursor/**/*.md
+.cursor/**/*.mdc
+.claude/**/*.md
+.windsurf/**/*.md
+.opencode/**/*.md
+.agents/**/*.md
+.github/
+
+# Test fixtures, VCR cassettes, and local IDE playbooks
+apps/fintr-be/spec/
+apps/fintr-be/.cursor/
+apps/fintr-fe/**/__tests__/
+
+# Config / deploy YAML classified as "docs" by graphify — keep out of semantic pass
+apps/fintr-be/config/
+apps/fintr-be/.rubocop.yml
+apps/fintr-be/docker-compose*.yml
+apps/fintr-be/public/
+apps/fintr-fe/public/
+
+# Static assets and fixture images (not documentation)
+**/*.svg
+**/*.gif
+**/*.jpg
+**/*.jpeg
+**/*.webp
+**/*.png
+
+# App Store marketing copy blobs — low graph value
+apps/fintr-fe/ios/APP_STORE_*.txt
+apps/fintr-fe/amplify.yml

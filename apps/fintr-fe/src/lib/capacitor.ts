@@ -151,11 +151,14 @@ export const shouldShowSimulatePaymentButton = (): boolean => {
 
 /**
  * Get the base URL for redirects based on the environment
- * - For Capacitor: returns 'fintrapp://'
+ * - For the native app: returns 'fintrapp://'
  * - For browser: returns window.location.origin
+ *
+ * @capacitor/core sets window.Capacitor in the browser too. Use the native
+ * check so browser checkout return URLs stay on the web origin.
  */
 export const getBaseUrl = (): string => {
-  if (isCapacitorEnvironment()) {
+  if (isNativeCapacitor()) {
     return 'fintrapp://';
   }
   

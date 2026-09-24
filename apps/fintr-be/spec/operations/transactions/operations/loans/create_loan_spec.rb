@@ -1033,4 +1033,33 @@ RSpec.describe Transactions::Operations::Loans::CreateLoan do
       expect(result.value!).to eq(loan)
     end
   end
+
+  describe "#call" do
+    context "with client_mutation_id idempotency" do
+      let(:mutation_id) { SecureRandom.uuid }
+      let(:create_params) do
+        valid_params.merge(client_mutation_id: mutation_id)
+      end
+
+      it "creates once and returns the same loan on replay" do
+        first = operation.call(create_params)
+        expect(first).to be_success
+
+        expect do
+          second = operation.call(create_params)
+          expect(second).to be_success
+          expect(second.value!.id).to eq(first.value!.id)
+        end.not_to change(Transactions::Loan, :count)
+      end
+
+      it "creates distinct rows for distinct client_mutation_id values" do
+        first = operation.call(create_params)
+        second = operation.call(create_params.merge(client_mutation_id: SecureRandom.uuid))
+
+        expect(first).to be_success
+        expect(second).to be_success
+        expect(second.value!.id).not_to eq(first.value!.id)
+      end
+    end
+  end
 end

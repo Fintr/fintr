@@ -5,6 +5,7 @@ module Transactions
     module Transfers
       # Persists currency conversion metadata for a transfer (create or update).
       # Delegates to ExchangeRates::Operations::UpsertCurrencyConversion.
+      # When FX is not needed, destroys any existing currency_conversion row.
       class PersistCurrencyConversion < Dry::Operation
         class Contract < Dry::Validation::Contract
           params do
@@ -32,8 +33,7 @@ module Transactions
           end
         end
 
-        # Create flow: pass transfer and conversion_data from handle_currency_conversion.
-        # Update flow: pass transfer, params, from_account, and to_account.
+        # Create / update with prepared conversion_data, or legacy update via params + accounts.
         def call(**params)
           validated = step validate(**params)
           transfer = validated[:transfer]
@@ -66,7 +66,9 @@ module Transactions
         end
 
         def persist_from_conversion_data(transfer:, conversion_data:)
-          return Success(transfer) unless conversion_data[:needs_conversion]
+          unless conversion_data[:needs_conversion]
+            return clear_currency_conversion(transfer:)
+          end
 
           step ::ExchangeRates::Operations::UpsertCurrencyConversion.new.call(
             **conversion_data.slice(
@@ -84,8 +86,9 @@ module Transactions
 
         def persist_from_params(transfer:, params:, from_account:, to_account:)
           rate = params[:exchange_rate]
-          return Success(transfer) if rate.blank?
-          return Success(transfer) if from_account.balance_currency == to_account.balance_currency
+          if rate.blank? || from_account.balance_currency == to_account.balance_currency
+            return clear_currency_conversion(transfer:)
+          end
 
           converted_amount = params[:amount]
           converted_currency = to_account.balance_currency
@@ -105,6 +108,12 @@ module Transactions
               source:
             }
           )
+          Success(transfer)
+        end
+
+        def clear_currency_conversion(transfer:)
+          transfer.currency_conversion&.destroy!
+          transfer.association(:currency_conversion).reset
           Success(transfer)
         end
       end

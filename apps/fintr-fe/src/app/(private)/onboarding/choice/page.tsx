@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useOnboarding } from "@/hooks/async/useOnboarding";
 import { toast } from "sonner";
 import { ArrowRight, Clock } from "lucide-react";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 
 export default function OnboardingChoice() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function OnboardingChoice() {
 
   useEffect(() => {
     router.prefetch("/onboarding/step2");
-    router.prefetch("/dashboard");
+    router.prefetch(DEFAULT_AUTHENTICATED_PATH);
   }, [router]);
 
   const handleSetupNow = () => {
@@ -25,7 +26,7 @@ export default function OnboardingChoice() {
   const handleSetupLater = async () => {
     try {
       await skipOnboarding();
-      router.replace("/dashboard");
+      router.replace(DEFAULT_AUTHENTICATED_PATH);
     } catch (error) {
       console.error("Error skipping onboarding:", error);
       toast.error("Something went wrong. Please try again.");

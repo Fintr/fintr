@@ -78,6 +78,14 @@ export interface InsightMetric {
   calculation?: MetricCalculation;
 }
 
+export type InsightProfileKey =
+  | "strong_saver"
+  | "high_earner"
+  | "steady_investor"
+  | "avid_spender"
+  | "balanced_budgeter"
+  | "debt_crusher";
+
 export interface InsightCard {
   type: string;
   severity: "positive" | "neutral" | "warning";
@@ -85,6 +93,8 @@ export interface InsightCard {
   body: string;
   actionLabel: string;
   actionHref: string;
+  profileKey?: InsightProfileKey;
+  imageKey?: string;
 }
 
 export interface InsightsNarratives {

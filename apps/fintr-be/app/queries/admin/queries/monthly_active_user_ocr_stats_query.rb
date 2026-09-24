@@ -4,7 +4,7 @@ module Admin
   module Queries
     # Active users in a calendar month: distinct +activity_date+ count ≥ +MIN_ACTIVE_DAYS+ on
     # +UserActivity+ rows matching +active_users+ (authenticated app usage). OCR is summed
-    # +tokens_used+ for +pure_ai_ocr+ +Ai::Usage+ in that month for those users only.
+    # receipt-scan count for +pure_ai_ocr+ +Ai::Usage+ in that month for those users only.
     class MonthlyActiveUserOcrStatsQuery < BaseQuery
       MIN_ACTIVE_DAYS = 15
 
@@ -88,25 +88,25 @@ module Admin
         active_user_ids = active_user_ids_for_month(month_start:, month_end:)
         time_range = month_start.in_time_zone.beginning_of_day..month_end.in_time_zone.end_of_day
 
-        total_tokens = if active_user_ids.empty?
-                         0
+        total_scans = if active_user_ids.empty?
+                        0
         else
-                         Ai::Usage.where(
-                           user_id: active_user_ids,
-                           ai_type: :pure_ai_ocr,
-                           created_at: time_range
-                         ).sum(:tokens_used)
+                        Ai::Usage.where(
+                          user_id: active_user_ids,
+                          ai_type: :pure_ai_ocr,
+                          created_at: time_range
+                        ).count
         end
 
         count = active_user_ids.size
-        avg = count.positive? ? (total_tokens.to_f / count).round(2) : 0.0
+        avg = count.positive? ? (total_scans.to_f / count).round(2) : 0.0
 
         {
           month: month_start.to_s,
           month_label: month_start.strftime("%B %Y"),
           active_user_count: count,
-          total_ocr_tokens: total_tokens,
-          average_ocr_tokens_per_active_user: avg
+          total_ocr_scans: total_scans,
+          average_ocr_scans_per_active_user: avg
         }
       end
 
@@ -122,7 +122,7 @@ module Admin
       def average_of_monthly_means(rows)
         return 0.0 if rows.empty?
 
-        (rows.sum { |r| r[:average_ocr_tokens_per_active_user] } / rows.size.to_f).round(2)
+        (rows.sum { |r| r[:average_ocr_scans_per_active_user] } / rows.size.to_f).round(2)
       end
     end
   end

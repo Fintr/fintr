@@ -301,7 +301,7 @@ RSpec.describe Transactions::Operations::Transfers::CreateRepeatTransfers do
             parent_transfer_id: repeat_transfer_with_fee.id,
             dates: dates_to_create,
             balance_state: "calculated"
-          ).and_return(Success())
+          ).and_return(Success([]))
 
           result = operation.call(params: params_with_fee)
           expect(result).to be_success
@@ -310,6 +310,23 @@ RSpec.describe Transactions::Operations::Transfers::CreateRepeatTransfers do
             dates: dates_to_create,
             balance_state: "calculated"
           )
+        end
+
+        it 'broadcasts created children together with fee transactions' do
+          fee_records = [
+            instance_double(Transactions::Expense, id: "fee-1", space_id: space.id),
+            instance_double(Transactions::Expense, id: "fee-2", space_id: space.id),
+          ]
+          allow(create_fee_operation).to receive(:call).and_return(Success(fee_records))
+
+          expect(Transactions::Broadcasts::TransactionChange).to receive(:created_many) do |kwargs|
+            transactions = kwargs[:transactions]
+            expect(transactions).to include(*fee_records)
+            expect(kwargs[:suppress_actor_toast]).to eq(false)
+          end
+
+          result = operation.call(params: params_with_fee)
+          expect(result).to be_success
         end
       end
 

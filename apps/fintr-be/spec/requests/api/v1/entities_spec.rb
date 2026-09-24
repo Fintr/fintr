@@ -11,15 +11,8 @@ RSpec.describe 'Api::V1::Entities', type: :request do
 
   describe 'GET /api/v1/entities' do
     let(:mock_show_entities_operation) { instance_double(Entities::Operations::ShowEntities) }
-    let(:entities_data) do
-      [
-        {
-          id: 1,
-          full_name: 'Test Lender',
-          entity_type: 'loan'
-        }
-      ]
-    end
+    let!(:entity_record) { create(:entity, space:, full_name: 'Test Lender', entity_type: 'loan') }
+    let(:entities_data) { [entity_record] }
 
     context 'when the request is successful' do
       let(:expected_operation_params) do
@@ -241,6 +234,80 @@ RSpec.describe 'Api::V1::Entities', type: :request do
 
       it 'returns an HTTP status_unauthorized' do
         expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when creating a real entity' do
+      it 'persists the entity' do
+        expect {
+          post api_v1_entities_path,
+               params: {
+                 full_name: 'Alex Rivera',
+                 entity_type: 'loan',
+                 space_code: space.code,
+               },
+               headers: headers
+        }.to change(Entities::Entity, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        json_response = JSON.parse(response.body)
+        expect(json_response['success']).to be(true)
+        expect(json_response['data']['fullName']).to eq('Alex Rivera')
+        expect(json_response['data']['entityType']).to eq('loan')
+      end
+
+      it 'attaches an uploaded photo' do
+        photo = fixture_file_upload('test.jpg', 'image/jpeg')
+
+        post api_v1_entities_path,
+             params: {
+               full_name: 'Alex Rivera',
+               entity_type: 'loan',
+               space_code: space.code,
+               photo:,
+             },
+             headers: headers
+
+        expect(response).to have_http_status(:created)
+        entity = Entities::Entity.order(:created_at).last
+        expect(entity.full_name).to eq('Alex Rivera')
+        expect(entity.photo).to be_attached
+        expect(JSON.parse(response.body)['data']['photoUrl']).to be_present
+      end
+    end
+  end
+
+  describe 'GET /api/v1/entities/:id' do
+    let!(:entity) { create(:entity, space:, full_name: 'Jollibee', entity_type: 'transaction') }
+
+    context 'when the request is successful' do
+      before do
+        get api_v1_entity_path(entity), params: { space_code: space.code }, headers: headers
+      end
+
+      it 'returns an HTTP status_ok' do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'returns entity detail payload' do
+        json_response = JSON.parse(response.body)
+        expect(json_response['success']).to be(true)
+        expect(json_response['data']['entity']['fullName']).to eq('Jollibee')
+        expect(json_response['data']['transactions']).to eq([])
+        expect(json_response['data']['loans']).to eq([])
+        expect(json_response['data']['loanPayments']).to eq([])
+      end
+    end
+
+    context 'when entity is not found' do
+      before do
+        get api_v1_entity_path(SecureRandom.uuid),
+            params: { space_code: space.code },
+            headers: headers
+      end
+
+      it 'returns not found' do
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

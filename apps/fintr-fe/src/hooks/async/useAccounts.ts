@@ -1,20 +1,51 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthApi from '../useAuthApi';
 import { fetchAccounts } from '@/services/transactions/accounts/queries';
-import { createAccount, updateAccount, deleteAccount, adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
-import { Account, AccountBalanceTotals } from '@/types/accountTypes';
+import {
+  cacheAccountsResponse,
+  extractAccountsFromResponse,
+  loadCachedAccountsResponse,
+} from '@/services/transactions/accounts/local-cache';
+import { adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
+import { createAccountLocalFirst } from '@/services/transactions/accounts/create-local-first';
+import { updateAccountLocalFirst } from '@/services/transactions/accounts/update-local-first';
+import { deleteAccountLocalFirst } from '@/services/transactions/accounts/delete-local-first';
+import { AccountBalanceTotals } from '@/types/accountTypes';
 import { toast } from 'sonner';
 import {
   ACCOUNT_ADJUSTMENT_HISTORY_KEY,
   ACCOUNT_DETAIL_TRANSACTIONS_KEY,
 } from "@/hooks/async/useAccountDetailTransactions";
 import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+
+const readTotalsCurrency = (response: unknown): string | undefined => {
+  if (!response || typeof response !== "object") {
+    return undefined;
+  }
+
+  const root = response as Record<string, unknown>;
+  const data =
+    root.data && typeof root.data === "object" && !Array.isArray(root.data)
+      ? (root.data as Record<string, unknown>)
+      : root;
+  const totals = (data.balanceTotals ?? data.balance_totals) as
+    | { currency?: unknown }
+    | undefined;
+
+  return typeof totals?.currency === "string" && totals.currency.trim()
+    ? totals.currency
+    : undefined;
+};
 
 export const useAccounts = () => {
-  const { api } = useAuthApi({
+  const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
 
   const invalidateAccountQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -25,6 +56,17 @@ export const useAccounts = () => {
     await queryClient.invalidateQueries({ queryKey: ["accountTransactions"] });
   };
 
+  const localCacheQuery = useQuery({
+    queryKey: ['accounts', 'local', spaceCode],
+    queryFn: async () =>
+      (await loadCachedAccountsResponse(spaceCode)) ?? null,
+    enabled: Boolean(spaceCode),
+    staleTime: Infinity,
+    networkMode: "always",
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
+
   const {
     data: accounts,
     isLoading,
@@ -32,54 +74,120 @@ export const useAccounts = () => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: () => fetchAccounts(api),
-    enabled: !!api,
-  });
-
-  const createAccountMutation = useMutation({
-    mutationFn: async (accountData: CreateAccountType) => {
+    queryKey: ['accounts', spaceCode || 'default'],
+    queryFn: async () => {
       try {
-        const newAccount = await createAccount(api, accountData);
-        await invalidateAccountQueries();
-        toast.success(`Account "${accountData.name}" created successfully`);
-        return newAccount;
-      } catch (error: any) {
-        console.error('Error creating account:', error);
-        toast.error('Failed to create account. Please try again.');
+        const response = await fetchAccounts(api);
+        if (spaceCode) {
+          void cacheAccountsResponse(spaceCode, response).then(() => {
+            queryClient.setQueryData(
+              ['accounts', 'local', spaceCode],
+              response
+            );
+          });
+        }
+        return response;
+      } catch (error) {
+        if (spaceCode) {
+          const cached = await loadCachedAccountsResponse(spaceCode);
+          if (cached != null) {
+            return cached;
+          }
+        }
         throw error;
       }
     },
+    enabled: !!api && !!spaceCode && isAuthenticated && !skipNetworkFetch,
+    placeholderData: localCacheQuery.data ?? undefined,
+    staleTime: skipNetworkFetch ? Infinity : 5 * 60 * 1000,
+    refetchOnMount: !skipNetworkFetch,
+  });
+
+  const accountsResponse = localCacheQuery.data ?? accounts;
+
+  const createAccountMutation = useMutation({
+    mutationFn: async (accountData: CreateAccountType) => {
+      const cached = spaceCode
+        ? await loadCachedAccountsResponse(spaceCode)
+        : undefined;
+      const spaceCurrency = readTotalsCurrency(cached) ?? "PHP";
+      const result = await createAccountLocalFirst(
+        api,
+        {
+          spaceId: spaceCode,
+          data: accountData,
+        },
+        {
+          queryClient,
+          waitForSync: false,
+          balanceCurrency: accountData.balanceCurrency ?? spaceCurrency,
+        },
+      );
+
+      toast.success(`Account "${accountData.name}" created successfully`);
+
+      void result.syncPromise
+        .then(() => invalidateAccountQueries())
+        .catch((error: unknown) => {
+          console.error("Error creating account:", error);
+          toast.error("Failed to create account. Please try again.");
+        });
+
+      return result;
+    },
+    networkMode: "always",
   });
 
   const updateAccountMutation = useMutation({
     mutationFn: async ({ accountId, updateData }: { accountId: string; updateData: UpdateAccountType }) => {
-      try {
-        const updatedAccount = await updateAccount(api, accountId, updateData);
-        await invalidateAccountQueries();
-        return updatedAccount;
-      } catch (error: any) {
-        console.error('Error updating account:', error);
-        throw error;
-      }
+      return updateAccountLocalFirst(
+        api,
+        {
+          spaceId: spaceCode,
+          accountId,
+          data: updateData,
+        },
+        { queryClient, waitForSync: false },
+      );
     },
+    networkMode: "always",
   });
 
   const deleteAccountMutation = useMutation({
-    mutationFn: async (accountId: string) => {
-      try {
-        const response = await deleteAccount(api, accountId);
-        if (response?.success !== true) {
-          throw new Error(response?.error?.message || "Failed to delete account.");
+    mutationFn: async (
+      input: string | { accountId: string; removeTransactions?: boolean },
+    ) => {
+      const accountId = typeof input === "string" ? input : input.accountId;
+      const removeTransactions =
+        typeof input === "string" ? false : input.removeTransactions === true;
+      const result = await deleteAccountLocalFirst(
+        api,
+        {
+          spaceId: spaceCode,
+          accountId,
+          removeTransactions,
+        },
+        { queryClient, waitForSync: false },
+      );
+
+      void result.syncPromise.then((synced) => {
+        void invalidateAccountQueries();
+
+        if (
+          synced.serverResponse
+          && typeof synced.serverResponse === "object"
+          && "success" in synced.serverResponse
+          && synced.serverResponse.success === false
+        ) {
+          return synced.serverResponse;
         }
-        await invalidateAccountQueries();
-        toast.success(`Account deleted successfully`);
-        return response;
-      } catch (error: any) {
-        console.error('Error deleting account:', error);
-        throw error;
-      }
+
+        return { success: true };
+      });
+
+      return { success: true, pendingSync: result.pendingSync };
     },
+    networkMode: "always",
   });
 
   const adjustAccountBalanceMutation = useMutation({
@@ -97,36 +205,19 @@ export const useAccounts = () => {
     },
   });
 
-  const getAccountsData = (): Account[] => {
-    if (!accounts) return [];
-    
-    console.log('Raw accounts data from API:', accounts);
-    
-    let accountsArray: Account[] = [];
-    
-    if (accounts.data?.accounts) {
-      accountsArray = accounts.data.accounts;
-    } else if (accounts.accounts) {
-      accountsArray = accounts.accounts;
-    } else if (Array.isArray(accounts.data)) {
-      accountsArray = accounts.data;
-    } else if (Array.isArray(accounts)) {
-      accountsArray = accounts;
-    }
-    
-    console.log('Parsed accounts array:', accountsArray);
-    
-    return accountsArray;
-  };
+  const accountsList = useMemo(
+    () => (accountsResponse ? extractAccountsFromResponse(accountsResponse) : []),
+    [accountsResponse],
+  );
 
   const getBalanceTotals = (): AccountBalanceTotals | null => {
-    if (!accounts) return null;
+    if (!accountsResponse) return null;
 
     const totals =
-      accounts.data?.balanceTotals ??
-      accounts.balanceTotals ??
-      accounts.data?.balance_totals ??
-      accounts.balance_totals;
+      accountsResponse.data?.balanceTotals ??
+      accountsResponse.balanceTotals ??
+      accountsResponse.data?.balance_totals ??
+      accountsResponse.balance_totals;
 
     if (!totals) return null;
 
@@ -139,23 +230,30 @@ export const useAccounts = () => {
   };
 
   const getAccountCategoryOptions = (): { label: string; value: string }[] => {
-    if (!accounts) return [];
+    if (!accountsResponse) return [];
     
-    if (accounts.data?.accountCategoryOptions) {
-      return accounts.data.accountCategoryOptions;
+    if (accountsResponse.data?.accountCategoryOptions) {
+      return accountsResponse.data.accountCategoryOptions;
     }
-    if (accounts.accountCategoryOptions) {
-      return accounts.accountCategoryOptions;
+    if (accountsResponse.accountCategoryOptions) {
+      return accountsResponse.accountCategoryOptions;
     }
     
     return [];
   };
 
+  const showLocalPlaceholder =
+    Boolean(localCacheQuery.data) &&
+    (isLoading || accountsResponse === undefined);
+
   return {
-    accounts: getAccountsData(),
+    accounts: accountsList,
     balanceTotals: getBalanceTotals(),
     accountCategoryOptions: getAccountCategoryOptions(),
-    isLoading,
+    isLoading: skipNetworkFetch
+      ? localCacheQuery.isLoading
+      : (isLoading && !localCacheQuery.data),
+    isShowingLocalCache: showLocalPlaceholder,
     isError,
     error,
     refetch,
@@ -168,4 +266,4 @@ export const useAccounts = () => {
     adjustAccountBalance: adjustAccountBalanceMutation.mutateAsync,
     isAdjusting: adjustAccountBalanceMutation.isPending,
   };
-}; 
+};

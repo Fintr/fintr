@@ -27,6 +27,26 @@ describe("isChunkLoadError", () => {
     ).toBe(true);
   });
 
+  it("detects Turbopack hashed chunk failures", () => {
+    expect(
+      isChunkLoadError(
+        new Error(
+          "Failed to load chunk /_next/static/chunks/10v6t4z48uztl.js from module 545109",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("detects failed chunk script tags", () => {
+    expect(
+      isChunkLoadError(
+        new Error(
+          "Loading chunk script failed: http://localhost:5173/_next/static/chunks/foo.js",
+        ),
+      ),
+    ).toBe(true);
+  });
+
   it("returns false for unrelated errors", () => {
     expect(isChunkLoadError(new Error("Network request failed"))).toBe(false);
     expect(isChunkLoadError(null)).toBe(false);
@@ -56,6 +76,57 @@ describe("reloadForStaleChunks", () => {
     sessionStorage.setItem("fintr_chunk_reload_at", String(Date.now()));
 
     expect(reloadForStaleChunks()).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("skips reload while offline", () => {
+    vi.stubGlobal("navigator", { onLine: false });
+
+    expect(reloadForStaleChunks()).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe("recoverFromChunkLoadError while offline", () => {
+  const reload = vi.fn();
+  const replace = vi.fn();
+
+  beforeEach(() => {
+    vi.stubGlobal("location", {
+      reload,
+      replace,
+      pathname: "/dashboard/insights",
+    });
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("does not auto-reload while offline", () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    const error = new Error("Failed to fetch dynamically imported module");
+    error.name = "ChunkLoadError";
+
+    expect(recoverFromChunkLoadError(error)).toBe(true);
+    expect(reload).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledWith("/dashboard/home");
+  });
+
+  it("does not bounce home when the shell route itself failed", () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    vi.stubGlobal("location", {
+      reload,
+      replace,
+      pathname: "/dashboard/home",
+    });
+    const error = new Error("Failed to load chunk /_next/static/chunks/x.js from module 1");
+    error.name = "ChunkLoadError";
+
+    expect(recoverFromChunkLoadError(error)).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
   });
 });

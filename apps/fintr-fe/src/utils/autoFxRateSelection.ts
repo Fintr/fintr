@@ -61,9 +61,9 @@ export function selectAutoFxRate({
     currentRate,
   });
 
-  if (preferCurrent || mostRecent == null) {
-    return { rate: currentRate, source: "auto" };
+  if (!preferCurrent && mostRecent != null) {
+    return { rate: mostRecent, source: "recent" };
   }
 
-  return { rate: mostRecent, source: "recent" };
+  return { rate: currentRate, source: "auto" };
 }

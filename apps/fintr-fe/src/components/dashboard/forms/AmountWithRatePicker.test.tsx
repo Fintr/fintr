@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, within, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AmountWithRatePicker } from "./AmountWithRatePicker";
-import {
-  getCurrentRate,
-  getRecentRates,
-} from "@/services/exchangeRates/queries";
+import { resolveAutoExchangeRates } from "@/services/exchangeRates/resolve-auto-rates";
+import { getCurrentRate, getRecentRates } from "@/services/exchangeRates/queries";
 
 vi.mock("@/hooks/useAuthApi", () => ({
   useAuthApi: () => ({ api: {} }),
@@ -13,6 +12,18 @@ vi.mock("@/hooks/useAuthApi", () => ({
 vi.mock("@/services/exchangeRates/queries", () => ({
   getCurrentRate: vi.fn(),
   getRecentRates: vi.fn(),
+}));
+
+vi.mock("@/services/exchangeRates/resolve-auto-rates", () => ({
+  resolveAutoExchangeRates: vi.fn(),
+}));
+
+vi.mock("@/hooks/useLocalStorage", () => ({
+  useLocalStorage: () => ["space-a", vi.fn()],
+}));
+
+vi.mock("@/hooks/useMediaQuery", () => ({
+  useMediaQuery: () => true,
 }));
 
 vi.mock("@/components/ui/calculator-input", () => ({
@@ -38,6 +49,7 @@ vi.mock("@/components/ui/rolling-number", () => ({
   RollingNumber: ({ value }: { value: string }) => <span>{value}</span>,
 }));
 
+const mockedResolveAutoExchangeRates = vi.mocked(resolveAutoExchangeRates);
 const mockedGetCurrentRate = vi.mocked(getCurrentRate);
 const mockedGetRecentRates = vi.mocked(getRecentRates);
 
@@ -54,9 +66,61 @@ const defaultProps = {
   date: "2026-06-27",
 };
 
+const rateForPair = (fromCurrency: string, toCurrency: string): number => {
+  if (fromCurrency === "GBP" && toCurrency === "PHP") return 80.886;
+  if (fromCurrency === "GBP" && toCurrency === "USD") return 1.27;
+  if (fromCurrency === "VND" && toCurrency === "PHP") return 0.00233;
+  if (fromCurrency === "USD" && toCurrency === "PHP") return 58;
+  return 1;
+};
+
+const resolved = (overrides: {
+  fromCurrency: string;
+  toCurrency: string;
+  appliedRate?: number;
+  appliedSource?: "auto" | "recent";
+  date?: string;
+}) => {
+  const appliedRate =
+    overrides.appliedRate ??
+    rateForPair(overrides.fromCurrency, overrides.toCurrency);
+
+  return {
+    fromLocal: false,
+    current: {
+      rate: appliedRate,
+      from_currency: overrides.fromCurrency,
+      to_currency: overrides.toCurrency,
+      source: "api",
+    },
+    recent: {
+      rates: [{ rate: appliedRate, usedAt: "2026-06-27T00:00:00.000Z" }],
+      source: "recent",
+    },
+    appliedRate,
+    appliedSource: overrides.appliedSource ?? ("auto" as const),
+    displayedRateDate: overrides.date ?? "2026-06-27",
+  };
+};
+
+const previewHasText = (pattern: RegExp) => {
+  const preview = document.querySelector(".border-l-2");
+  expect(preview).toBeTruthy();
+  expect(within(preview as HTMLElement).getByText(pattern)).toBeTruthy();
+};
+
 describe("AmountWithRatePicker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedResolveAutoExchangeRates.mockImplementation(async (params) =>
+      resolved({
+        fromCurrency: params.fromCurrency,
+        toCurrency: params.toCurrency,
+        appliedSource: "auto",
+        date: params.date,
+      }),
+    );
+    // Manual "Use today's rate" still goes through getCurrentRate.
     mockedGetCurrentRate.mockResolvedValue({
       rate: 1.27,
       from_currency: "GBP",
@@ -64,8 +128,8 @@ describe("AmountWithRatePicker", () => {
       source: "api",
     });
     mockedGetRecentRates.mockResolvedValue({
-      rates: [{ rate: 80.886, usedAt: "2026-06-27T00:00:00.000Z" }],
       source: "recent",
+      rates: [{ rate: 82.5, usedAt: "2026-07-01T10:00:00.000Z" }],
     });
   });
 
@@ -73,7 +137,7 @@ describe("AmountWithRatePicker", () => {
     cleanup();
   });
 
-  it("fetches the live rate when the target leg changes to the USD account", async () => {
+  it("resolves rates through the exchangeRates service when the target leg changes", async () => {
     const onConversionChange = vi.fn();
 
     const { rerender } = render(
@@ -85,21 +149,17 @@ describe("AmountWithRatePicker", () => {
     );
 
     await waitFor(() => {
-      expect(mockedGetCurrentRate).toHaveBeenCalledWith(
-        {},
-        "GBP",
-        "PHP",
-        "2026-06-27",
+      expect(mockedResolveAutoExchangeRates).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromCurrency: "GBP",
+          toCurrency: "PHP",
+          date: "2026-06-27",
+          spaceId: "space-a",
+        }),
       );
     });
 
     onConversionChange.mockClear();
-    mockedGetCurrentRate.mockResolvedValue({
-      rate: 1.27,
-      from_currency: "GBP",
-      to_currency: "USD",
-      source: "api",
-    });
 
     rerender(
       <AmountWithRatePicker
@@ -110,11 +170,12 @@ describe("AmountWithRatePicker", () => {
     );
 
     await waitFor(() => {
-      expect(mockedGetCurrentRate).toHaveBeenCalledWith(
-        {},
-        "GBP",
-        "USD",
-        "2026-06-27",
+      expect(mockedResolveAutoExchangeRates).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromCurrency: "GBP",
+          toCurrency: "USD",
+          date: "2026-06-27",
+        }),
       );
     });
 
@@ -134,19 +195,18 @@ describe("AmountWithRatePicker", () => {
     expect(screen.queryByText(/8,088/)).not.toBeInTheDocument();
   });
 
-  it("uses a recent rate when it matches the live quote on a stable pair", async () => {
+  it("re-resolves through the service when the date changes on a stable pair", async () => {
     const onConversionChange = vi.fn();
 
-    mockedGetRecentRates.mockResolvedValue({
-      rates: [{ rate: 1.28, usedAt: "2026-06-27T00:00:00.000Z" }],
-      source: "recent",
-    });
-    mockedGetCurrentRate.mockResolvedValue({
-      rate: 1.27,
-      from_currency: "GBP",
-      to_currency: "USD",
-      source: "api",
-    });
+    mockedResolveAutoExchangeRates.mockImplementation(async (params) =>
+      resolved({
+        fromCurrency: params.fromCurrency,
+        toCurrency: params.toCurrency,
+        appliedRate: params.date === "2026-06-28" ? 1.28 : 1.27,
+        appliedSource: params.date === "2026-06-28" ? "recent" : "auto",
+        date: params.date,
+      }),
+    );
 
     const { rerender } = render(
       <AmountWithRatePicker
@@ -177,6 +237,16 @@ describe("AmountWithRatePicker", () => {
     );
 
     await waitFor(() => {
+      expect(mockedResolveAutoExchangeRates).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromCurrency: "GBP",
+          toCurrency: "USD",
+          date: "2026-06-28",
+        }),
+      );
+    });
+
+    await waitFor(() => {
       expect(onConversionChange).toHaveBeenCalledWith(
         expect.objectContaining({
           exchangeRate: 1.28,
@@ -186,19 +256,8 @@ describe("AmountWithRatePicker", () => {
     });
   });
 
-  it("refetches and updates the human quote when amount currency changes from VND to USD", async () => {
+  it("updates the human quote when amount currency changes from VND to USD", async () => {
     const onConversionChange = vi.fn();
-
-    mockedGetRecentRates.mockResolvedValue({
-      rates: [{ rate: 0.00233, usedAt: "2026-06-27T00:00:00.000Z" }],
-      source: "recent",
-    });
-    mockedGetCurrentRate.mockResolvedValue({
-      rate: 0.00233,
-      from_currency: "VND",
-      to_currency: "PHP",
-      source: "api",
-    });
 
     const { rerender } = render(
       <AmountWithRatePicker
@@ -219,19 +278,11 @@ describe("AmountWithRatePicker", () => {
       );
     });
 
-    expect(screen.getByText(/VND per 1 PHP/)).toBeInTheDocument();
+    await waitFor(() => {
+      previewHasText(/VND per 1 PHP/);
+    });
 
     onConversionChange.mockClear();
-    mockedGetRecentRates.mockResolvedValue({
-      rates: [{ rate: 58, usedAt: "2026-06-27T00:00:00.000Z" }],
-      source: "recent",
-    });
-    mockedGetCurrentRate.mockResolvedValue({
-      rate: 58,
-      from_currency: "USD",
-      to_currency: "PHP",
-      source: "api",
-    });
 
     rerender(
       <AmountWithRatePicker
@@ -243,11 +294,12 @@ describe("AmountWithRatePicker", () => {
     );
 
     await waitFor(() => {
-      expect(mockedGetCurrentRate).toHaveBeenCalledWith(
-        {},
-        "USD",
-        "PHP",
-        "2026-06-27",
+      expect(mockedResolveAutoExchangeRates).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromCurrency: "USD",
+          toCurrency: "PHP",
+          date: "2026-06-27",
+        }),
       );
     });
 
@@ -261,7 +313,368 @@ describe("AmountWithRatePicker", () => {
       );
     });
 
-    expect(screen.getByText(/PHP per 1 USD/)).toBeInTheDocument();
-    expect(screen.queryByText(/VND per 1 PHP/)).not.toBeInTheDocument();
+    await waitFor(() => {
+      previewHasText(/PHP per 1 USD/);
+    });
+    expect(
+      within(document.querySelector(".border-l-2") as HTMLElement).queryByText(
+        /VND per 1 PHP/,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("applies a manual exchange rate from the rate picker", async () => {
+    const user = userEvent.setup();
+    const onConversionChange = vi.fn();
+
+    mockedGetCurrentRate.mockResolvedValue({
+      rate: 76.4,
+      from_currency: "GBP",
+      to_currency: "PHP",
+      source: "api",
+    });
+
+    render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        onConversionChange={onConversionChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockedResolveAutoExchangeRates).toHaveBeenCalled();
+    });
+
+    onConversionChange.mockClear();
+
+    await user.click(
+      screen.getByRole("button", { name: /exchange rate options/i }),
+    );
+
+    const manualInput = await screen.findByLabelText(/manual exchange rate/i);
+    await user.clear(manualInput);
+    await user.type(manualInput, "80");
+    await user.click(screen.getByRole("button", { name: /^apply$/i }));
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalCurrency: "GBP",
+          targetCurrency: "PHP",
+          exchangeRateSource: "manual",
+        }),
+      );
+    });
+  });
+
+  it("re-syncs to parent when the target leg changes after a recent rate was applied", async () => {
+    const onConversionChange = vi.fn();
+
+    mockedResolveAutoExchangeRates.mockImplementation(async (params) =>
+      resolved({
+        fromCurrency: params.fromCurrency,
+        toCurrency: params.toCurrency,
+        appliedRate:
+          params.toCurrency === "USD"
+            ? 100
+            : rateForPair(params.fromCurrency, params.toCurrency),
+        appliedSource: "recent",
+      }),
+    );
+
+    const { rerender } = render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        onConversionChange={onConversionChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetCurrency: "PHP",
+          exchangeRateSource: "recent",
+        }),
+      );
+    });
+
+    onConversionChange.mockClear();
+
+    rerender(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="USD"
+        onConversionChange={onConversionChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalCurrency: "GBP",
+          targetCurrency: "USD",
+          exchangeRate: 100,
+          exchangeRateSource: "recent",
+        }),
+      );
+    });
+
+    expect(screen.getByText(/→ USD/)).toBeInTheDocument();
+    expect(screen.getByText(/recent rate/)).toBeInTheDocument();
+  });
+
+  it("shows assigned rate with suppressAutoFetch even when market rate differs", async () => {
+    const onConversionChange = vi.fn();
+
+    mockedResolveAutoExchangeRates.mockResolvedValue({
+      appliedRate: 82.553,
+      appliedSource: "auto",
+      displayedRateDate: "2026-08-20",
+      recent: { rates: [] },
+    });
+
+    render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        amountDisplayValue="100"
+        onConversionChange={onConversionChange}
+        suppressAutoFetch
+        initialConversion={{
+          originalCurrency: "GBP",
+          targetCurrency: "PHP",
+          exchangeRate: 100,
+          exchangeRateSource: "recent",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("10,000.000")).toBeInTheDocument();
+    expect(screen.getByText("100.000")).toBeInTheDocument();
+    expect(mockedResolveAutoExchangeRates).not.toHaveBeenCalled();
+  });
+
+  it("does not auto-fetch when suppressAutoFetch is set without a seed yet", async () => {
+    const onConversionChange = vi.fn();
+
+    render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        amountDisplayValue="100"
+        onConversionChange={onConversionChange}
+        suppressAutoFetch
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockedResolveAutoExchangeRates).not.toHaveBeenCalled();
+    });
+    expect(onConversionChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ exchangeRate: 82.553 }),
+    );
+  });
+
+  it("seeds the assigned installment rate instead of today's auto rate", async () => {
+    const onConversionChange = vi.fn();
+
+    mockedResolveAutoExchangeRates.mockResolvedValue({
+      appliedRate: 83.842,
+      appliedSource: "auto",
+      displayedRateDate: "2026-08-20",
+      recent: { rates: [] },
+    });
+
+    render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        amountDisplayValue="200"
+        onConversionChange={onConversionChange}
+        initialConversion={{
+          originalCurrency: "GBP",
+          targetCurrency: "PHP",
+          exchangeRate: 100,
+          exchangeRateSource: "recent",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("20,000.000")).toBeInTheDocument();
+    expect(screen.getByText("100.000")).toBeInTheDocument();
+    expect(screen.getByText(/recent rate/i)).toBeInTheDocument();
+    expect(mockedResolveAutoExchangeRates).not.toHaveBeenCalled();
+    expect(onConversionChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ exchangeRate: 83.842 }),
+    );
+  });
+
+  it("keeps a stored edit rate when initialConversion is briefly cleared", async () => {
+    const onConversionChange = vi.fn();
+
+    const { rerender } = render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        amountDisplayValue="200"
+        onConversionChange={onConversionChange}
+        initialConversion={{
+          originalCurrency: "GBP",
+          targetCurrency: "PHP",
+          exchangeRate: 100,
+          exchangeRateSource: "recent",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("20,000.000")).toBeInTheDocument();
+    expect(mockedResolveAutoExchangeRates).not.toHaveBeenCalled();
+
+    onConversionChange.mockClear();
+
+    // Parent mismatch effects can clear initialConversion; must not auto-fetch ~83.
+    rerender(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        amountDisplayValue="200"
+        onConversionChange={onConversionChange}
+        initialConversion={undefined}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalCurrency: "GBP",
+          targetCurrency: "PHP",
+          exchangeRate: 100,
+          exchangeRateSource: "recent",
+        }),
+      );
+    });
+
+    expect(mockedResolveAutoExchangeRates).not.toHaveBeenCalled();
+    expect(screen.getByText("20,000.000")).toBeInTheDocument();
+  });
+
+  it("keeps a manually applied edit rate when the parent still passes the old seed", async () => {
+    const user = userEvent.setup();
+    const onConversionChange = vi.fn();
+    const storedSeed = {
+      originalCurrency: "GBP",
+      targetCurrency: "PHP",
+      exchangeRate: 100,
+      exchangeRateSource: "recent" as const,
+    };
+
+    mockedGetCurrentRate.mockResolvedValue({
+      rate: 83.84,
+      from_currency: "GBP",
+      to_currency: "PHP",
+      source: "api",
+    });
+
+    const { rerender } = render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        amountDisplayValue="200"
+        onConversionChange={onConversionChange}
+        initialConversion={storedSeed}
+      />,
+    );
+
+    expect(screen.getByText("20,000.000")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /exchange rate options/i }),
+    );
+    const manualInput = await screen.findByLabelText(/manual exchange rate/i);
+    await user.clear(manualInput);
+    await user.type(manualInput, "95");
+    await user.click(screen.getByRole("button", { name: /^apply$/i }));
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          exchangeRate: 95,
+          exchangeRateSource: "manual",
+        }),
+      );
+    });
+
+    expect(screen.getByText("19,000.000")).toBeInTheDocument();
+
+    // Parent repair historically re-seeded the old stored rate — Apply must stick.
+    rerender(
+      <AmountWithRatePicker
+        {...defaultProps}
+        toCurrency="PHP"
+        amountDisplayValue="200"
+        onConversionChange={onConversionChange}
+        initialConversion={storedSeed}
+      />,
+    );
+
+    expect(screen.getByText("19,000.000")).toBeInTheDocument();
+    expect(screen.queryByText("20,000.000")).not.toBeInTheDocument();
+  });
+
+  it("keeps a picked rate visible when auto-fetch later fails", async () => {
+    const user = userEvent.setup();
+    const onConversionChange = vi.fn();
+    let rejectAutoFetch: (error: Error) => void = () => undefined;
+
+    mockedResolveAutoExchangeRates.mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          rejectAutoFetch = reject;
+        }),
+    );
+    mockedGetCurrentRate.mockRejectedValue(new Error("offline"));
+
+    render(
+      <AmountWithRatePicker
+        {...defaultProps}
+        fromCurrency="PLN"
+        toCurrency="PHP"
+        amountDisplayValue="12.25"
+        amountCurrencyOptions={["PLN", "PHP"]}
+        onConversionChange={onConversionChange}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /exchange rate options/i }),
+    );
+
+    const manualInput = await screen.findByLabelText(/manual exchange rate/i);
+    await user.clear(manualInput);
+    await user.type(manualInput, "16.333");
+    await user.click(screen.getByRole("button", { name: /^apply$/i }));
+
+    await waitFor(() => {
+      expect(onConversionChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalCurrency: "PLN",
+          targetCurrency: "PHP",
+          exchangeRateSource: "manual",
+        }),
+      );
+    });
+    expect(screen.getByText(/manual rate/i)).toBeInTheDocument();
+
+    await act(async () => {
+      rejectAutoFetch(new Error("offline"));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/manual rate/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/enter amount and choose a rate/i),
+    ).not.toBeInTheDocument();
   });
 });

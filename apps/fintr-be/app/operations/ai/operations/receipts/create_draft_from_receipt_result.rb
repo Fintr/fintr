@@ -20,6 +20,8 @@ module Ai
                 required(:category_name).value(:string)
                 required(:account_name).value(:string)
                 required(:description).value(:string)
+                optional(:receipt_merchant_detected).maybe(:string)
+                optional(:entity_name).maybe(:string)
               end
             end
           end

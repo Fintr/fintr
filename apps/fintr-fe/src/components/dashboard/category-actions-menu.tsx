@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowDownRight, ArrowUpRight, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, List, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 export type CategoryMenuItem = {
   id: string;
   name: string;
+  icon?: string;
+  color?: string;
 };
 
 type CategoryActionsMenuProps = {
@@ -23,6 +25,7 @@ type CategoryActionsMenuProps = {
   onEdit: (item: CategoryMenuItem) => void;
   onDelete: (item: CategoryMenuItem) => void;
   onAddSubcategory?: (item: CategoryMenuItem) => void;
+  onManageSubcategories?: (item: CategoryMenuItem) => void;
   onConvertToSubcategory?: (item: CategoryMenuItem) => void;
   onConvertToParent?: (item: CategoryMenuItem) => void;
   triggerClassName?: string;
@@ -35,13 +38,14 @@ const CategoryActionsMenu: React.FC<CategoryActionsMenuProps> = ({
   onEdit,
   onDelete,
   onAddSubcategory,
+  onManageSubcategories,
   onConvertToSubcategory,
   onConvertToParent,
   triggerClassName,
   align = "end",
 }) => {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
@@ -76,6 +80,17 @@ const CategoryActionsMenu: React.FC<CategoryActionsMenuProps> = ({
           >
             <Plus className="h-4 w-4" />
             Add subcategory
+          </DropdownMenuItem>
+        ) : null}
+        {variant === "parent" && onManageSubcategories ? (
+          <DropdownMenuItem
+            onClick={(event) => {
+              event.stopPropagation();
+              onManageSubcategories(item);
+            }}
+          >
+            <List className="h-4 w-4" />
+            Manage subcategories
           </DropdownMenuItem>
         ) : null}
         {variant === "parent" && onConvertToSubcategory ? (

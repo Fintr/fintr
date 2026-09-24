@@ -67,7 +67,7 @@ test.describe("Returning user login should skip first-time setup", () => {
     await page.locator("#login-password, input[name='password']").fill("Str0ng!Pass123")
     await page.getByRole("button", { name: "Continue", exact: true }).click()
 
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/dashboard\/home/, { timeout: 15000 })
     await expectNoSetupScreens(page)
     await expectDashboardReadyWithinThreeSeconds(page)
   })
@@ -94,7 +94,7 @@ test.describe("Returning user login should skip first-time setup", () => {
     await page.goto("/onboarding", gotoOptions)
     await page.waitForLoadState("domcontentloaded")
 
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/dashboard\/home/, { timeout: 15000 })
     await expectNoSetupScreens(page)
   })
 

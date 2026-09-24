@@ -1,21 +1,24 @@
 #!/bin/bash
 set -e
 
+# FIN-194: production Capacitor builds ship the static `out/` shell in the native
+# binary (no remote https://www.fintr.ai WebView load). For live-reload / remote
+# shell experiments, set CAPACITOR_SERVER_URL explicitly before sync.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-echo "🚀 Production Build & Deploy to iOS"
-echo "===================================="
+echo "🚀 Production Build & Deploy to iOS (bundled shell)"
+echo "==================================================="
 echo ""
 echo "This script will:"
 echo "  1. Clean previous builds"
-echo "  2. Build production app"
-echo "  3. Sync to Capacitor"
-echo "  4. Verify configuration"
+echo "  2. Build production static export"
+echo "  3. Sync Capacitor with CAPACITOR_SERVER_URL UNSET (bundled out/)"
+echo "  4. Verify config has no remote server.url"
 echo "  5. Open the iOS project in Xcode"
 echo ""
 
-# Step 1: Clean previous builds
 echo "🧹 Step 1: Cleaning previous builds..."
 rm -rf .next out
 rm -rf ios/App/App/capacitor.config.json
@@ -23,34 +26,20 @@ rm -rf android/app/src/main/assets/capacitor.config.json
 echo "✅ Clean complete"
 echo ""
 
-# Step 2: Set up environment
 echo "⚙️  Step 2: Setting up environment..."
+unset CAPACITOR_SERVER_URL
+echo "✅ CAPACITOR_SERVER_URL unset (app uses bundled webDir: out/)"
 
-# Production app loads the web app from the live website so updates appear without app store release
-PRODUCTION_WEB_URL="https://www.fintr.ai"
-echo "🔧 App will load web app from: ${PRODUCTION_WEB_URL}"
-export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
-echo "✅ CAPACITOR_SERVER_URL set (app will use live website)"
-
-# Capacitor native build uses .env.mobile.production (not Kamal web .env.production)
 # shellcheck source=scripts/mobile/load-mobile-env.sh
 source "${SCRIPT_DIR}/load-mobile-env.sh"
 
-# IMPORTANT: For Capacitor builds, we need to use the production web URL
-# as the base URL during build time, NOT the custom URL scheme
-# The custom scheme (fintrapp://) is only used at runtime for deep linking
-echo "Overriding NEXT_PUBLIC_APP_BASE_URL for Capacitor build..."
 export NEXT_PUBLIC_APP_BASE_URL="https://www.fintr.ai"
 echo "✅ Environment configured"
 echo ""
 
-# Step 3: Build Next.js app
 echo "🔨 Step 3: Building Next.js app for Capacitor..."
-
-# For Capacitor, we need static export, not standalone
 export NEXT_OUTPUT_MODE=export
 
-# Create a temporary next.config that exports to 'out'
 cat > next.config.capacitor.ts << 'NEXTCONFIG'
 import type { NextConfig } from "next";
 
@@ -60,7 +49,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true, // Required for static export
+    unoptimized: true,
     domains: [
       "fintr-development.s3.ap-southeast-1.amazonaws.com",
       "fintr-staging.s3.ap-southeast-1.amazonaws.com",
@@ -74,77 +63,64 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 NEXTCONFIG
 
-# Backup original config
 cp next.config.ts next.config.ts.backup
-
-# Use the Capacitor config
 cp next.config.capacitor.ts next.config.ts
-
-# Local .env often sets NODE_ENV=development for `pnpm dev`. If that value is picked up
-# during `next build`, static export fails (PageNotFoundError: Cannot find module /_document).
 export NODE_ENV=production
-
-# Build the Next.js app
 pnpm build
-
-# Restore original config
 mv next.config.ts.backup next.config.ts
 rm next.config.capacitor.ts
 
-# Verify out directory exists
 if [ ! -d "out" ]; then
-    echo "❌ ERROR: Build did not create 'out' directory"
-    exit 1
+  echo "❌ ERROR: Build did not create 'out' directory"
+  exit 1
 fi
 
 echo "✅ Next.js build complete"
 echo ""
 
-# Step 4: Sync Capacitor (both platforms); app will load from PRODUCTION_WEB_URL
 echo "🔄 Step 4: Syncing to Capacitor (iOS + Android)..."
-
-export CAPACITOR_SERVER_URL="${PRODUCTION_WEB_URL}"
+unset CAPACITOR_SERVER_URL
 npx cap sync
-
 echo "✅ Capacitor sync complete"
 echo ""
 
-# Step 5: Verify configuration (app must load from production URL, not localhost)
-echo "🔍 Step 5: Verifying Capacitor configuration..."
+echo "🔍 Step 5: Verifying bundled shell (no remote server.url)..."
+IOS_CONFIG="ios/App/App/capacitor.config.json"
+ANDROID_CONFIG="android/app/src/main/assets/capacitor.config.json"
 
-if ! grep -qF "\"url\": \"${PRODUCTION_WEB_URL}" ios/App/App/capacitor.config.json 2>/dev/null; then
-    echo "❌ ERROR: capacitor.config.json should load from ${PRODUCTION_WEB_URL}"
-    echo "Generated config:"
-    grep -A 2 '"server"' ios/App/App/capacitor.config.json 2>/dev/null || true
+for CONFIG in "$IOS_CONFIG" "$ANDROID_CONFIG"; do
+  if [ ! -f "$CONFIG" ]; then
+    echo "❌ ERROR: missing $CONFIG"
     exit 1
-fi
-if grep -q 'localhost' ios/App/App/capacitor.config.json 2>/dev/null; then
-    echo "❌ ERROR: config contains localhost; production should use ${PRODUCTION_WEB_URL}"
+  fi
+  if grep -q '"url"' "$CONFIG"; then
+    echo "❌ ERROR: $CONFIG still has server.url — bundled shell requires it unset"
+    grep -A 5 '"server"' "$CONFIG" || true
     exit 1
-fi
+  fi
+  if grep -q 'localhost' "$CONFIG"; then
+    echo "❌ ERROR: $CONFIG contains localhost"
+    exit 1
+  fi
+done
 
-echo "✅ Capacitor config is correct (app loads from ${PRODUCTION_WEB_URL})"
+echo "✅ Capacitor config is bundled (no remote server.url)"
 echo ""
 
-# Step 6: Open iOS project in Xcode
 echo "📱 Step 6: Opening iOS project in Xcode..."
-echo ""
-
 npx cap open ios
 
 echo ""
-echo "✅ Xcode should be open with the production Capacitor iOS project."
-echo ""
-echo "📋 The app loads the web app from ${PRODUCTION_WEB_URL}. When you deploy updates"
-echo "   to the website, users get them automatically — no app store update needed."
+echo "✅ Bundled-shell production project ready."
+echo "   Cold open loads local out/ assets, not https://www.fintr.ai."
+echo "   API calls still use NEXT_PUBLIC_BE_URL from .env.mobile.production."
 echo ""
 echo "📋 Additional distribution options:"
 echo ""
 echo "📱 iOS Archive (for App Store/Ad Hoc/TestFlight):"
 echo "  1. In Xcode: Product → Archive"
-echo "  3. After archive: Distribute App → Ad Hoc/App Store/Development"
+echo "  2. After archive: Distribute App → Ad Hoc/App Store/Development"
 echo ""
 echo "🤖 Android Build:"
-echo "  For APK (testing): cd android && ./gradlew assembleRelease"
-echo "  For AAB (Play Store): cd android && ./gradlew bundleRelease"
+echo "  ./scripts/mobile/build-production-android.sh"
 echo ""

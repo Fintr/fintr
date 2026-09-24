@@ -217,9 +217,6 @@ module Finance
               )
             )
 
-            # Update all upcoming pending billing cycles to use new plan's token allocation
-            _ = step update_upcoming_cycles_tokens(subscription:, new_plan:)
-
             # Create payment record for the full amount
             amount_cents = (pending_change["amount_cents"] || new_plan.price_cents).to_i
             currency = params[:currency].presence ||
@@ -297,9 +294,6 @@ module Finance
                 )
               )
 
-              # Update all upcoming pending billing cycles to use new plan's token allocation
-              _ = step update_upcoming_cycles_tokens(subscription:, new_plan:)
-
               return Success({ note: "Plan updated - no prorated cycle needed" })
             end
 
@@ -318,7 +312,6 @@ module Finance
             prorated_cycle = subscription.billing_cycles.create!(
               cycle_number: prorated_cycle_number,
               span: (prorated_cycle_start..original_cycle_end),
-              tokens_allocated: new_plan.token_limit,
               xendit_cycle_id: xendit_cycle_id,
               status: "pending",
               metadata: {
@@ -357,32 +350,12 @@ module Finance
             )
 
             # Update all upcoming pending billing cycles to use new plan's token allocation
-            _ = step update_upcoming_cycles_tokens(subscription:, new_plan:)
-
             Success({
               prorated_cycle: prorated_cycle,
               note: "Plan upgrade applied with prorated cycle"
             })
           rescue StandardError => e
             Failure(error: "Failed to apply plan change: (#{e.class}) #{e.message}")
-          end
-
-          def update_upcoming_cycles_tokens(subscription:, new_plan:)
-            # Find all billing cycles that start after now (future cycles)
-            # Exclude prorated cycles (identified by decimal cycle_number like 1.1, 2.1, etc.)
-            upcoming_cycles = subscription.billing_cycles
-                                         .where("(span).lower > ?", Time.zone.now)
-                                         .where("cycle_number = TRUNC(cycle_number)") # Exclude decimal cycle numbers (prorated cycles)
-
-            # Update tokens_allocated for all upcoming cycles
-            updated_count = upcoming_cycles.update_all(tokens_allocated: new_plan.token_limit)
-
-            Rails.logger.info("Updated #{updated_count} upcoming billing cycles with new plan token allocation: #{new_plan.token_limit}")
-
-            Success(updated_count: updated_count)
-          rescue StandardError => e
-            Rails.logger.error("Failed to update upcoming cycles tokens: #{e.message}")
-            Failure(error: "Failed to update upcoming cycles tokens: #{e.message}")
           end
 
           def create_payment_for_proration(subscription:, prorated_cycle:, params:)

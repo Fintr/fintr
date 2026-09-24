@@ -12,11 +12,13 @@ import { NotificationProps } from "@/components/dashboard/notification-item";
 import NavDrawer from "@/components/dashboard/nav-drawer";
 import Link from "next/link";
 import { FintrLogo } from "@/components/brand/fintr-logo";
+import { DASHBOARD_DESKTOP_NAV_Z_CLASS } from "@/lib/dashboard-chrome-stacking";
 import { shouldShowV2Features } from "@/lib/utils";
 import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 
 const headerSecondaryButtonClassName =
   "bg-card text-primary shadow-none hover:bg-primary hover:text-white";
@@ -111,6 +113,12 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
       accountName: suggestedTransactionPayload?.accountName || suggestedTransactionPayload?.account_name,
       date: suggestedTransactionPayload?.date,
       scheduleType: suggestedTransactionPayload?.scheduleType || suggestedTransactionPayload?.schedule_type,
+      entityName:
+        suggestedTransactionPayload?.entityName ||
+        suggestedTransactionPayload?.entity_name,
+      receiptMerchantDetected:
+        suggestedTransactionPayload?.receiptMerchantDetected ||
+        suggestedTransactionPayload?.receipt_merchant_detected,
       receiptImage: receiptImage,
       draftId: draftId,
     };
@@ -150,7 +158,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
 
   return (
     <>
-      <header className={`fixed w-full bg-background z-20 transition-all duration-300 ease-in-out ${
+      <header className={`hidden md:block fixed w-full bg-background ${DASHBOARD_DESKTOP_NAV_Z_CLASS} transition-all duration-300 ease-in-out ${
         isScrolled
           ? "border-b border-gray-200 shadow-sm dark:border-border"
           : "border-b border-transparent"
@@ -172,6 +180,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 AI Chat
+                <ProTrialBadge className="ml-2" />
               </Button>
               {showAddButtons && (
                 <>
@@ -183,6 +192,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     Add Receipt
+                    <ProTrialBadge className="ml-2" />
                   </Button>
                   <Button
                     onClick={() => setIsAddTransactionOpen(true)}

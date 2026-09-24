@@ -1,11 +1,6 @@
-"use client"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+"use client";
 import InsightsTab from "@/components/dashboard/tabs/insights-tab";
 
 export default function page() {
-  return (
-    <TabsContent value="insights" className="p-2">
-      <InsightsTab />
-    </TabsContent>
-  );
+  return <InsightsTab />;
 }

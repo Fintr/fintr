@@ -170,6 +170,7 @@ export const DateFilterFields = ({
                 </button>
               </PopoverTrigger>
               <PopoverContent
+                nestedOverlay
                 align="start"
                 className="w-[min(16rem,calc(100vw-2.5rem))] space-y-2 p-2"
                 collisionPadding={16}

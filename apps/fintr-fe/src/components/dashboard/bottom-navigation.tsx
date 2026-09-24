@@ -1,23 +1,48 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Wallet, Plus, BarChart3, Menu, MessageSquare, Camera } from "lucide-react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { Home, FileText, Plus, BarChart3, Menu, MessageSquare, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
 import AddReceiptDialog from "@/components/dashboard/add-receipt-dialog";
 import EnhancedAiChatModal from "@/components/ai-chat/enhanced-ai-chat-modal";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
+import { usePrefetchDashboardNavRoutes } from "@/hooks/usePrefetchDashboardNavRoutes";
 import { calculateNavBottomOffset } from "@/lib/platform-detection";
+import { pendingDashboardBottomTabAtom } from "@/atoms/dashboardBottomTabAtoms";
+import {
+  commitDashboardClientNavigation,
+  getDashboardBottomTab,
+  getDashboardCommittedPathname,
+  interceptDashboardTabClick,
+  subscribeDashboardCommittedPathname,
+  toMobileBottomNavTab,
+} from "@/lib/dashboard-nav-routes";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 
 export default function BottomNavigation() {
-  const pathname = usePathname();
+  const routerPathname = usePathname();
+  const committedPathname = useSyncExternalStore(
+    subscribeDashboardCommittedPathname,
+    getDashboardCommittedPathname,
+    () => null,
+  );
+  const pathname = committedPathname ?? routerPathname;
+  const onTabClick = (href: string) => (event: React.MouseEvent) => {
+    if (!interceptDashboardTabClick(event)) {
+      return;
+    }
+
+    commitDashboardClientNavigation(href);
+  };
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
   const [isAddReceiptOpen, setIsAddReceiptOpen] = useState(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
@@ -25,6 +50,10 @@ export default function BottomNavigation() {
   const [prefilledTransactionData, setPrefilledTransactionData] = useState<any>(null);
 
   const { isAndroidNative, isIOSNative, safeAreaInsetBottom, hasAndroid3ButtonNav } = usePlatformDetection();
+
+  usePrefetchDashboardNavRoutes();
+  const pendingTab = useAtomValue(pendingDashboardBottomTabAtom);
+  const setPendingTab = useSetAtom(pendingDashboardBottomTabAtom);
 
   const navBottomOffset = calculateNavBottomOffset(
     isAndroidNative,
@@ -35,23 +64,34 @@ export default function BottomNavigation() {
 
   // Determine active tab based on pathname
   const getActiveValue = () => {
+    if (pendingTab) {
+      return toMobileBottomNavTab(pendingTab);
+    }
+
+    const routeTab = getDashboardBottomTab(pathname);
+    if (routeTab) {
+      return toMobileBottomNavTab(routeTab);
+    }
+
+    if (pathname.startsWith("/dashboard/home")) {
+      return "home";
+    }
     if (pathname === "/dashboard/" || pathname === "/dashboard") {
       return "transactions";
-    }
-    if (pathname.startsWith("/dashboard/budgets")) {
-      return "budgets";
     }
     if (pathname.startsWith("/dashboard/insights")) {
       return "insights";
     }
     if (
+      pathname.startsWith("/dashboard/budgets") ||
+      pathname.startsWith("/dashboard/loans") ||
       pathname.startsWith("/dashboard/app_settings") ||
       pathname.startsWith("/dashboard/space_settings") ||
       pathname.startsWith("/dashboard/settings") ||
       pathname.startsWith("/crm/requests") ||
       pathname.startsWith("/admin")
     ) {
-      return "space_settings";
+      return "menu";
     }
     return "transactions";
   };
@@ -60,20 +100,26 @@ export default function BottomNavigation() {
 
   const navItemClassName = (isActive: boolean) =>
     cn(
-      "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2",
-      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+      "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors",
+      isActive
+        ? "text-white dark:text-primary-dark-mode"
+        : "text-white/70 dark:text-muted-foreground",
     );
 
   const navIconClassName = (isActive: boolean) =>
     cn(
       "h-5 w-5",
-      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+      isActive
+        ? "text-white dark:text-primary-dark-mode"
+        : "text-white/70 dark:text-muted-foreground",
     );
 
   const navLabelClassName = (isActive: boolean) =>
     cn(
       "w-full truncate text-center text-xs font-medium",
-      isActive ? "text-white dark:text-primary-dark-mode" : "text-white/70 dark:text-muted-foreground",
+      isActive
+        ? "text-white dark:text-primary-dark-mode"
+        : "text-white/70 dark:text-muted-foreground",
     );
 
   const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => {
@@ -84,6 +130,12 @@ export default function BottomNavigation() {
       accountName: suggestedTransactionPayload?.accountName || suggestedTransactionPayload?.account_name,
       date: suggestedTransactionPayload?.date,
       scheduleType: suggestedTransactionPayload?.scheduleType || suggestedTransactionPayload?.schedule_type,
+      entityName:
+        suggestedTransactionPayload?.entityName ||
+        suggestedTransactionPayload?.entity_name,
+      receiptMerchantDetected:
+        suggestedTransactionPayload?.receiptMerchantDetected ||
+        suggestedTransactionPayload?.receipt_merchant_detected,
       receiptImage: receiptImage,
       draftId: draftId,
     };
@@ -102,7 +154,9 @@ export default function BottomNavigation() {
 
       <nav
         className={cn(
-          "fixed left-0 right-0 z-50 border-t border-primary/20 bg-primary shadow-xs md:hidden dark:border-border dark:bg-card",
+          "fixed left-0 right-0 z-50 md:hidden",
+          "border-t border-transparent bg-[#0d3557] dark:border-border/60 dark:bg-card/95 dark:backdrop-blur-md",
+          "shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.35)]",
           isAndroidNative
             ? ""
             : isIOSNative
@@ -114,9 +168,32 @@ export default function BottomNavigation() {
         }}
       >
         <div className="flex items-center justify-around h-16 px-2 max-w-full">
+          {/* Home */}
+          <Link
+            href="/dashboard/home"
+            scroll={false}
+            onPointerDown={() => setPendingTab("home")}
+            onClick={onTabClick("/dashboard/home")}
+            onPointerEnter={() => {
+              if (navigator.onLine) {
+                void import("@/components/dashboard/tabs/home");
+              }
+            }}
+            className={navItemClassName(activeValue === "home")}
+          >
+            <Home className={navIconClassName(activeValue === "home")} />
+            <span className={navLabelClassName(activeValue === "home")}>
+              Home
+            </span>
+          </Link>
+
           {/* Transactions */}
           <Link
             href="/dashboard/"
+            scroll={false}
+            onPointerDown={() => setPendingTab("transactions")}
+            onClick={onTabClick("/dashboard/")}
+            data-testid="mobile-nav-transactions"
             className={navItemClassName(activeValue === "transactions")}
           >
             <FileText className={navIconClassName(activeValue === "transactions")} />
@@ -125,23 +202,12 @@ export default function BottomNavigation() {
             </span>
           </Link>
 
-          {/* Budget */}
-          <Link
-            href="/dashboard/budgets"
-            className={navItemClassName(activeValue === "budgets")}
-          >
-            <Wallet className={navIconClassName(activeValue === "budgets")} />
-            <span className={navLabelClassName(activeValue === "budgets")}>
-              Budget
-            </span>
-          </Link>
-
           {/* Add Button (Center) with Menu */}
           <div className="flex flex-col items-center justify-center -mt-4">
             <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  className="h-14 w-14 rounded-full border-2 border-white/30 bg-primary p-0 shadow-lg transition-all hover:bg-primary/90 dark:border-border"
+                  className="h-14 w-14 rounded-full border border-white/80 bg-[#0d3557] p-0 shadow-lg transition-all hover:bg-white/10 dark:border-border/60 dark:bg-primary dark:hover:bg-primary/90"
                   size="icon"
                   aria-label="Add Options"
                   data-tutorial-target="mobile-add-button"
@@ -152,7 +218,7 @@ export default function BottomNavigation() {
               <PopoverContent
                 side="top"
                 align="center"
-                className="w-56 p-2 mb-2 z-[10010]"
+                className="w-72 p-2 mb-2 z-[10010]"
                 sideOffset={12}
                 style={{ zIndex: 10010 }}
               >
@@ -165,8 +231,16 @@ export default function BottomNavigation() {
                       setIsMenuOpen(false);
                     }}
                   >
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">Chat with AI</span>
+                    <MessageSquare className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="flex min-w-0 flex-col items-start gap-0.5 text-left">
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        Chat with AI
+                        <ProTrialBadge />
+                      </span>
+                      <span className="text-[11px] leading-snug text-muted-foreground">
+                        Ask about your spending, budgets, and finances
+                      </span>
+                    </div>
                   </Button>
                   <Button
                     variant="ghost"
@@ -189,8 +263,13 @@ export default function BottomNavigation() {
                     data-tutorial-target="mobile-add-transaction"
                     data-testid="mobile-add-transaction"
                   >
-                    <Plus className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">Add Transaction</span>
+                    <Plus className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="flex min-w-0 flex-col items-start gap-0.5 text-left">
+                      <span className="text-sm font-medium">Add Transaction</span>
+                      <span className="text-[11px] leading-snug text-muted-foreground">
+                        Record expenses, income, transfers, or loans
+                      </span>
+                    </div>
                   </Button>
                   <Button
                     variant="ghost"
@@ -201,8 +280,16 @@ export default function BottomNavigation() {
                     }}
                     data-tutorial-target="mobile-add-receipt"
                   >
-                    <Camera className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">Add Receipt</span>
+                    <Camera className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="flex min-w-0 flex-col items-start gap-0.5 text-left">
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        Add Receipt
+                        <ProTrialBadge />
+                      </span>
+                      <span className="text-[11px] leading-snug text-muted-foreground">
+                        Snap or upload a receipt to auto-fill details
+                      </span>
+                    </div>
                   </Button>
                 </div>
               </PopoverContent>
@@ -212,10 +299,16 @@ export default function BottomNavigation() {
           {/* Dashboard */}
           <Link
             href="/dashboard/insights"
+            scroll={false}
+            onPointerDown={() => setPendingTab("insights")}
+            onClick={onTabClick("/dashboard/insights")}
             data-tutorial-target="mobile-dashboard-button"
+            data-testid="mobile-nav-dashboard"
             className={navItemClassName(activeValue === "insights")}
           >
-            <BarChart3 className={navIconClassName(activeValue === "insights")} />
+            <span className="relative">
+              <BarChart3 className={navIconClassName(activeValue === "insights")} />
+            </span>
             <span className={navLabelClassName(activeValue === "insights")}>
               Dashboard
             </span>
@@ -224,34 +317,48 @@ export default function BottomNavigation() {
           {/* Settings */}
           <Link
             href="/dashboard/app_settings"
+            scroll={false}
+            onPointerDown={() => setPendingTab("menu")}
+            onPointerUp={() => {
+              setPendingTab("menu");
+              commitDashboardClientNavigation("/dashboard/app_settings");
+            }}
+            onClick={onTabClick("/dashboard/app_settings")}
             data-tutorial-target="mobile-menu-button"
-            className={navItemClassName(activeValue === "space_settings")}
+            data-testid="mobile-nav-menu"
+            className={navItemClassName(activeValue === "menu")}
           >
-            <Menu className={navIconClassName(activeValue === "space_settings")} />
-            <span className={navLabelClassName(activeValue === "space_settings")}>
+            <Menu className={navIconClassName(activeValue === "menu")} />
+            <span className={navLabelClassName(activeValue === "menu")}>
               Menu
             </span>
           </Link>
         </div>
       </nav>
 
-      <AddTransactionDialog
-        isOpen={isAddTransactionOpen}
-        onClose={() => {
-          setIsAddTransactionOpen(false);
-          setPrefilledTransactionData(null);
-        }}
-        prefilledData={prefilledTransactionData}
-      />
-      <AddReceiptDialog
-        isOpen={isAddReceiptOpen}
-        onClose={() => setIsAddReceiptOpen(false)}
-        onReceiptSuccess={handleReceiptSuccess}
-      />
-      <EnhancedAiChatModal
-        isOpen={isAiChatOpen}
-        onClose={() => setIsAiChatOpen(false)}
-      />
+      {isAddTransactionOpen ? (
+        <AddTransactionDialog
+          isOpen={isAddTransactionOpen}
+          onClose={() => {
+            setIsAddTransactionOpen(false);
+            setPrefilledTransactionData(null);
+          }}
+          prefilledData={prefilledTransactionData}
+        />
+      ) : null}
+      {isAddReceiptOpen ? (
+        <AddReceiptDialog
+          isOpen={isAddReceiptOpen}
+          onClose={() => setIsAddReceiptOpen(false)}
+          onReceiptSuccess={handleReceiptSuccess}
+        />
+      ) : null}
+      {isAiChatOpen ? (
+        <EnhancedAiChatModal
+          isOpen={isAiChatOpen}
+          onClose={() => setIsAiChatOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

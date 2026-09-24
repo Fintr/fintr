@@ -47,7 +47,7 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
   onScopeChange,
   hasScheduleChanges = false,
   operationType,
-  inSeries = true, // Default to true for backward compatibility
+  inSeries = false,
   transactionType,
   isLoading = false,
 }) => {
@@ -74,6 +74,16 @@ const ScopeModal: React.FC<ScopeModalProps> = ({
       : "transaction";
 
   const handleConfirm = () => {
+    // Non-series rows only expose "this only" in the UI — never honor a stale
+    // series scope left over from a previous delete in this session.
+    if (showOnlyThisOnly) {
+      onConfirm(
+        operationType === "delete"
+          ? DeleteScopeEnum.THIS_ONLY
+          : UpdateScopeEnum.THIS_ONLY,
+      );
+      return;
+    }
     onConfirm(selectedScope);
   };
 

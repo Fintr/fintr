@@ -16,6 +16,10 @@ import { getAccountCategoryIcon } from "@/utils/accountCategoryIcon";
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useAccountTransactions } from "@/hooks/async/useAccountTransactions";
 import { IndexTransaction, CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import {
+  transactionRowTitle,
+  transactionSecondaryLine,
+} from "@/utils/transactionDescription";
 import DayDivider from "@/components/ui/day-divider";
 import {
   formatTransactionDayDividerDate,
@@ -223,7 +227,18 @@ const AccountTransactions = ({
               textClassName="bg-gray-50 dark:bg-background"
             />
             <div className="space-y-2">
-              {transactionsByDate[date].map((transaction) => (
+              {transactionsByDate[date].map((transaction) => {
+                const rowTitle = transactionRowTitle({
+                  description: transaction.description,
+                  fallback: transaction.categoryName ?? "",
+                });
+                const secondaryLine = transactionSecondaryLine({
+                  description: transaction.description,
+                  entityName: transaction.entityName,
+                  categoryName: transaction.categoryName,
+                });
+
+                return (
                 <div 
                   key={transaction.id}
                   className="flex min-w-0 items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-50 dark:bg-muted dark:hover:bg-muted/80"
@@ -239,8 +254,11 @@ const AccountTransactions = ({
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-primary truncate md:truncate" title={transaction.description}>
-                        {transaction.description}
+                      <p
+                        className="text-sm font-medium text-primary truncate md:truncate"
+                        title={rowTitle}
+                      >
+                        {rowTitle}
                       </p>
                       {transaction.type === CombinedTransactionTypeEnum.TRANSFER ? (
                         <p className="text-xs text-gray-500 truncate" title={`${transaction.fromAccountName || 'Unknown'} → ${transaction.toAccountName || 'Unknown'}`}>
@@ -253,11 +271,11 @@ const AccountTransactions = ({
                             : transaction.categoryName
                           }
                         </p>
-                      ) : (
-                        <p className="text-xs text-gray-500 truncate" title={transaction.categoryName}>
-                          {transaction.categoryName}
+                      ) : secondaryLine ? (
+                        <p className="text-xs text-gray-500 truncate" title={secondaryLine}>
+                          {secondaryLine}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0 ml-2">
@@ -299,7 +317,8 @@ const AccountTransactions = ({
                     </p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

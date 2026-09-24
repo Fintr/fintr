@@ -1,9 +1,17 @@
-import { fetchTransactionCategories, updateTransactionCategory, deleteTransactionCategory, createTransactionCategory } from "@/services/transactions/categories/mutation";
+import { fetchTransactionCategories } from "@/services/transactions/categories/mutation";
+import { deleteCategoryLocalFirst } from "@/services/transactions/categories/delete-local-first";
+import { updateCategoryLocalFirst } from "@/services/transactions/categories/update-local-first";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
-import { normalizeCategoryTreeNodes } from "@/utils/categoryTreeOptions";
+import { loadCachedTransactionCategoriesResponse } from "@/services/transactions/categories/local-cache";
+import { createCategoryLocalFirst } from "@/services/transactions/categories/create-local-first";
+import { convertCategoryLocalFirst } from "@/services/transactions/categories/convert-local-first";
+import { extractCategoryTrees } from "@/services/transactions/categories/category-cache-ops";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import type { CategoryConversionType } from "@/types/categoryConversionTypes";
+import { mapApiCategoryTree } from "@/utils/categoryTreeOptions";
 
 export const useTransactionCategories = () => {
   const queryClient = useQueryClient();
@@ -12,99 +20,146 @@ export const useTransactionCategories = () => {
   });
   
   const [spaceCode] = useLocalStorage("spaceCode", "");
+
+  const localCategoriesQuery = useQuery({
+    queryKey: ["transactionCategories", "local", spaceCode],
+    queryFn: async () =>
+      (await loadCachedTransactionCategoriesResponse(spaceCode)) ?? null,
+    enabled: Boolean(spaceCode),
+    staleTime: Infinity,
+    networkMode: "always",
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCategoriesQuery, spaceCode);
   
   const { data, error, isLoading, isError, isSuccess, refetch } = useQuery({
     queryKey: ["transactionCategories", spaceCode],
     queryFn: () => fetchTransactionCategories(api),
-    enabled: !!spaceCode,
-    retry: 2, // Retry failed requests twice
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    enabled: !!spaceCode && !skipNetworkFetch,
+    placeholderData: localCategoriesQuery.data ?? undefined,
+    retry: 2,
+    refetchOnMount: !skipNetworkFetch,
+    staleTime: skipNetworkFetch ? Infinity : 30000,
+    networkMode: "always",
   });
 
-  // Mutation for creating categories
+  const categoriesResponse = localCategoriesQuery.data ?? data;
+
   const createCategoryMutation = useMutation({
     mutationFn: async ({
       name,
       categoryType,
       parentId,
+      icon,
+      color,
     }: {
       name: string;
       categoryType: CategoryTypeEnum;
       parentId?: string | null;
+      icon?: string;
+      color?: string;
     }) => {
-      try {
-        const result = await createTransactionCategory(api, { name, categoryType, parentId });
-        await queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
-        if (categoryType === CategoryTypeEnum.EXPENSE) {
-          await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        }
-        return result;
-      } catch (error) {
-        console.error("Error creating category:", error);
-        throw error;
-      }
-    },
-  });
-
-  // Mutation for updating categories
-  const updateCategoryMutation = useMutation({
-    mutationFn: async ({ categoryId, updateData }: { categoryId: string; updateData: { name: string } }) => {
-      await queryClient.cancelQueries({ queryKey: ["transactionCategories", spaceCode] });
-
-      const previousData = queryClient.getQueryData(["transactionCategories", spaceCode]);
-
-      queryClient.setQueryData(["transactionCategories", spaceCode], (old: any) => {
-        if (!old?.data) return old;
-
-        return {
-          ...old,
+      return createCategoryLocalFirst(
+        api,
+        {
+          spaceCode,
           data: {
-            ...old.data,
-            expenseCategories: old.data.expenseCategories?.map((category: any) =>
-              category.id === categoryId ? { ...category, name: updateData.name } : category
-            ) || [],
-            incomeCategories: old.data.incomeCategories?.map((category: any) =>
-              category.id === categoryId ? { ...category, name: updateData.name } : category
-            ) || [],
+            name,
+            categoryType,
+            parentId,
+            icon,
+            color,
           },
-        };
-      });
-
-      try {
-        const result = await updateTransactionCategory(api, categoryId, updateData);
-        return result;
-      } catch (err) {
-        if (previousData) {
-          queryClient.setQueryData(["transactionCategories", spaceCode], previousData);
-        }
-        throw err;
-      } finally {
-        await queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
-      }
+        },
+        { queryClient, waitForSync: false },
+      );
     },
+    networkMode: "always",
   });
 
-  // Mutation for deleting categories
+  const convertCategoryMutation = useMutation({
+    mutationFn: async ({
+      categoryId,
+      conversionType,
+      newParentId,
+    }: {
+      categoryId: string;
+      conversionType: CategoryConversionType;
+      newParentId?: string | null;
+    }) => {
+      return convertCategoryLocalFirst(
+        api,
+        {
+          spaceCode,
+          categoryId,
+          conversionType,
+          newParentId,
+        },
+        { queryClient, waitForSync: false },
+      );
+    },
+    networkMode: "always",
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({
+      categoryId,
+      updateData,
+    }: {
+      categoryId: string;
+      updateData: {
+        name: string;
+        icon?: string;
+        color?: string;
+      };
+    }) => {
+      return updateCategoryLocalFirst(
+        api,
+        {
+          spaceCode,
+          categoryId,
+          updateData,
+        },
+        { queryClient, waitForSync: false },
+      );
+    },
+    networkMode: "always",
+  });
+
   const deleteCategoryMutation = useMutation({
     mutationFn: async (categoryId: string) => {
-      try {
-        const result = await deleteTransactionCategory(api, categoryId);
-        if (result?.success === true) {
-          await queryClient.invalidateQueries({ queryKey: ["transactionCategories", spaceCode] });
-          await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      const result = await deleteCategoryLocalFirst(
+        api,
+        { spaceCode, categoryId },
+        { queryClient, waitForSync: false },
+      );
+
+      void result.syncPromise.then((synced) => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["budgets"] });
+
+        if (
+          synced.serverResponse
+          && typeof synced.serverResponse === "object"
+          && "success" in synced.serverResponse
+        ) {
+          return synced.serverResponse;
         }
-        return result;
-      } catch (err) {
-        console.error("Error deleting category:", err);
-        throw err;
-      }
+
+        return { success: true };
+      });
+
+      return { success: true, pendingSync: result.pendingSync };
     },
+    networkMode: "always",
   });
 
   // Log errors for debugging
   if (isError) {
     console.error('Transaction categories fetch error:', error);
   }
+
+  const categoryTrees = extractCategoryTrees(categoriesResponse);
 
   return { 
     data, 
@@ -113,14 +168,13 @@ export const useTransactionCategories = () => {
     isError, 
     isSuccess, 
     refetch,
-    expenseCategories: normalizeCategoryTreeNodes(
-      data?.data?.expenseCategories ?? data?.data?.expense_categories,
-    ),
-    incomeCategories: normalizeCategoryTreeNodes(
-      data?.data?.incomeCategories ?? data?.data?.income_categories,
-    ),
+    expenseCategories: categoryTrees.expenseCategories,
+    incomeCategories: categoryTrees.incomeCategories,
+    expenseCategoryOptions: mapApiCategoryTree(categoryTrees.expenseCategories),
+    incomeCategoryOptions: mapApiCategoryTree(categoryTrees.incomeCategories),
     updateCategoryMutation,
     deleteCategoryMutation,
     createCategoryMutation,
+    convertCategoryMutation,
   };
 };

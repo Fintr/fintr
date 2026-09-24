@@ -170,19 +170,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
     end
 
     before do
-      # Stub plug-and-play vision client (OpenAI or OpenRouter)
-      mock_vision_client = instance_double(OpenAI::Client)
-      allow(mock_vision_client).to receive(:chat).and_return({
-        "choices" => [
-          {
-            "message" => {
-              "content" => ai_response_content
-            }
-          }
-        ]
-      })
-      allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
-      allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
+      allow(::Ai::Llm::VisionClient).to receive(:ask).and_return(ai_response_content)
     end
 
     context "when all steps are successful" do
@@ -251,12 +239,9 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         end
       end
 
-      context "when call_openai_vision_api fails" do
+      context "when call_vision_chat fails" do
         before do
-          mock_vision_client = instance_double(OpenAI::Client)
-          allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
-          allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
-          allow(mock_vision_client).to receive(:chat).and_raise(StandardError, "API error")
+          allow(::Ai::Llm::VisionClient).to receive(:ask).and_raise(StandardError, "API error")
         end
 
         it "returns a failure" do
@@ -386,6 +371,51 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
       end
     end
 
+    describe "#fetch_space_merchants" do
+      before do
+        create(:entity, space:, full_name: "Whole Foods", entity_type: "transaction")
+        create(:entity, space:, full_name: "SM Cinema", entity_type: "transaction")
+        create(:entity, space:, full_name: "Loan Contact", entity_type: "loan")
+      end
+
+      it "returns transaction merchant names for the space" do
+        result = operation.__send__(:fetch_space_merchants, space:)
+        expect(result).to be_success
+        expect(result.value!).to eq([
+          { name: "SM Cinema", identifiers: [] },
+          { name: "Whole Foods", identifiers: [] }
+        ])
+      end
+
+      it "includes saved merchant identifiers" do
+        merchant = Entities::Entity.find_by!(space:, full_name: "Whole Foods")
+        create(
+          :merchant_alias,
+          space:,
+          entity: merchant,
+          scanned_name: "corporation a",
+          label: "CORPORATION A",
+        )
+
+        result = operation.__send__(:fetch_space_merchants, space:)
+        whole_foods = result.value!.find { |entry| entry[:name] == "Whole Foods" }
+
+        expect(whole_foods[:identifiers]).to eq(["CORPORATION A"])
+      end
+
+      context "when an error occurs" do
+        before do
+          allow(Entities::Entity).to receive(:transactions).and_raise(StandardError, "Database error")
+        end
+
+        it "returns failure with an error message" do
+          result = operation.__send__(:fetch_space_merchants, space:)
+          expect(result).to be_failure
+          expect(result.failure).to include(merchants_error: "Failed to fetch merchants")
+        end
+      end
+    end
+
     describe "#encode_image_to_base64" do
       let(:test_image_path) { Rails.root.join("spec/fixtures/files/test_image.png").to_s }
 
@@ -454,66 +484,53 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
       end
     end
 
-    describe "#call_openai_vision_api" do
+    describe "#call_vision_chat" do
       let(:base64_image) { "data:image/jpeg;base64,dummy_base64_image_data" }
       let(:space_categories) { ["Food", "Transport"] }
-      let(:mock_vision_client) { instance_double(OpenAI::Client) }
-      let(:mock_response) do
-        {
-          "choices" => [
-            {
-              "message" => {
-                "content" => <<~JSON
-                  {"total_amount": "50.00", "category": "Food", "confidence": "high"}
-                JSON
-              }
-            }
-          ]
-        }
-      end
+      let(:vision_content) { "{\"total_amount\": \"50.00\", \"category\": \"Food\", \"confidence\": \"high\"}" }
 
       before do
-        allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
-        allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
-        allow(mock_vision_client).to receive(:chat).and_return(mock_response)
+        allow(::Ai::Llm::VisionClient).to receive(:ask).and_return(vision_content)
       end
 
       it "calls vision API and returns success with content" do
-        result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+        result = operation.__send__(:call_vision_chat, base64_image:, space_categories:, space_accounts: [])
         expect(result).to be_success
         expect(result.value!).to eq("{\"total_amount\": \"50.00\", \"category\": \"Food\", \"confidence\": \"high\"}")
       end
 
-      it "calls vision API with temperature 0.0" do
-        expect(mock_vision_client).to receive(:chat) do |params|
-          expect(params[:parameters][:temperature]).to eq(0.0)
-          mock_response
-        end
+      it "sends the receipt image to the vision client" do
+        operation.__send__(:call_vision_chat, base64_image:, space_categories:, space_accounts: [])
 
-        operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+        expect(::Ai::Llm::VisionClient).to have_received(:ask).with(
+          instructions: a_string_including("Receipt OCR"),
+          prompt: a_string_including("Extract total"),
+          image: base64_image,
+          max_output_tokens: 220,
+        )
       end
 
       context "when vision API returns no content" do
         before do
-          allow(mock_vision_client).to receive(:chat).and_return({ "choices" => [{ "message" => { "content" => nil } }] })
+          allow(::Ai::Llm::VisionClient).to receive(:ask).and_return("")
         end
 
         it "returns failure" do
-          result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+          result = operation.__send__(:call_vision_chat, base64_image:, space_categories:, space_accounts: [])
           expect(result).to be_failure
-          expect(result.failure).to include(ai_error: 'No response from vision API')
+          expect(result.failure).to include(ai_error: "No response from vision API")
         end
       end
 
       context "when vision API call fails" do
         before do
-          allow(mock_vision_client).to receive(:chat).and_raise(StandardError, "API error")
+          allow(::Ai::Llm::VisionClient).to receive(:ask).and_raise(StandardError, "API error")
         end
 
         it "returns failure" do
-          result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+          result = operation.__send__(:call_vision_chat, base64_image:, space_categories:, space_accounts: [])
           expect(result).to be_failure
-          expect(result.failure).to include(ai_vision_error: 'Vision API call failed')
+          expect(result.failure).to include(ai_vision_error: "Vision API call failed")
         end
       end
     end
@@ -558,6 +575,41 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         it "builds the system prompt with default account 'Cash'" do
           result = operation.__send__(:build_vision_system_prompt, space_categories, space_accounts)
           expect(result).to include("default \"Cash\"")
+        end
+      end
+
+      context "when space_merchants are provided" do
+        let(:space_categories) { ["Groceries"] }
+        let(:space_merchants) { ["SM Cinema", "Whole Foods"] }
+
+        it "asks the model to match a known merchant" do
+          result = operation.__send__(
+            :build_vision_system_prompt,
+            space_categories,
+            [],
+            space_merchants,
+          )
+          expect(result).to include("SM Cinema, Whole Foods")
+          expect(result).to include("null if none match")
+        end
+      end
+
+      context "when merchants include identifiers" do
+        let(:space_categories) { ["Groceries"] }
+        let(:space_merchants) do
+          [
+            { name: "1855", identifiers: ["CORPORATION A"] }
+          ]
+        end
+
+        it "lists identifiers beside the merchant name" do
+          result = operation.__send__(
+            :build_vision_system_prompt,
+            space_categories,
+            [],
+            space_merchants,
+          )
+          expect(result).to include("1855 [CORPORATION A]")
         end
       end
     end
@@ -794,6 +846,114 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
           result = operation.__send__(:validate_extracted_data, parsed_data:, space_categories:, space_accounts:)
           expect(result).to be_success
           expect(result.value![:account][:value]).to eq("Cash")
+        end
+      end
+
+      context "when merchant matches a known merchant" do
+        let(:space_merchants) { ["SM Cinema", "Whole Foods"] }
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Cash",
+            "confidence" => "high",
+            "merchant_detected" => "1855 photo/cinema",
+            "merchant" => "sm cinema"
+          }
+        end
+
+        it "keeps the printed name and the matched merchant" do
+          result = operation.__send__(
+            :validate_extracted_data,
+            parsed_data:,
+            space_categories:,
+            space_accounts:,
+            space_merchants:,
+          )
+          expect(result).to be_success
+          expect(result.value![:merchant][:value]).to eq("1855 photo/cinema")
+          expect(result.value![:entity][:value]).to eq("SM Cinema")
+        end
+      end
+
+      context "when the printed name matches a known merchant" do
+        let(:space_merchants) { ["Whole Foods"] }
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Cash",
+            "confidence" => "high",
+            "merchant_detected" => "whole foods"
+          }
+        end
+
+        it "matches the known merchant from the printed name" do
+          result = operation.__send__(
+            :validate_extracted_data,
+            parsed_data:,
+            space_categories:,
+            space_accounts:,
+            space_merchants:,
+          )
+          expect(result).to be_success
+          expect(result.value![:entity][:value]).to eq("Whole Foods")
+        end
+      end
+
+      context "when the printed name matches a merchant identifier" do
+        let(:space_merchants) do
+          [
+            { name: "1855", identifiers: ["CORPORATION A"] }
+          ]
+        end
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Cash",
+            "confidence" => "high",
+            "merchant_detected" => "corporation a"
+          }
+        end
+
+        it "matches the merchant from the identifier" do
+          result = operation.__send__(
+            :validate_extracted_data,
+            parsed_data:,
+            space_categories:,
+            space_accounts:,
+            space_merchants:,
+          )
+          expect(result).to be_success
+          expect(result.value![:entity][:value]).to eq("1855")
+        end
+      end
+
+      context "when merchant is not in the known list" do
+        let(:space_merchants) { ["SM Cinema"] }
+        let(:parsed_data) do
+          {
+            "total_amount" => "25.00",
+            "category" => "Groceries",
+            "account" => "Cash",
+            "confidence" => "high",
+            "merchant_detected" => "1855 photo/cinema",
+            "merchant" => "Unknown Shop"
+          }
+        end
+
+        it "does not assign an entity" do
+          result = operation.__send__(
+            :validate_extracted_data,
+            parsed_data:,
+            space_categories:,
+            space_accounts:,
+            space_merchants:,
+          )
+          expect(result).to be_success
+          expect(result.value!).not_to have_key(:entity)
+          expect(result.value![:merchant][:value]).to eq("1855 photo/cinema")
         end
       end
     end

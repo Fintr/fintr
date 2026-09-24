@@ -16,7 +16,6 @@ module Finance
             :subscription_plan,
             slug: "premium-#{SecureRandom.hex(4)}",
             interval: "month",
-            token_limit: 1000,
             price_cents: 50000
           )
         end

@@ -6,7 +6,7 @@ RSpec.describe Finance::Operations::Subscriptions::GetCurrentSubscriptions, type
   let(:operation) { described_class.new }
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
-  let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
+  let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
 
   let(:valid_params) do
     {

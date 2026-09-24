@@ -9,7 +9,10 @@ module Transactions
             required(:space_id).filled(:string)
             required(:name).filled(:string)
             required(:category_type).filled(:string)
+            optional(:id).maybe(:string)
             optional(:parent_id).maybe(:string)
+            optional(:icon).maybe(:string)
+            optional(:color).maybe(:string)
           end
 
           rule(:category_type) do
@@ -37,6 +40,21 @@ module Transactions
         def create_category(params:)
           attrs = params.slice(:space_id, :name, :category_type, :parent_id)
           category = Transactions::Category.find_or_initialize_by(attrs)
+
+          if category.new_record?
+            category.id = params[:id] if params[:id].present?
+
+            appearance = Transactions::CategoryAppearance.resolve(
+              name: params[:name],
+              category_type: params[:category_type],
+              icon: params[:icon],
+              color: params[:color],
+            )
+
+            category.icon = appearance[:icon]
+            category.color = appearance[:color]
+          end
+
           category.save!
           Success(category)
         rescue ActiveRecord::ActiveRecordError => e

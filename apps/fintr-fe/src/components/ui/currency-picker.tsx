@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { ComboBox } from "@/components/ui/combobox";
-import {
-  CURRENCIES,
-  getCountryCodeForCurrency,
-  getFlagEmoji,
-} from "@/data/currencies";
+import React, { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
-const FLAG_NAME_GAP = "\u2002\u2002"; // en spaces between flag and name
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { CurrencySelectorSheet } from "@/components/ui/currency-selector-sheet";
+import { CurrencyFlag } from "@/components/ui/currency-flag";
+import { cn } from "@/lib/utils";
+import { CURRENCIES } from "@/data/currencies";
+import { formControlInteractiveSurfaceClassName } from "@/components/ui/form-control-surface";
 
 export interface CurrencyPickerProps {
   /** Current value: 3-letter ISO currency code (e.g. "PHP", "USD"). */
@@ -19,7 +20,7 @@ export interface CurrencyPickerProps {
   label?: string;
   /** Placeholder when empty. */
   placeholder?: string;
-  /** Extra class names for the input. */
+  /** Extra class names for the trigger. */
   className?: string;
   /** Disable the picker. */
   disabled?: boolean;
@@ -27,47 +28,65 @@ export interface CurrencyPickerProps {
 
 /**
  * Reusable searchable currency picker with flags and full names.
- * Uses the full ISO 4217 list from @/data/currencies; search is client-side.
- * Use in onboarding, settings, or any form (e.g. CURRENCIES1 flow).
+ * Opens a bottom sheet (mobile) or popover (desktop) with search and popular-first sort.
  */
 export function CurrencyPicker({
   value,
   onChange,
   label = "Currency",
-  placeholder = "Search by name or code (e.g. PHP, US Dollar)...",
+  placeholder = "Select currency",
   className,
   disabled = false,
 }: CurrencyPickerProps) {
-  const currencyOptions = useMemo(
-    () =>
-      CURRENCIES.map(({ code, name }) => {
-        const flag = getFlagEmoji(getCountryCodeForCurrency(code));
-        return {
-          label: flag
-            ? `${flag}${FLAG_NAME_GAP}${name} (${code})`
-            : `${name} (${code})`,
-          value: code,
-        };
-      }),
-    []
+  const [open, setOpen] = useState(false);
+
+  const selectedCurrency = useMemo(
+    () => CURRENCIES.find((currency) => currency.code === value),
+    [value],
   );
 
+  const displayLabel = useMemo(() => {
+    if (!selectedCurrency) {
+      return placeholder;
+    }
+
+    return (
+      <span className="flex min-w-0 items-center gap-2">
+        <CurrencyFlag currencyCode={selectedCurrency.code} size={20} />
+        <span className="truncate">
+          {selectedCurrency.name} ({selectedCurrency.code})
+        </span>
+      </span>
+    );
+  }, [placeholder, selectedCurrency]);
+
   return (
-    <ComboBox
-      filterType="frontend"
-      data={currencyOptions}
-      label={label}
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      minSearchLength={1}
-      showAllOnFocus
-      className={className}
-      disabled={disabled}
-      maxVisibleOptions={5}
-      getDisplayLabel={(code) =>
-        currencyOptions.find((o) => o.value === code)?.label ?? code
-      }
-    />
+    <div className="space-y-2">
+      {label ? (
+        <Label className="text-sm leading-none">{label}</Label>
+      ) : null}
+      <CurrencySelectorSheet
+        open={open}
+        onOpenChange={setOpen}
+        value={value}
+        onSelect={onChange}
+        trigger={
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled}
+            className={cn(
+              "h-10 w-full justify-between px-3 font-normal",
+              formControlInteractiveSurfaceClassName,
+              !selectedCurrency && "text-muted-foreground",
+              className,
+            )}
+          >
+            <span className="truncate">{displayLabel}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        }
+      />
+    </div>
   );
 }

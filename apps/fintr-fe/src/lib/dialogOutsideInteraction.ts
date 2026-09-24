@@ -4,7 +4,7 @@ export const isWithinDialogCompanionLayer = (target: EventTarget | null): boolea
   }
 
   const companions = document.querySelectorAll(
-    "[data-grid-picker-modal], [data-calculator-keyboard]",
+    "[data-grid-picker-modal], [data-calculator-keyboard], [data-image-crop-dialog]",
   );
 
   return Array.from(companions).some((layer) => layer.contains(target));

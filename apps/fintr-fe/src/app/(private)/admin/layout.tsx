@@ -43,6 +43,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: "/admin/sponsor-codes",
     },
     {
+      title: "Pro grants",
+      href: "/admin/pro-grants",
+    },
+    {
       title: "Free Subscriptions",
       href: "/admin/free-subscriptions",
     },

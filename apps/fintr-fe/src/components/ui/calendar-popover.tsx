@@ -55,6 +55,7 @@ export function CalendarPopover({
         <SheetTrigger asChild>{trigger}</SheetTrigger>
         <SheetContent
           side="bottom"
+          nestedOverlay
           overlayClassName="z-[125]"
           onOverlayClick={() => onOpenChange(false)}
           className={cn(bottomSheetCalendarClassName, contentClassName)}
@@ -68,7 +69,11 @@ export function CalendarPopover({
   return (
     <Popover modal={modal} open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align={align} className={cn("min-w-80 p-0", contentClassName)}>
+      <PopoverContent
+        nestedOverlay
+        align={align}
+        className={cn("min-w-80 p-0", contentClassName)}
+      >
         {children}
       </PopoverContent>
     </Popover>

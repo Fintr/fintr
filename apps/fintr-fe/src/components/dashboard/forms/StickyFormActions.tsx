@@ -16,8 +16,8 @@ export const pinnedFormScrollAreaClassName =
   "min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 pb-8";
 
 /**
- * Pinned form action bar for create/update modals that use CustomModal
- * `pinBodyLayout`. Stays visible while fields scroll above it.
+ * Pinned form action bar for create/update sheets and modals that pin
+ * body layout. Stays visible while fields scroll above it.
  * Pads above Android 3-button / gesture nav and iOS home-indicator.
  * When the soft keyboard is open, Android nav inset is omitted — the keyboard
  * already sits above system nav, so stacking that padding leaves a gap.

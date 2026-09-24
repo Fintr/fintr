@@ -1,0 +1,59 @@
+{
+  "id": "e3d2231c",
+  "phase": "completed",
+  "pageUrl": "/dashboard/insights",
+  "sourceFile": "src/components/dashboard/tabs/insights-tab.tsx",
+  "previewFile": null,
+  "previewMode": null,
+  "expectedVariants": 3,
+  "arrivedVariants": 3,
+  "visibleVariant": 1,
+  "paramValues": {},
+  "pendingEventSeq": null,
+  "pendingEvent": null,
+  "deliveryLease": null,
+  "checkpointRevision": 6,
+  "browserCheckpointRevision": 6,
+  "publicationCheckpointRevision": 0,
+  "activeOwner": "7d66706e",
+  "sourceMarkers": {},
+  "fallbackMode": null,
+  "generationPhase": "generation_ready",
+  "generationCompletedAt": 1786181539246,
+  "generationTimings": {
+    "picked_up": {
+      "at": 1786181510225,
+      "durationMs": null
+    },
+    "scaffolding": {
+      "at": 1786181510225,
+      "durationMs": null
+    },
+    "scaffold_fallback": {
+      "at": 1786181510472,
+      "durationMs": 245.64575000002515
+    },
+    "generation_ready": {
+      "at": 1786181510472,
+      "durationMs": null
+    }
+  },
+  "variantPlan": null,
+  "generationCanceled": true,
+  "generationCanceledAt": 1786181539127,
+  "cancelReason": "accept",
+  "annotationArtifacts": [],
+  "mountedVariants": [],
+  "mountFailures": [],
+  "renderState": "pending",
+  "diagnostics": [
+    {
+      "error": "carbonize_cleanup_required",
+      "file": "src/components/dashboard/tabs/insights-tab.tsx",
+      "message": "Accepted variant still has carbonize markers that must be folded into source CSS."
+    }
+  ],
+  "updatedAt": "2026-08-08T09:32:35.967Z",
+  "__journalBytes": 13382,
+  "__nextSeq": 18
+}

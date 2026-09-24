@@ -54,6 +54,31 @@ module Api
           }
         )
       end
+
+      # POST /api/v1/exchange_rates/batch
+      # Returns current rates for many pair/date combinations in one response.
+      def batch
+        requests = Array(params[:requests]).map do |row|
+          row = row.to_unsafe_h if row.respond_to?(:to_unsafe_h)
+          row = row.to_h if row.respond_to?(:to_h) && !row.is_a?(Hash)
+          row.symbolize_keys.slice(:from_currency, :to_currency, :date)
+        end
+
+        result = ::ExchangeRates::Operations::FetchBatchRates.new.call(
+          requests: requests,
+          space_id: current_space.id
+        )
+
+        return render_unprocessable_content(details: result.failure) unless result.success?
+
+        payload = result.value!
+        render_success(
+          data: {
+            rates: payload[:rates],
+            errors: payload[:errors]
+          }
+        )
+      end
     end
   end
 end

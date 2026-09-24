@@ -11,7 +11,8 @@ module Transactions
              :description,
              :to_account_name,
              :from_account_name,
-             :category_name
+             :category_name,
+             :created_at
 
       # Single display amount: always in space currency (backend decides; frontend reads one field).
       field :amount do |record|
@@ -68,6 +69,37 @@ module Transactions
         record.try(:loan_id)
       end
 
+      field :entity_id do |record|
+        transactable = record.transactable
+        next transactable.entity_id if transactable.respond_to?(:entity_id)
+        next transactable.loan.entity_id if transactable.respond_to?(:loan) && transactable.loan.present?
+
+        nil
+      end
+
+      field :account_id do |record|
+        transactable = record.transactable
+        next transactable.account_id if transactable.respond_to?(:account_id)
+
+        nil
+      end
+
+      field :from_account_id do |record|
+        transactable = record.transactable
+        next transactable.from_account_id if transactable.respond_to?(:from_account_id)
+        next transactable.account_id if record.transactable_type == "Transactions::Expense"
+
+        nil
+      end
+
+      field :to_account_id do |record|
+        transactable = record.transactable
+        next transactable.to_account_id if transactable.respond_to?(:to_account_id)
+        next transactable.account_id if record.transactable_type == "Transactions::Income"
+
+        nil
+      end
+
       field :entity_name do |record|
         record.try(:entity_name)
       end
@@ -88,6 +120,54 @@ module Transactions
         record.in_series?
       end
 
+      field :parent_id do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:parent_id)
+
+        transactable.parent_id&.to_s
+      end
+
+      field :schedule_type do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:schedule_type)
+
+        transactable.schedule_type
+      end
+
+      field :repeat_interval do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:repeat_interval)
+
+        transactable.repeat_interval
+      end
+
+      field :installment_period do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:installment_period)
+
+        transactable.installment_period
+      end
+
+      field :installment_total do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:installment_total_cents)
+
+        Utils::InstallmentPlan.series_installment_total_amount(transaction: transactable)
+      end
+
+      field :root_parent_id do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:parent_id)
+
+        if transactable.parent_id.present?
+          transactable.parent_id.to_s
+        elsif transactable.respond_to?(:repeat?) && transactable.repeat?
+          record.transactable_id.to_s
+        elsif transactable.respond_to?(:installment?) && transactable.installment?
+          record.transactable_id.to_s
+        end
+      end
+
       field :has_image do |record|
         record.transactable.respond_to?(:files) && record.transactable.files.attached?
       end
@@ -97,7 +177,13 @@ module Transactions
       end
 
       field :calculated do |record|
-        record.transactable.respond_to?(:balance_state) && record.transactable.balance_state == "calculated"
+        transactable = record.transactable
+
+        if %w[Transactions::Loan Transactions::LoanPayment].include?(record.transactable_type)
+          true
+        else
+          transactable.respond_to?(:balance_state) && transactable.balance_state == "calculated"
+        end
       end
 
       field :subcategory_name do |record|
@@ -106,6 +192,25 @@ module Transactions
         next nil if transactable.subcategory_id.blank?
 
         transactable.subcategory&.name
+      end
+
+      field :category_id do |record|
+        record.category_id
+      end
+
+      field :subcategory_id do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:subcategory_id)
+        next nil if transactable.subcategory_id.blank?
+
+        transactable.subcategory_id
+      end
+
+      field :tags do |record|
+        transactable = record.transactable
+        next [] unless transactable.respond_to?(:tags)
+
+        Transactions::Serializers::TagSerializer.render_as_hash(transactable.tags)
       end
     end
   end

@@ -26,7 +26,7 @@ module Spaces
       def call(params)
         validated_params = step validate(params:)
 
-        transaction do
+        result = transaction do
           inviter        = step find_inviter(validated_params)
           target_user    = step find_user(validated_params)
           space_user     = step create_invitation(validated_params, target_user, inviter)
@@ -38,6 +38,14 @@ module Spaces
             space_user: space_user
           }
         end
+
+        Achievements::EventHook.evaluate(
+          user_id: validated_params[:user_id],
+          space_id: validated_params[:space_id],
+          event: "access_granted",
+        )
+
+        result
       end
 
       private

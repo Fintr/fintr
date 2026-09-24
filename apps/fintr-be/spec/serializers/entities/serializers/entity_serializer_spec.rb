@@ -32,7 +32,9 @@ RSpec.describe Entities::Serializers::EntitySerializer do
     expected_keys = [
       :id,
       :full_name,
-      :entity_type
+      :entity_type,
+      :photo_url,
+      :identifiers
     ]
     expect(serialized_hash.keys).to match_array(expected_keys)
   end
@@ -56,6 +58,31 @@ RSpec.describe Entities::Serializers::EntitySerializer do
     end
   end
 
+  context 'when the merchant has identifiers' do
+    let(:entity) do
+      create(
+        :entity,
+        space: space,
+        full_name: '1855',
+        entity_type: 'transaction'
+      )
+    end
+
+    before do
+      create(
+        :merchant_alias,
+        space: space,
+        entity: entity,
+        scanned_name: 'corporation a',
+        label: 'CORPORATION A'
+      )
+    end
+
+    it 'includes the identifier label' do
+      expect(serialized_hash[:identifiers].map { |row| row[:label] }).to eq(['CORPORATION A'])
+    end
+  end
+
   context 'when entity has nil values' do
     let(:entity) do
       create(
@@ -70,6 +97,7 @@ RSpec.describe Entities::Serializers::EntitySerializer do
       expect(serialized_hash).to have_key(:id)
       expect(serialized_hash).to have_key(:full_name)
       expect(serialized_hash).to have_key(:entity_type)
+      expect(serialized_hash).to have_key(:photo_url)
     end
   end
 end

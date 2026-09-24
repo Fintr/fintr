@@ -48,6 +48,48 @@ export const hasFieldValidationErrors = (error: any): boolean => {
  * Formats an API error object into a readable message.
  * Supports responses with shape: error.response.data.error.{message,details}
  */
+const INTERNAL_DETAIL_KEYS = new Set(["expected", "error"]);
+
+const FIELD_LABELS: Record<string, string> = {
+  label: "Identifier",
+};
+
+const formatFieldDetailMessage = (key: string, message: string): string => {
+  const fieldLabel = FIELD_LABELS[key] ?? key;
+
+  if (
+    message.startsWith("cannot") ||
+    message.startsWith("must") ||
+    message.startsWith("already")
+  ) {
+    return `${fieldLabel} ${message}`;
+  }
+
+  return message;
+};
+
+const formatDetailEntry = (key: string, value: unknown): string[] => {
+  if (INTERNAL_DETAIL_KEYS.has(key)) {
+    return [];
+  }
+
+  if (typeof value === "boolean") {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => formatFieldDetailMessage(key, String(item)));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.values(value).map((item) =>
+      formatFieldDetailMessage(key, String(item)),
+    );
+  }
+
+  return [formatFieldDetailMessage(key, String(value))];
+};
+
 export const formatApiErrorMessage = (
   error: any,
   fallbackMessage: string
@@ -72,17 +114,7 @@ export const formatApiErrorMessage = (
 
   if (details) {
     const detailMessages = Object.entries(details)
-      .flatMap(([key, value]) => {
-        if (Array.isArray(value)) {
-          return value.map((item) => `${key}: ${String(item)}`);
-        }
-
-        if (value && typeof value === "object") {
-          return Object.values(value).map((item) => `${key}: ${String(item)}`);
-        }
-
-        return [`${key}: ${String(value)}`];
-      })
+      .flatMap(([key, value]) => formatDetailEntry(key, value))
       .filter((message) => message.length > 0);
 
     if (detailMessages.length > 0) {

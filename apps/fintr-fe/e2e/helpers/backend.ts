@@ -3,8 +3,8 @@ import { Page, request } from "@playwright/test"
 const BE_URL = process.env.E2E_BE_URL || "http://localhost:3000"
 
 /**
- * Creates or retrieves the e2e test user in the backend.
- * Returns user details including user_id, email, auth_id, and space_code.
+ * Loads the personal workspace user Playwright signs in as
+ * (`miguel.dagatan@gmail.com` / `miguel-dagatan-gmail-com-personal-space`).
  */
 export async function getOrCreateTestUser(): Promise<{
   user_id: string

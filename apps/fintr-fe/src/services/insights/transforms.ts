@@ -1,22 +1,41 @@
 import { getColorByIndex } from "@/lib/utils";
+import type { InsightCard } from "./types";
 
 const parsePercentage = (value: string | undefined): number => {
   if (!value) return 0;
   return parseFloat(value.replace("%", ""));
 };
 
+const parseWeeklyAmount = (value: string | number): number => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const parsed = parseFloat(String(value).replace(/,/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const aggregateWeeklySpending = (
   spending:
-    | Array<{ date: string; amount: string }>
+    | Array<{ date: string; amount: string | number }>
     | undefined,
 ): { day: string; amount: number }[] => {
-  if (!spending) return [];
+  if (!spending?.length) {
+    return [];
+  }
+
+  if (spending.length === 7) {
+    return spending.map((item) => ({
+      day: item.date.slice(0, 3),
+      amount: parseWeeklyAmount(item.amount),
+    }));
+  }
 
   const aggregation: Record<string, number> = {};
 
   spending.forEach((item) => {
     const day = item.date.slice(0, 3);
-    const amount = parseFloat(item.amount);
+    const amount = parseWeeklyAmount(item.amount);
     aggregation[day] = (aggregation[day] || 0) + amount;
   });
 
@@ -245,6 +264,10 @@ export const transformNarratives = (apiData: {
     action_label?: string;
     actionHref?: string;
     action_href?: string;
+    profileKey?: string;
+    profile_key?: string;
+    imageKey?: string;
+    image_key?: string;
   }>;
   dataQuality?: {
     transactionCount?: number;
@@ -279,6 +302,10 @@ export const transformNarratives = (apiData: {
       body: card.body,
       actionLabel: card.actionLabel ?? card.action_label ?? "",
       actionHref: card.actionHref ?? card.action_href ?? "",
+      profileKey: (card.profileKey ?? card.profile_key) as
+        | InsightCard["profileKey"]
+        | undefined,
+      imageKey: card.imageKey ?? card.image_key,
     })) || [],
   dataQuality: {
     transactionCount:

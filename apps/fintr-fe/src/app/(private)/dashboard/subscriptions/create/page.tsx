@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeStoreCheckout } from "@/components/settings/native-store-checkout";
+import { useNativeCheckoutGate } from "@/hooks/useNativeCheckoutGate";
 import { useSubscriptionPlans, useCreateSubscription } from "@/hooks/async/useSubscriptions";
 import { SubscriptionPlan } from "@/services/finance/subscriptions/queries";
+import { proYearlySavingsPercent } from "@/lib/pro-plan-pricing";
 import { formatCurrency } from "@/lib/utils";
 import { buildSubscriptionRedirectUrl, openUrl } from "@/lib/capacitor";
 import { Check, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Tag } from "lucide-react";
@@ -18,6 +21,7 @@ type WizardStep = "plan" | "review";
 
 const CreateSubscriptionPage = () => {
   const router = useRouter();
+  const checkoutGate = useNativeCheckoutGate();
   const [currentStep, setCurrentStep] = useState<WizardStep>("plan");
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [promoCode, setPromoCode] = useState("");
@@ -25,6 +29,7 @@ const CreateSubscriptionPage = () => {
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
   const { plans, isLoading: isLoadingPlans, isError: isPlansError, error: plansError } = useSubscriptionPlans();
+  const yearlySavings = proYearlySavingsPercent(plans);
   const { createSubscription, isCreating, data: subscriptionData } = useCreateSubscription();
 
   useEffect(() => {
@@ -121,6 +126,10 @@ const CreateSubscriptionPage = () => {
       setCurrentStep("plan");
     }
   };
+
+  if (checkoutGate !== "web") {
+    return <NativeStoreCheckout openPaywall={checkoutGate === "native"} />;
+  }
 
   // Show redirecting overlay if we're redirecting
   if (isRedirecting && redirectUrl) {
@@ -282,12 +291,17 @@ const CreateSubscriptionPage = () => {
                           <div className="text-sm text-primary mt-1">
                             per {plan.interval}
                           </div>
+                          {plan.interval === "year" && yearlySavings != null ? (
+                            <div className="text-sm font-medium text-teal-600 dark:text-teal-500 mt-1">
+                              saves {yearlySavings}%
+                            </div>
+                          ) : null}
                         </div>
                         <div className="pt-4 border-t">
                           <div className="flex items-center space-x-2">
                             <Check className="h-5 w-5 text-green-600" />
                             <span className="text-primary">
-                              {plan.tokenLimit.toLocaleString()} tokens included
+                              Fintr Pro
                             </span>
                           </div>
                         </div>
@@ -324,7 +338,7 @@ const CreateSubscriptionPage = () => {
                       {selectedPlan.interval}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {selectedPlan.tokenLimit} tokens included
+                      Fintr Pro
                     </p>
                   </div>
                 </div>

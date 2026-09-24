@@ -4,32 +4,64 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  Calendar as CalendarLucide,
-  Percent,
-  FileText,
-} from "lucide-react";
-import AddTransactionDialog from "@/components/dashboard/add-transaction-dialog";
+import { Plus } from "lucide-react";
+import { AddLoanDialog } from "@/components/dashboard/forms/add-loan-dialog";
 import { useInfiniteLoans } from "@/hooks/async/useInfiniteLoans";
-import { formatCurrency } from "@/lib/utils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useQueryClient } from "@tanstack/react-query";
-import EditLoanModal from "@/components/dashboard/forms/EditLoanModal";
-import DeleteLoanModal from "@/components/dashboard/forms/DeleteLoanModal";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { deleteLoan } from "@/services/loans/mutation";
-import { formatLoanTerm } from "@/utils/formatLoanTerm";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { deleteLoanLocalFirst } from "@/services/loans/delete-local-first";
+import { LoanProfilesSection } from "@/components/dashboard/tabs/loans/loan-profiles-section";
+import { LoanUpcomingSections } from "@/components/dashboard/tabs/loans/loan-upcoming-sections";
+import { LoanListRow } from "@/components/dashboard/tabs/loans/loan-list-row";
+import {
+  LoanListFilter as LoanListFilterTabs,
+  loanListFilterEmptyMessage,
+  type LoanListFilter,
+} from "@/components/dashboard/tabs/loans/loan-list-filter";
+import { getAllLoansSectionCopy } from "@/components/dashboard/tabs/loans/loan-all-loans-section-copy";
+import type { Loan } from "@/services/loans/queries";
+import { cn } from "@/lib/utils";
+import {
+  excludeLoansById,
+  getFeaturedUpcomingLoanIds,
+  partitionAndSortLoans,
+} from "@/utils/loan-upcoming-deadlines";
+import { buildLoanDetailHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
+import { usePrefetchDetailHrefs } from "@/hooks/usePrefetchDetailHrefs";
 
 interface LoansTabProps {}
+
+const filterLoansForInsights = (
+  loans: Loan[],
+  filter: LoanListFilter,
+): Loan[] => {
+  if (filter === "paid_off") {
+    return [];
+  }
+
+  const activeLoans = loans.filter((loan) => loan.status === "active");
+
+  if (filter === "borrowed") {
+    return activeLoans.filter((loan) => loan.loanType === "borrowed");
+  }
+
+  if (filter === "lent") {
+    return activeLoans.filter((loan) => loan.loanType === "lent");
+  }
+
+  return activeLoans;
+};
 
 const LoansTab = ({}: LoansTabProps) => {
   const router = useRouter();
   const [isAddLoanOpen, setIsAddLoanOpen] = React.useState(false);
+  const [loanFilter, setLoanFilter] = React.useState<LoanListFilter>("all");
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
   const {
     loans,
@@ -41,8 +73,16 @@ const LoansTab = ({}: LoansTabProps) => {
     hasNextPage,
   } = useInfiniteLoans({ loadMoreRef });
 
+  const detailPrefetchHrefs = React.useMemo(
+    () => loans.map((loan) => buildLoanDetailHref(loan.id)),
+    [loans],
+  );
+
+  usePrefetchDetailHrefs(detailPrefetchHrefs);
+
   const isLoading = isFetching && loans.length === 0;
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions write:transactions",
   });
@@ -58,247 +98,249 @@ const LoansTab = ({}: LoansTabProps) => {
     if (!api) {
       throw new Error("API not available");
     }
-    const response = await deleteLoan(api, loanId);
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
-    queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    return response;
+
+    const loan = loans.find((row) => row.id === loanId);
+    if (!loan || !spaceCode) {
+      throw new Error("Loan not found");
+    }
+
+    const result = await deleteLoanLocalFirst(
+      api,
+      { spaceId: spaceCode, loan },
+      { queryClient, waitForSync: false },
+    );
+
+    void Promise.resolve(result.syncPromise)
+      .then(async (synced) => {
+        if (synced.pendingSync) {
+          return;
+        }
+        await queryClient.invalidateQueries({ queryKey: ["loans"] });
+        await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      })
+      .catch(() => undefined);
+
+    return { success: true, pendingSync: result.pendingSync };
   };
 
-  const sortedLoans = React.useMemo(() => {
-    return [...loans].sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      return dateB - dateA;
-    });
-  }, [loans]);
+  const { activeLoans, completedLoans } = React.useMemo(() => {
+    if (loanFilter === "paid_off") {
+      const completed = loans
+        .filter((loan) => loan.status === "paid_off" || loan.status === "defaulted")
+        .sort((left, right) => {
+          const leftDate = left.paidOffDate
+            ? new Date(left.paidOffDate).getTime()
+            : new Date(left.date).getTime();
+          const rightDate = right.paidOffDate
+            ? new Date(right.paidOffDate).getTime()
+            : new Date(right.date).getTime();
+          return rightDate - leftDate;
+        });
 
-  let lastDisplayedDate: string | null = null;
+      return { activeLoans: [], completedLoans: completed };
+    }
+
+    return partitionAndSortLoans(loans, {
+      includeCompleted: loanFilter === "all",
+      loanType:
+        loanFilter === "borrowed"
+          ? "borrowed"
+          : loanFilter === "lent"
+            ? "lent"
+            : undefined,
+    });
+  }, [loanFilter, loans]);
+
+  const loansForInsights = React.useMemo(
+    () => filterLoansForInsights(loans, loanFilter),
+    [loanFilter, loans],
+  );
+
+  const showInsights =
+    loanFilter !== "paid_off" && loansForInsights.length > 0;
+
+  const featuredUpcomingLoanIds = React.useMemo(() => {
+    if (!showInsights) {
+      return new Set<string>();
+    }
+
+    return getFeaturedUpcomingLoanIds(loansForInsights, {
+      loanType:
+        loanFilter === "borrowed"
+          ? "borrowed"
+          : loanFilter === "lent"
+            ? "lent"
+            : undefined,
+    });
+  }, [loanFilter, loansForInsights, showInsights]);
+
+  const listActiveLoans = React.useMemo(
+    () => excludeLoansById(activeLoans, featuredUpcomingLoanIds),
+    [activeLoans, featuredUpcomingLoanIds],
+  );
+
+  const allLoansSectionCopy = React.useMemo(
+    () =>
+      getAllLoansSectionCopy(loanFilter, {
+        hasFeaturedUpcoming: featuredUpcomingLoanIds.size > 0,
+        hasRemainingLoans: listActiveLoans.length > 0,
+      }),
+    [featuredUpcomingLoanIds.size, listActiveLoans.length, loanFilter],
+  );
+
+  const openLoan = (loanId: string) => {
+    pushDashboardDetail(router, buildLoanDetailHref(loanId));
+  };
+
+  const hasVisibleLoans =
+    activeLoans.length > 0 || completedLoans.length > 0;
 
   return (
-    <Card className="border-0 px-2 shadow-none bg-transparent">
+    <Card className="border-0 bg-transparent px-2 shadow-none">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Loans</CardTitle>
-          <CardDescription>
-            Manage your borrowed and lent money
-          </CardDescription>
         </div>
         <Button
           onClick={() => setIsAddLoanOpen(true)}
           className="bg-primary hover:bg-primary/80"
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Add Loan
         </Button>
       </CardHeader>
       <CardContent>
         {isLoading && (
-          <div className="flex justify-center items-center py-12">
+          <div className="flex items-center justify-center py-12">
             <LoadingSpinner />
           </div>
         )}
 
         {isError && (
-          <div className="text-center py-12">
-            <p className="text-red-900 mb-4">Error loading loans</p>
+          <div className="py-12 text-center">
+            <p className="mb-4 text-red-900">Error loading loans</p>
             <Button onClick={() => refetch()} variant="outline">
               Retry
             </Button>
           </div>
         )}
 
-        {isSuccess && sortedLoans.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-muted-foreground mb-4">
+        {isSuccess && loans.length > 0 ? (
+          <div className="mb-4">
+            <LoanListFilterTabs value={loanFilter} onChange={setLoanFilter} />
+          </div>
+        ) : null}
+
+        {isSuccess && loans.length === 0 && (
+          <div className="py-12 text-center">
+            <p className="mb-4 text-gray-500 dark:text-muted-foreground">
               No loans yet
             </p>
-            <p className="text-sm text-gray-400 dark:text-muted-foreground">
-              Start tracking your loans by clicking &quot;Add Loan&quot;
+            <p className="mb-4 text-sm text-gray-400 dark:text-muted-foreground">
+              Start tracking your loans by adding your first one.
+            </p>
+            <Button onClick={() => setIsAddLoanOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Loan
+            </Button>
+          </div>
+        )}
+
+        {isSuccess && loans.length > 0 && !hasVisibleLoans && (
+          <div className="py-12 text-center">
+            <p className="text-gray-500 dark:text-muted-foreground">
+              {loanListFilterEmptyMessage(loanFilter)}
             </p>
           </div>
         )}
 
-        {isSuccess && sortedLoans.length > 0 && (
+        {isSuccess && hasVisibleLoans && (
           <div className="space-y-2">
-            {sortedLoans.map((loan, idx) => {
-              const loanDate = new Date(loan.date);
-              const currentDate = loanDate.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              });
-              let showDivider = false;
+            {showInsights ? (
+              <>
+                <LoanProfilesSection loans={loansForInsights} />
+                <LoanUpcomingSections loans={loansForInsights} />
+              </>
+            ) : null}
 
-              if (currentDate !== lastDisplayedDate) {
-                showDivider = true;
-                lastDisplayedDate = currentDate;
-              }
-
-              const isBorrowed = loan.loanType === "borrowed";
-              const colorClass = isBorrowed ? "bg-red-900" : "bg-teal-600";
-              const textColorClass = isBorrowed
-                ? "text-red-900 dark:text-red-700"
-                : "text-teal-600 dark:text-teal-500";
-              const statusColorClass =
-                loan.status === "paid_off"
-                  ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400"
-                  : loan.status === "defaulted"
-                    ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-700"
-                    : "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400";
-
-              return (
-                <React.Fragment key={loan.id}>
-                  {showDivider && (
-                    <div
-                      key={`divider-${currentDate}-${idx}`}
-                      className="flex items-center my-5"
-                    >
-                      <div
-                        className="border-t border-gray-300 dark:border-border"
-                        style={{ width: "2rem" }}
-                      />
-                      <span className="text-xs font-semibold text-primary bg-background px-3">
-                        {currentDate}
-                      </span>
-                      <div className="flex-grow border-t border-gray-300 dark:border-border" />
-                    </div>
-                  )}
-                  <div
-                    className="flex min-h-[80px] items-center justify-between rounded bg-white p-3 transition-colors hover:bg-gray-100 dark:bg-card dark:hover:bg-accent/50 cursor-pointer"
-                    onClick={() =>
-                      router.push(
-                        `/dashboard/loans/detail?loanId=${loan.id}`,
-                      )
-                    }
-                  >
-                    <div
-                      className={`w-1 rounded mr-3 flex-shrink-0 self-stretch ${colorClass}`}
+            {activeLoans.length > 0 ? (
+              <section
+                className={cn(
+                  "space-y-2",
+                  showInsights ? "mt-8" : undefined,
+                )}
+              >
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-primary">
+                    {allLoansSectionCopy.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {allLoansSectionCopy.description}
+                  </p>
+                </div>
+                {listActiveLoans.length > 0 ? (
+                  listActiveLoans.map((loan) => (
+                    <LoanListRow
+                      key={loan.id}
+                      loan={loan}
+                      variant="active"
+                      onOpen={openLoan}
+                      onDelete={handleDeleteLoan}
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-auto min-w-0">
-                          <h4 className="font-medium text-sm text-primary truncate">
-                            {loan.entityName}
-                          </h4>
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${statusColorClass}`}
-                          >
-                            {loan.status.replace("_", " ")}
-                          </span>
-                        </div>
-                        <div
-                          className={`font-semibold text-sm ${textColorClass} flex-shrink-0`}
-                        >
-                          {formatCurrency(
-                            loan.outstandingBalance,
-                            loan.outstandingBalanceCurrency,
-                          )}
-                        </div>
-                      </div>
+                  ))
+                ) : (
+                  <p className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
+                    {allLoansSectionCopy.emptyMessage ??
+                      "All active loans are listed above."}
+                  </p>
+                )}
+              </section>
+            ) : null}
 
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 dark:text-muted-foreground relative">
-                        <div className="flex items-center gap-1">
-                          <CalendarLucide className="h-3 w-3" />
-                          <span>
-                            {loanDate.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Percent className="h-3 w-3" />
-                          <span>{loan.interestRate}%</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">Principal:</span>
-                          <span>
-                            {formatCurrency(
-                              loan.principalAmount,
-                              loan.principalAmountCurrency,
-                            )}
-                          </span>
-                        </div>
-                        {loan.description && (
-                          <div className="hidden md:flex items-center gap-1 flex-1 min-w-0">
-                            <FileText className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{loan.description}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {loan.description && (
-                        <div className="md:hidden flex items-center gap-1 mt-1 mb-1 text-xs text-gray-600 dark:text-muted-foreground">
-                          <FileText className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{loan.description}</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between gap-3 mt-2 text-xs">
-                        <div className="flex items-center gap-3">
-                          <span className={`${textColorClass} font-medium`}>
-                            {isBorrowed ? "Borrowed" : "Lent"}
-                          </span>
-                          <span className="text-gray-500 dark:text-muted-foreground">
-                            <span className="font-medium">Term:</span>{" "}
-                            {formatLoanTerm(loan.loanTermMonths)}
-                          </span>
-                          <span className="text-gray-500 dark:text-muted-foreground">
-                            Matures:{" "}
-                            {new Date(loan.maturityDate).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )}
-                          </span>
-                          {loan.files && loan.files.length > 0 && (
-                            <span className="text-gray-500 dark:text-muted-foreground">
-                              {loan.files.length} file
-                              {loan.files.length > 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          className="flex items-center gap-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <EditLoanModal loan={loan} />
-                          <DeleteLoanModal
-                            loan={loan}
-                            onDelete={handleDeleteLoan}
-                          />
-                        </div>
-                      </div>
-                    </div>
+            {completedLoans.length > 0 ? (
+              <section className="mt-8 space-y-2">
+                {loanFilter === "all" ? (
+                  <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-primary">
+                      Completed
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Loans you have fully paid off or retired
+                    </p>
                   </div>
-                </React.Fragment>
-              );
-            })}
+                ) : null}
+                {completedLoans.map((loan) => (
+                  <LoanListRow
+                    key={loan.id}
+                    loan={loan}
+                    variant="completed"
+                    onOpen={openLoan}
+                    onDelete={handleDeleteLoan}
+                  />
+                ))}
+              </section>
+            ) : null}
+
             <div ref={loadMoreRef} className="h-4" />
             {isFetchingNextPage && (
-              <div className="flex justify-center items-center py-4">
+              <div className="flex items-center justify-center py-4">
                 <LoadingSpinner />
               </div>
             )}
-            {!hasNextPage && sortedLoans.length > 0 && (
-              <div className="text-center py-4 text-sm text-gray-500 dark:text-muted-foreground">
+            {!hasNextPage && loans.length > 0 && loanFilter !== "paid_off" ? (
+              <div className="py-4 text-center text-sm text-gray-500 dark:text-muted-foreground">
                 No more loans to load
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </CardContent>
 
-      <AddTransactionDialog
+      <AddLoanDialog
         isOpen={isAddLoanOpen}
         onClose={() => setIsAddLoanOpen(false)}
-        initialTransactionType="loan"
-        onAddTransaction={handleAddLoanSuccess}
+        onSuccess={handleAddLoanSuccess}
       />
     </Card>
   );

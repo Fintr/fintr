@@ -22,7 +22,7 @@ GIT_DIR="$(git rev-parse --git-dir)"
 [[ -f "${GIT_DIR}/CHERRY_PICK_HEAD" ]] && exit 0
 
 if [[ ! -f "${OUT_DIR}/graph.json" ]]; then
-  echo "pre-commit (graphify): skip — ${OUT_DIR}/graph.json missing (run: graphify extract . --code-only)"
+  echo "pre-commit (graphify): skip — ${OUT_DIR}/graph.json missing (run: graphify extract . --backend openai)"
   exit 0
 fi
 
@@ -87,6 +87,12 @@ export GRAPHIFY_CHANGED="${NON_GRAPH}"
 # every commit so the hook stays fast and the working tree stays clean.
 export GRAPHIFY_NO_BACKUP=1
 
+# Doc / paper / image changes need an LLM semantic pass. Pre-commit keeps the
+# code graph fresh (AST only) and warns when docs changed so the semantic layer
+# is not silently left stale.
+DOC_GLOBS='\.md$|\.mdx$|\.txt$|\.rst$|\.html$|\.qmd$|\.pdf$'
+DOC_CHANGES="$(printf '%s\n' "${NON_GRAPH}" | grep -E "${DOC_GLOBS}" || true)"
+
 echo "pre-commit (graphify): rebuilding knowledge graph for staged source changes..."
 
 if ! "${GRAPHIFY_PYTHON}" -c "
@@ -118,4 +124,10 @@ if git diff --cached --quiet -- "${OUT_DIR}"; then
   echo "pre-commit (graphify): graph unchanged"
 else
   echo "pre-commit (graphify): staged ${OUT_DIR} updates for this commit"
+fi
+
+if [[ -n "${DOC_CHANGES}" ]]; then
+  echo "pre-commit (graphify): note — doc/text files changed; AST hook does not refresh semantic doc nodes." >&2
+  echo "  Re-run: set -a && source apps/fintr-be/.env && set +a && graphify extract . --backend openai" >&2
+  echo "  Then: git add graphify-out/ && git commit --amend --no-edit   # or a follow-up commit" >&2
 fi

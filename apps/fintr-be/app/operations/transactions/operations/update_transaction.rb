@@ -31,6 +31,8 @@ module Transactions
       end
 
       include FailureHandler
+      include Concerns::ResolvesTransactionEntity
+      include Concerns::SyncsTransactionTags
       include Dry::Operation::Extensions::ActiveRecord
 
       CONVERSION_PARAMS = %i[original_currency exchange_rate exchange_rate_source].freeze
@@ -38,20 +40,53 @@ module Transactions
       def call(params)
         transaction = transaction do
           params              = step validate(params:)
+          params              = step resolve_transaction_entity(params:)
           transaction         = step find_transaction(params:)
           space               = step find_space(params:)
           assignment          = step resolve_category_assignment(params:)
           account             = step find_account(params:)
-          _                   = step ensure_account_currency_matches_original(transaction:, account:)
-          params              = step transform_params(params:, transaction:, assignment:, account:, space:)
+          conversion_data     = step prepare_conversion_data(params:, account:)
+          params              = step transform_params(
+                                  params:,
+                                  transaction:,
+                                  assignment:,
+                                  account:,
+                                  space:,
+                                  conversion_data:,
+                                )
           changed_transaction = step initialize_update_transaction(transaction:, params:)
+          changed_transaction = step sync_installment_total_for_this_only(
+                                  transaction: changed_transaction,
+                                  params:,
+                                )
           _                   = step validate_installment_not_changed(transaction: changed_transaction)
+          changed_transaction = step revise_installment_plan_if_needed(
+                                  transaction: changed_transaction,
+                                  params:,
+                                )
+          conversion_data     = step sync_conversion_to_revised_amount(
+                                  transaction: changed_transaction,
+                                  conversion_data:,
+                                )
           changed_transaction = step update_schedule(transaction: changed_transaction, params:)
           changed_transaction = step update_balance_state(transaction: changed_transaction)
           _                   = step adjust_balance(transaction: changed_transaction)
+          _                   = step persist_currency_conversion(
+                                  transaction: changed_transaction,
+                                  conversion_data:,
+                                )
           new_transaction     = step update_repeat_transactions(transaction: changed_transaction, params:)
           saved_transaction   = step save_transaction(transaction: new_transaction)
-          _                   = step persist_currency_conversion(transaction: saved_transaction, params:, account:)
+          _                   = step sync_transaction_tags(transaction: saved_transaction, params:)
+          _                   = step persist_currency_conversion(
+                                  transaction: saved_transaction,
+                                  conversion_data:,
+                                )
+          _                   = step persist_series_currency_conversions(
+                                  transaction: saved_transaction,
+                                  conversion_data:,
+                                  params:,
+                                )
           _                   = step update_transfer_transaction_cost(transaction: saved_transaction) if saved_transaction.transfer
           saved_transaction
         end
@@ -63,27 +98,26 @@ module Transactions
           step regenerate_embedding_async(transaction:)
         end
 
-        transaction.reload
+        transaction = transaction.reload
+        step broadcast_updated(transaction:, params:)
       end
 
       private
+
+      def broadcast_updated(transaction:, params:)
+        actor = Auth::User.find_by(id: params[:user_id]) || transaction.user
+        Transactions::Broadcasts::TransactionChange.updated(
+          transaction:,
+          actor:,
+        )
+        Success(transaction)
+      end
 
       def find_transaction(params:)
         transaction = Transaction.find(params[:id])
         Success(transaction)
       rescue ActiveRecord::RecordNotFound
         Failure(id: "transaction not found")
-      end
-
-      def ensure_account_currency_matches_original(transaction:, account:)
-        original = Transactions::Account.find_by(id: transaction.account_id)
-        return Success() unless original
-
-        original_currency = original.balance_currency.presence || "PHP"
-        new_currency = account.balance_currency.presence || "PHP"
-        return Success() if original_currency == new_currency
-
-        Failure(account_name: "currency cannot be changed")
       end
 
       def find_space(params:)
@@ -116,63 +150,157 @@ module Transactions
         Failure(account_name: "not found")
       end
 
-      # Frontend sends either (a) amount in space currency, or (b) amount in original_currency + conversion metadata (edit with currency_conversion).
-      def transform_params(params:, transaction:, assignment:, account:, space:)
-        params = params.dup
-        conversion = step convert_amount_to_account_currency(params:, transaction:, account:, space:)
-        params.merge!(conversion) if conversion.present?
-
-        account_currency = account.balance_currency.presence || "PHP"
-        params[:category_id] = assignment[:category_id]
-        params[:subcategory_id] = assignment[:subcategory_id]
-        params[:category_id] = space.categories.transfer_fee.id if transaction.transfer.present?
-        params[:subcategory_id] = nil if transaction.transfer.present?
-        params[:account_id] = account.id
-        params[:amount_currency] = account_currency
-        params[:balance_currency] = account_currency
-        params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
-        params[:repeat_count] ||= 1 if params[:schedule_type] == "repeat"
-        params[:installment_count] ||= 1 if params[:schedule_type] == "installment"
-        params.delete(:category_name)
-        params.delete(:account_name)
-        params.delete(:transaction_type)
-        Success(params)
-      end
-
-      # When edit sends original_currency + exchange_rate, amount is in original currency; else amount is in space currency.
-      def convert_amount_to_account_currency(params:, transaction:, account:, space:)
-        if params[:original_currency].present? && params[:exchange_rate].present? && params[:amount].present?
-          account_currency = account.balance_currency.presence || "PHP"
-          if params[:original_currency].to_s == account_currency.to_s
-            return Success(amount: BigDecimal(params[:amount].to_s).round(2))
-          end
-
-          amount_account = (BigDecimal(params[:amount].to_s) * params[:exchange_rate]).round(2)
-          return Success(amount: amount_account)
-        end
-
-        ::ExchangeRates::Operations::SpaceAmountToAccountCurrency.new.call(
-          amount: params[:amount],
-          space_currency: space.currency.presence || "PHP",
-          account_currency: account.balance_currency.presence || "PHP",
-          date: params[:date] || transaction.date,
-          space_id: params[:space_id] || transaction.space_id
-        )
-      end
-
-      # Persist conversion metadata when amount was converted from space to account currency.
-      def persist_currency_conversion(transaction:, params:, account:)
-        step ::Transactions::Operations::PersistCurrencyConversion.new.call(
-          transaction:,
+      def prepare_conversion_data(params:, account:)
+        ::Transactions::Operations::PrepareCurrencyConversion.new.call(
           params:,
           account:
         )
       end
 
+      # Frontend sends either (a) amount in space currency, or (b) amount in original_currency + conversion metadata.
+      def transform_params(params:, transaction:, assignment:, account:, space:, conversion_data:)
+        params = params.dup
+        params[:category_id] = assignment[:category_id]
+        params[:subcategory_id] = assignment[:subcategory_id]
+        params[:category_id] = space.categories.transfer_fee.id if transaction.transfer.present?
+        params[:subcategory_id] = nil if transaction.transfer.present?
+        params[:account_id] = account.id
+        params[:amount_currency] =
+          conversion_data[:amount_currency] ||
+          conversion_data[:converted_currency] ||
+          account.balance_currency
+        params[:balance_currency] = params[:amount_currency]
+        params[:amount] = conversion_data[:converted_amount] if conversion_data[:needs_conversion]
+        params[:balance_cents] = 0 # NOTE: Balance is calculated in the adjust_balance method
+        params[:repeat_count] ||= 1 if params[:schedule_type] == "repeat"
+        params[:installment_count] ||= 1 if params[:schedule_type] == "installment"
+        if conversion_data[:needs_conversion] && params[:installment_total].present?
+          params[:installment_total] = Utils::InstallmentPlan.to_ledger_amount(
+            amount: params[:installment_total],
+            from_currency:
+              params[:original_currency] ||
+              conversion_data[:original_currency],
+            ledger_currency: params[:amount_currency],
+            exchange_rate: conversion_data[:exchange_rate],
+          )
+        end
+        params.delete(:category_name)
+        params.delete(:account_name)
+        params.delete(:transaction_type)
+        params.delete(:original_currency)
+        params.delete(:exchange_rate)
+        params.delete(:exchange_rate_source)
+        params.delete(:amount_in_currency)
+        Success(params)
+      end
+
+      # Persist or clear conversion metadata after account balances are updated.
+      def persist_currency_conversion(transaction:, conversion_data:)
+        step ::Transactions::Operations::PersistCurrencyConversion.new.call(
+          transaction:,
+          conversion_data:
+        )
+      end
+
+      def persist_series_currency_conversions(transaction:, conversion_data:, params:)
+        return Success(transaction) unless conversion_data[:needs_conversion]
+
+        update_scope = params[:update_scope]
+        return Success(transaction) if update_scope.blank? || update_scope == "this_only"
+
+        root = transaction.root_parent
+        effective_date =
+          update_scope == "all_in_series" ? root.date : transaction.date
+        remaining = Transactions::Transaction.records_in_series_tree(
+          root_id: root.id,
+          extra_ids: [transaction.id],
+        ).where(date: effective_date..).where.not(id: transaction.id)
+
+        remaining.find_each do |row|
+          result = ::Transactions::Operations::PersistCurrencyConversion.new.call(
+            transaction: row,
+            conversion_data:,
+          )
+          return result if result.failure?
+        end
+
+        Success(transaction)
+      end
+
+      def sync_conversion_to_revised_amount(transaction:, conversion_data:)
+        return Success(conversion_data) unless conversion_data[:needs_conversion]
+
+        rate = BigDecimal(conversion_data[:exchange_rate].to_s)
+        return Success(conversion_data) unless rate.positive?
+
+        converted_amount = transaction.amount.amount
+        original_amount = (converted_amount / rate).round(2)
+
+        Success(
+          conversion_data.merge(
+            converted_amount: converted_amount.to_f,
+            original_amount: original_amount.to_f,
+          ),
+        )
+      end
+
       def initialize_update_transaction(transaction:, params:)
-        assignable = params.except(:id, :update_scope, :file, :remove_file, *CONVERSION_PARAMS)
+        assignable = params.except(
+          :id,
+          :update_scope,
+          :file,
+          :remove_file,
+          :tag_ids,
+          :installment_revision_anchor,
+          :installment_total,
+          *CONVERSION_PARAMS,
+        )
         transaction.assign_attributes(**assignable)
         Success(transaction)
+      end
+
+      def sync_installment_total_for_this_only(transaction:, params:)
+        return Success(transaction) unless transaction.installment?
+        return Success(transaction) unless params[:update_scope] == "this_only"
+        return Success(transaction) unless transaction.amount_cents_changed?
+
+        root = transaction.root_parent
+        new_total_cents = Utils::InstallmentPlan.apply_this_only_amount_delta_cents(
+          stored_total_cents: root.installment_total_cents,
+          period: root.installment_period,
+          previous_amount_cents: transaction.amount_cents_was,
+          next_amount_cents: transaction.amount_cents,
+        )
+
+        series = root.series_records
+        series.update_all(installment_total_cents: new_total_cents)
+        transaction.installment_total_cents = new_total_cents
+        Success(transaction)
+      rescue ActiveRecord::ActiveRecordError => e
+        Failure(error: e)
+      end
+
+      def revise_installment_plan_if_needed(transaction:, params:)
+        update_scope = params[:update_scope]
+        return Success(transaction) unless transaction.installment?
+        return Success(transaction) if update_scope.blank? || update_scope == "this_only"
+        return Success(transaction) unless installment_plan_changed?(transaction:)
+
+        anchor = params[:installment_revision_anchor]
+        if anchor.blank?
+          return Failure(installment_revision_anchor: "is required for installment plan changes")
+        end
+
+        Transactions::Operations::ReviseInstallmentPlan.new.call(
+          transaction:,
+          update_scope:,
+          anchor:,
+          installment_total: params[:installment_total],
+        )
+      end
+
+      def installment_plan_changed?(transaction:)
+        transaction.installment_period_changed? || transaction.amount_cents_changed?
       end
 
       def validate_installment_not_changed(transaction:)

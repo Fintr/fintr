@@ -13,7 +13,24 @@ import {
 } from "@/atoms/spaceAtoms";
 import { Space, SpaceContext } from "@/types/spaceTypes";
 import { spacesApi } from "@/services/spaces/api";
-import { invalidateSpaceSwitchQueries } from "@/utils/invalidateSpaceQueries";
+import {
+  cacheSpacesList,
+  loadCachedSpaceContext,
+  loadCachedSpacesList,
+} from "@/services/spaces/spaces-list-cache";
+import {
+  resolveCachedSpacesList,
+  resolveCurrentSpace,
+  shouldSkipSpacesNetworkFetch,
+} from "@/services/spaces/current-space-selection";
+import {
+  invalidateSpaceSwitchQueries,
+  waitForSpaceSwitchReady,
+} from "@/utils/invalidateSpaceQueries";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { getUnsyncedSpaceCodes } from "@/lib/local-db/sync-state";
+import { offlineBootstrapDateRange } from "@/lib/local-sync/offline-bootstrap-dates";
+import { syncAllWorkspacesLocalData } from "@/services/local-sync/bootstrap-local-data";
 
 export function useSpaceContext(api: AxiosInstance) {
   const queryClient = useQueryClient();
@@ -28,17 +45,62 @@ export function useSpaceContext(api: AxiosInstance) {
   const transitionState = useAtomValue(workspaceTransitionAtom);
   const setTransitionState = useSetAtom(workspaceTransitionAtom);
 
-  // Fetch available spaces
-  const { data: spaces, isLoading: spacesLoading } = useQuery({
+  const localSpacesQuery = useQuery({
+    queryKey: ["spaces", "local"],
+    queryFn: async () => {
+      const loaded = (await loadCachedSpacesList()) ?? null;
+      const published = queryClient.getQueryData<Space[] | null>([
+        "spaces",
+        "local",
+      ]);
+      return resolveCachedSpacesList({
+        loaded,
+        published,
+      });
+    },
+    networkMode: "always",
+    staleTime: Infinity,
+  });
+
+  const cachedSpaces = Array.isArray(localSpacesQuery.data)
+    ? localSpacesQuery.data
+    : undefined;
+  const skipCachedNetwork = useSkipCachedNetworkFetch(localSpacesQuery);
+  const skipSpacesNetwork = shouldSkipSpacesNetworkFetch({
+    skipCachedNetwork,
+    cachedSpaceCount: cachedSpaces?.length ?? 0,
+  });
+
+  const { data: networkSpaces, isLoading: spacesLoading } = useQuery({
     queryKey: ["spaces"],
     queryFn: async () => {
       const response = await spacesApi.getSpaces(api);
-      const spacesData = response.data.data.spaces;
+      const spacesData = response.data.data.spaces ?? [];
+      await cacheSpacesList(spacesData);
+      queryClient.setQueryData(["spaces", "local"], spacesData);
       setAvailableSpaces(spacesData);
       return spacesData;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !skipSpacesNetwork,
+    placeholderData: cachedSpaces,
+    staleTime: skipSpacesNetwork ? Infinity : 5 * 60 * 1000,
+    refetchOnMount: !skipSpacesNetwork,
+    refetchOnWindowFocus: !skipSpacesNetwork,
   });
+
+  const spaces = networkSpaces ?? cachedSpaces;
+
+  const localSpaceContextQuery = useQuery({
+    queryKey: ["space-context", "local", currentSpace?.code],
+    queryFn: async () =>
+      currentSpace?.code
+        ? ((await loadCachedSpaceContext(currentSpace.code)) ?? null)
+        : null,
+    enabled: Boolean(currentSpace?.code),
+    staleTime: Infinity,
+  });
+
+  const skipSpaceContextNetwork = useSkipCachedNetworkFetch(localSpaceContextQuery);
 
   // Fetch current space details
   const { data: spaceContext, isLoading: contextLoading } = useQuery({
@@ -47,8 +109,10 @@ export function useSpaceContext(api: AxiosInstance) {
       const response = await spacesApi.getSpace(api, currentSpace?.code || '');
       return response.data.data.space;
     },
-    enabled: !!currentSpace?.code,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: !!currentSpace?.code && !skipSpaceContextNetwork,
+    placeholderData: localSpaceContextQuery.data ?? undefined,
+    staleTime: skipSpaceContextNetwork ? Infinity : 2 * 60 * 1000,
+    refetchOnMount: !skipSpaceContextNetwork,
   });
 
   // Update space context when data changes
@@ -68,16 +132,10 @@ export function useSpaceContext(api: AxiosInstance) {
           throw new Error('Space not found');
         }
 
-        console.log('🔄 Starting space switch to:', space.name);
-
         setTransitionState({
           isTransitioning: true,
           destinationSpace: space,
         });
-
-        console.log('🎬 Transition state set, overlay should appear now');
-
-        await new Promise(resolve => setTimeout(resolve, 100));
 
         setCurrentSpace(space);
 
@@ -85,6 +143,8 @@ export function useSpaceContext(api: AxiosInstance) {
           localStorage.setItem("spaceCode", spaceCode);
           window.dispatchEvent(new CustomEvent('spaceCodeChanged', { detail: { spaceCode } }));
         }
+
+        router.push('/dashboard');
 
         if (space.hasNewInvitation) {
           try {
@@ -94,13 +154,24 @@ export function useSpaceContext(api: AxiosInstance) {
           }
         }
 
+        // Ensure a newly granted workspace is fully offline-synced before use.
+        const unsynced = await getUnsyncedSpaceCodes([spaceCode]);
+        if (unsynced.length > 0 && typeof navigator !== "undefined" && navigator.onLine !== false) {
+          await syncAllWorkspacesLocalData(
+            api,
+            queryClient,
+            offlineBootstrapDateRange(),
+            {
+              activeSpaceCode: spaceCode,
+              onlySpaceCodes: unsynced,
+            },
+          );
+        }
+
         await invalidateSpaceSwitchQueries(queryClient);
+        await waitForSpaceSwitchReady(queryClient);
 
-        await new Promise(resolve => setTimeout(resolve, 2500));
-
-        router.push('/dashboard');
-
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise(resolve => setTimeout(resolve, 150));
 
         setTransitionState({
           isTransitioning: false,
@@ -122,40 +193,43 @@ export function useSpaceContext(api: AxiosInstance) {
     switchSpaceMutation.mutate(spaceCode);
   };
 
-  // Initialize current space from localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined' && spaces && !currentSpace) {
-      const savedSpaceCode = localStorage.getItem("spaceCode");
-      if (savedSpaceCode) {
-        const space = spaces.find(s => s.code === savedSpaceCode);
-        if (space) {
-          setCurrentSpace(space);
-        } else if (spaces.length > 0) {
-          setCurrentSpace(spaces[0]);
-          localStorage.setItem("spaceCode", spaces[0].code);
-        }
-      } else if (spaces.length > 0) {
-        setCurrentSpace(spaces[0]);
-        localStorage.setItem("spaceCode", spaces[0].code);
-      }
+    if (typeof window === "undefined" || !spaces?.length) {
+      return;
     }
-  }, [spaces, currentSpace, setCurrentSpace]);
 
-  useEffect(() => {
-    if (!spaces?.length || !currentSpace?.code) return;
-    const fresh = spaces.find((s) => s.code === currentSpace.code);
-    if (!fresh) return;
+    const savedSpaceCode = localStorage.getItem("spaceCode");
+    const next = resolveCurrentSpace({
+      spaces,
+      currentSpace,
+      savedSpaceCode,
+    });
+
+    if (!next) {
+      return;
+    }
 
     const defaultTxEqual =
-      (fresh.defaultTransactionCurrency ?? null) ===
-      (currentSpace.defaultTransactionCurrency ?? null);
+      (next.defaultTransactionCurrency ?? null) ===
+      (currentSpace?.defaultTransactionCurrency ?? null);
+    const unchanged =
+      next.code === currentSpace?.code
+      && next.name === currentSpace?.name
+      && next.currency === currentSpace?.currency
+      && next.userRole === currentSpace?.userRole
+      && defaultTxEqual;
 
-    if (
-      fresh.currency !== currentSpace.currency ||
-      fresh.name !== currentSpace.name ||
-      !defaultTxEqual
-    ) {
-      setCurrentSpace(fresh);
+    if (!unchanged) {
+      setCurrentSpace(next);
+    }
+
+    if (savedSpaceCode !== next.code) {
+      localStorage.setItem("spaceCode", next.code);
+      window.dispatchEvent(
+        new CustomEvent("spaceCodeChanged", {
+          detail: { spaceCode: next.code },
+        }),
+      );
     }
   }, [spaces, currentSpace, setCurrentSpace]);
 

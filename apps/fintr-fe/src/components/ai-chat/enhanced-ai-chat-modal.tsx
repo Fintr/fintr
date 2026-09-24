@@ -18,7 +18,9 @@ import {
   Trash2
 } from "lucide-react";
 import { useAiChat } from "@/hooks/async/useAiChat";
-import { useAIUsage } from "@/hooks/async/useAIUsage";
+import { useProAccess } from "@/hooks/async/useProAccess";
+import { ProRequiredNotice } from "@/components/settings/pro-feature-gate";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 import { useConversations } from "@/hooks/async/useConversations";
 import { useInfiniteMessages } from "@/hooks/async/useInfiniteMessages";
 import { ChatMessage } from "@/types/aiChatTypes";
@@ -31,6 +33,8 @@ import { ChartComponent } from "./chart-components";
 import { ChartPlaceholder } from "./chart-placeholder";
 import { MarkdownContent } from "./markdown-content";
 import { parseContentWithCharts, parseContentWithInlineCharts } from "@/utils/chartParser";
+import { AiLlmPriorityPicker } from "./ai-llm-priority-picker";
+import { useAiLlmPriority } from "@/hooks/useAiLlmPriority";
 
 interface EnhancedAiChatModalProps {
   isOpen: boolean;
@@ -72,7 +76,14 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
     setChatState,
   } = useAiChat();
   
-  const { data: aiUsage, isLoading: isLoadingUsage, refetch: refetchAIUsage } = useAIUsage();
+  const { data: proAccess, isPending: isCheckingPro } = useProAccess();
+  const hasPro = proAccess?.pro === true;
+  const {
+    canChoose: canChooseLlmPriority,
+    priority: llmPriority,
+    setPriority: setLlmPriority,
+    localAvailable,
+  } = useAiLlmPriority();
   const { fetchConversation, createNewConversation, isCreating } = useConversations();
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -269,13 +280,6 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
   }, [currentStreamingMessage, isStreaming, hasUserManuallyScrolled, isNearBottom, scrollToBottom]);
 
 
-  // Refetch AI usage when streaming completes
-  useEffect(() => {
-    if (!isStreaming && !isLoading && messages.length > 0) {
-      refetchAIUsage();
-    }
-  }, [isStreaming, isLoading, messages.length, refetchAIUsage]);
-
   // Handle browser history for mobile back button support
   useEffect(() => {
     if (!isOpen) {
@@ -328,7 +332,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
 
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || !hasPro) return;
 
     const message = inputMessage.trim();
     setInputMessage("");
@@ -603,6 +607,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                     <DialogTitle className="flex items-center gap-2 text-primary">
                       <MessageSquare className="h-5 w-5 text-primary" />
                       Fintr AI Assistant
+                      <ProTrialBadge />
                     </DialogTitle>
                   </div>
                   
@@ -638,18 +643,33 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                   </div>
                 </div>
               </DialogHeader>
+
+              {canChooseLlmPriority ? (
+                <AiLlmPriorityPicker
+                  priority={llmPriority}
+                  localAvailable={localAvailable}
+                  onChange={setLlmPriority}
+                />
+              ) : null}
               
-              {/* Token usage display */}
-              <div className="flex justify-center py-2 border-b bg-muted/20">
-                {isLoadingUsage ? (
-                  <LoadingSpinner size="small" />
-                ) : aiUsage ? (
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Used: {aiUsage.used} / {aiUsage.limit}</span>
-                    <span>Remaining: {aiUsage.remaining}</span>
-                  </div>
-                ) : null}
-              </div>
+              {isCheckingPro && !proAccess ? (
+                <div className="flex justify-center py-2 border-b bg-muted/20">
+                  <span className="text-sm text-muted-foreground">Checking Fintr Pro…</span>
+                </div>
+              ) : hasPro ? (
+                <div className="flex justify-center py-2 border-b bg-muted/20">
+                  <span className="text-sm text-muted-foreground">
+                    {proAccess?.source === "trial"
+                      ? `${proAccess.trialDaysRemaining} days left in your trial · `
+                      : null}
+                    30 AI chats per month
+                  </span>
+                </div>
+              ) : (
+                <div className="border-b bg-muted/20 px-4 py-2">
+                  <ProRequiredNotice featureName="AI chat" />
+                </div>
+              )}
               
               {/* Chat Messages */}
               <ScrollArea ref={scrollAreaRef} className="flex-1">
@@ -789,12 +809,12 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Ask Fintr AI anything..."
-                    disabled={isLoading}
+                    disabled={isLoading || !hasPro}
                     className="flex-1"
                   />
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isLoading}
+                    disabled={!inputMessage.trim() || isLoading || !hasPro}
                     className="px-4"
                   >
                     {isLoading ? (

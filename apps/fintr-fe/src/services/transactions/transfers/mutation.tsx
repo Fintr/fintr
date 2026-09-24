@@ -8,6 +8,8 @@ export interface CreateTransferType {
   transactionCost: number;
   fromAccountName: string;
   toAccountName: string;
+  fromAccountId?: string;
+  toAccountId?: string;
   description?: string;
   date: string;
   scheduleType: ScheduleTypeEnum;

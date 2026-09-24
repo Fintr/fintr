@@ -3,6 +3,7 @@
 RubyLLM.configure do |config|
   config.openai_api_key = ENV["OPENAI_API_KEY"]
   config.openrouter_api_key = ENV["OPENROUTER_API_KEY"]
+  config.gemini_api_key = ENV["GEMINI_API_KEY"]
 
   config.default_model = Rails.configuration.x.llm.default_model
   config.default_embedding_model = Rails.configuration.x.llm.embedding_model

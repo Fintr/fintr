@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import {
@@ -9,24 +9,38 @@ import {
   SelectValue,
 } from "../../ui/select";
 import { Button } from "../../ui/button";
-import { Upload, CalendarIcon, Receipt } from "lucide-react";
+import { Upload, CalendarIcon, Receipt, ChevronDown } from "lucide-react";
 import { Calendar } from "../../ui/calendar";
 import { CalendarPopover } from "@/components/ui/calendar-popover";
 import { FormControlField } from "@/components/ui/form-control-field";
 import { formControlInteractiveSurfaceClassName } from "@/components/ui/form-control-surface";
-import { cn, numberFormatting } from "@/lib/utils";
+import { cn, formatCurrency, formatWithDelimiters, numberFormatting } from "@/lib/utils";
 import { format, endOfMonth } from "date-fns";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { expenseCategoryOptionsAtom, accountOptionsAtom } from "@/atoms/dashboardAtoms";
+import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useProAccess } from "@/hooks/async/useProAccess";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import * as z from "zod"; 
-import { createTransaction, updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
-import { REPEAT_INTERVALS, ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum } from "@/constants/transactionConstants";
+import { createTransactionLocalFirst } from "@/services/transactions/create-local-first";
+import { createExpenseWithCostShareLocalFirst } from "@/services/transactions/create-expense-with-cost-share-local-first";
+import ExpenseCostShareFields, {
+  previewExpenseCostShare,
+  shouldShowExpenseCostShare,
+  type ExpenseCostShareValue,
+} from "./ExpenseCostShareFields";
+import { updateTransaction, deleteTransaction } from "@/services/transactions/mutation";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { ScheduleTypeEnum, TransactionTypeEnum, DeleteScopeEnum, EXPENSE_SCHEDULE_TYPE_OPTIONS, UpdateScopeEnum } from "@/constants/transactionConstants";
 import GridPicker from "./GridPicker";
+import { TagMultiPicker } from "./TagMultiPicker";
+import { useTransactionTags } from "@/hooks/async/useTransactionTags";
+import { useInitializeDefaultTransactionTags } from "@/hooks/useInitializeDefaultTransactionTags";
+import TransactionScheduleFields from "./TransactionScheduleFields";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import {
   buildTransactionCategoryFields,
@@ -34,8 +48,9 @@ import {
   parseCategoryPickerValue,
 } from "@/types/categoryTreeTypes";
 import { UpdateTransactionType } from "@/types/transactionTypes";
-import NotesAutocomplete from "@/components/ui/notes-autocomplete";
 import FileUploadField from "./FileUploadField";
+import TransactionEntityField from "./TransactionEntityField";
+import TransactionDescriptionField from "./TransactionDescriptionField";
 import { createDisplayFileFromDraft } from "@/utils/fileUtils";
 import { useTransactionDrafts } from "@/hooks/async/useTransactionDrafts";
 import DraftItems from "./DraftItems";
@@ -43,10 +58,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DeleteButton } from "../tabs/transactions/buttons/DeleteButton";
 import { StickyFormActions, pinnedFormScrollAreaClassName } from "./StickyFormActions";
 import {
+  convertLoanTermDisplay,
+  formatLoanTermUnitLabel,
+  loanTermToMonths,
+  type LoanTermUnit,
+} from "@/utils/formatLoanTerm";
+import {
   AmountWithRatePicker,
   type ConversionSnapshot,
 } from "./AmountWithRatePicker";
-import { resolvePrefillAmountCurrency, isUploadableFile, buildTransactionFileUpdateFields } from "@/utils/formUtils";
+import { resolvePrefillAmountCurrency, buildTransactionFileUpdateFields } from "@/utils/formUtils";
 import {
   editLockedAccountLedgerCurrency,
   isAccountSelectOptionDisabledForEdit,
@@ -59,14 +80,49 @@ import {
 import {
   conversionSnapshotMatchesAmountCurrency,
   conversionSnapshotMatchesTarget,
+  conversionSnapshotFromTransactionData,
   createTransactionNeedsConversion,
   resolveAmountPickerTargetCurrency,
-  transactionNeedsConversion,
-  shouldPreviewConversionOnlyInEdit,
-  shouldShowAmountFxInEdit,
+  storedConversionForEditForm,
   shouldUseStoredConversionForPreview,
+  transactionNeedsConversion,
+  shouldShowAmountFxInEdit,
   transactionHadStoredConversion,
+  withEditOriginalCurrency,
 } from "@/utils/amountPickerTargetCurrency";
+import { getLocalIsoDateKey } from "@/utils/dateUtils";
+import {
+  positiveTransactionFormAmount,
+  positiveTransactionFormAmountString,
+} from "@/utils/transactionFormAmount";
+import {
+  amountDirtySignature,
+  conversionDirtySignature,
+  dateDirtySignature,
+  fileDirtySignature,
+  isEditSnapshotDirty,
+  tagIdsDirtySignature,
+  useAttachmentDirtyBaseline,
+} from "@/utils/transactionEditDirty";
+import type { InstallmentRevisionSeriesContext } from "@/utils/installmentPlanRevision";
+import { resolveInstallmentThisOnlyPlanTotal } from "@/utils/installmentPlanRevision";
+import {
+  adjustInstallmentTotalForSinglePaymentChange,
+  adjustInstallmentThisPaymentForPlanTotalChange,
+  resolveInstallmentFormInitialAmounts,
+  resolveInstallmentSubmitAmount,
+  resolveRemainingInstallmentCount,
+  roundInstallmentPerPayment,
+  syncInstallmentAmounts,
+  syncInstallmentRevisionAmounts,
+  installmentRemainingPaymentsLabel,
+  resolveInstallmentDisplayedPlanTotal,
+  resolveInstallmentStoredPlanTotal,
+  type InstallmentAmountAnchor,
+} from "@/utils/installmentFormAmounts";
+import { installmentRemainingOccurrenceDates } from "@fintr/domain";
+import InstallmentUpdateScopeSelector from "./InstallmentUpdateScopeSelector";
+import type { UpdateScope } from "./ScopeModal";
 
 // Keep Zod schemas as they are used by the adapter and nested forms
 const categorySchema = z.object({
@@ -85,10 +141,8 @@ const expenseFormSchema = z.object({
     ScheduleTypeEnum.INSTALLMENT
   ]),
   repeatInterval: z.string().optional(),
-  // Ensure installmentPeriod is treated as a number for validation
-  installmentPeriod: z.string().optional().refine((val) => !val || /^\d+$/.test(val), {
-    message: "Installment period must be a whole number",
-  }), 
+  installmentPeriod: z.string().optional(),
+  installmentTermUnit: z.enum(["months", "years"]).optional(),
   file: z.any().optional().nullable(),
 }).superRefine((data, ctx) => {
   if (data.scheduleType === ScheduleTypeEnum.REPEAT) {
@@ -101,11 +155,14 @@ const expenseFormSchema = z.object({
     }
   }
   if (data.scheduleType === ScheduleTypeEnum.INSTALLMENT) {
-    const period = data.installmentPeriod ? parseInt(data.installmentPeriod, 10) : 0;
-    if (isNaN(period) || period <= 0) {
+    const months = loanTermToMonths(
+      data.installmentPeriod ?? "",
+      data.installmentTermUnit ?? "months",
+    );
+    if (months <= 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Number of months is required and must be positive for installment expenses",
+        message: "Installment term is required and must be positive",
         path: ["installmentPeriod"]
       });
     }
@@ -129,13 +186,28 @@ interface ExpenseFormProps {
   onAddCustomAccount?: (accountName: string) => void;
   onSubmitSuccess?: (data: any) => void | Promise<void>; // Renamed for clarity
   onCancel?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   formRef?: React.RefObject<HTMLFormElement | null>; // Keep if needed for external interaction
   // Edit mode props
   id?: string;
-  initialData?: UpdateTransactionType & { draftId?: string };
+  initialData?: UpdateTransactionType & {
+    draftId?: string;
+    receiptMerchantDetected?: string;
+  };
   isEditMode?: boolean;
   onFileUpdate?: (file: File | null) => void; // New prop for file updates
   onDelete?: () => void; // New prop for delete action
+  /** When set, all fields are read-only (another user is editing via presence). */
+  editingLockedReason?: string | null;
+  /** Amount carried across Add Transaction tabs (expense/income/transfer/loan). */
+  prefillAmount?: string;
+  onPrefillAmountChange?: (amount: string) => void;
+  /** Paid installment rows in the series — used to keep committed amounts out of edits. */
+  installmentSeriesContext?: InstallmentRevisionSeriesContext | null;
+  /** When editing an installment in a series, scope is chosen before the form fields. */
+  showInstallmentScopeSelector?: boolean;
+  installmentUpdateScope?: UpdateScope;
+  onInstallmentUpdateScopeChange?: (scope: UpdateScope) => void;
 }
 
 // Main Expense Form using @tanstack/react-form
@@ -149,16 +221,38 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   onAddCustomAccount,
   onSubmitSuccess,
   onCancel,
+  onDirtyChange,
   formRef,
   id,
   initialData,
   isEditMode = false,
   onFileUpdate,
   onDelete,
+  editingLockedReason = null,
+  prefillAmount,
+  onPrefillAmountChange,
+  installmentSeriesContext = null,
+  showInstallmentScopeSelector = false,
+  installmentUpdateScope = UpdateScopeEnum.THIS_ONLY,
+  onInstallmentUpdateScopeChange,
 }) => {
-  // Get options from atoms
-  const categoryOptionsRaw = useAtomValue(expenseCategoryOptionsAtom);
+  // Get options from atoms and the shared category list
+  const { expenseCategoryOptions: categoryOptionsRaw } = useTransactionCategories();
+  const { tags: availableTags, createTag } = useTransactionTags();
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    () => initialData?.tags?.map((tag) => tag.id) ?? initialData?.tagIds ?? [],
+  );
+
+  useInitializeDefaultTransactionTags({
+    tags: availableTags,
+    isEditMode,
+    hasInitialTags: Boolean(
+      initialData?.tags?.length || initialData?.tagIds?.length,
+    ),
+    setSelectedTagIds,
+  });
   const accountOptionsRaw = useAtomValue(accountOptionsAtom);
+  const [spaceCode] = useLocalStorage("spaceCode", "");
 
   // Use provided spaceCurrency or fallback to PHP if not provided
   const effectiveSpaceCurrency = spaceCurrency ?? "PHP";
@@ -183,19 +277,40 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           .filter((c): c is string => Boolean(c))
       )
     );
-    const codes = fromAccounts.length > 0 ? fromAccounts : ["PHP"];
+    let codes = fromAccounts.length > 0 ? fromAccounts : ["PHP"];
     // Include space default so it can be pre-selected even if no account uses it yet
     if (
       defaultTransactionCurrency &&
       defaultTransactionCurrency.length === 3 &&
       !codes.includes(defaultTransactionCurrency)
     ) {
-      return [defaultTransactionCurrency, ...codes];
+      codes = [defaultTransactionCurrency, ...codes];
     }
-    return codes;
-  }, [accountOptions, defaultTransactionCurrency]);
+
+    if (!isEditMode || !initialData) {
+      return codes;
+    }
+
+    const data = initialData as Record<string, unknown>;
+    const conversion = (
+      data.currencyConversion ?? data.currency_conversion
+    ) as Record<string, unknown> | undefined;
+
+    return withEditOriginalCurrency(
+      codes,
+      String(
+        data.originalDisplayCurrency
+        ?? data.original_display_currency
+        ?? conversion?.originalCurrency
+        ?? conversion?.original_currency
+        ?? "",
+      ),
+    );
+  }, [accountOptions, defaultTransactionCurrency, isEditMode, initialData]);
 
   const { api } = useAuthApi();
+  const { data: proAccess } = useProAccess();
+  const hasPro = proAccess?.pro === true;
 
   // Local state for UI elements not directly part of the form data
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -210,18 +325,52 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   
   // Track whether form has been submitted (for validation display)
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [entityName, setEntityName] = useState(initialData?.entityName || "");
+  const [costShare, setCostShare] = useState<ExpenseCostShareValue>({
+    enabled: false,
+    mode: "equal",
+    participants: [],
+  });
+  const [receiptMerchantDetected, setReceiptMerchantDetected] = useState(
+    initialData?.receiptMerchantDetected,
+  );
   
   // Form state management
   const [formState, setFormState] = useState<ExpenseFormValues>({
-    amount: initialData?.amount?.toString() || "",
+    amount:
+      prefillAmount
+      || (initialData?.amount != null
+        ? positiveTransactionFormAmountString(initialData.amount)
+        : ""),
     description: initialData?.description || "",
     categoryName: initialData?.categoryName || "",
     accountName: initialData?.accountName || "",
     scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
     repeatInterval: initialData?.repeatInterval || "",
     installmentPeriod: initialData?.installmentPeriod?.toString() || "",
+    installmentTermUnit: "months" as LoanTermUnit,
     file: initialData?.file || null,
   });
+  const [installmentMonthlyAmount, setInstallmentMonthlyAmount] = useState("");
+  const [installmentThisPaymentAmount, setInstallmentThisPaymentAmount] = useState("");
+  const installmentAmountAnchorRef = useRef<InstallmentAmountAnchor>("total");
+
+  const toggleInstallmentTermUnit = () => {
+    const currentUnit = formState.installmentTermUnit ?? "months";
+    const nextUnit: LoanTermUnit =
+      currentUnit === "months" ? "years" : "months";
+    const nextTerm = convertLoanTermDisplay(
+      formState.installmentPeriod ?? "",
+      currentUnit,
+      nextUnit,
+    );
+
+    setFormState((prev) => ({
+      ...prev,
+      installmentTermUnit: nextUnit,
+      installmentPeriod: nextTerm,
+    }));
+  };
 
   const lockedCategoryForEdit = useMemo(
     () =>
@@ -252,10 +401,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const editBookedCurrency =
     isEditMode && initialData
       ? String(
-          (initialData as { amountCurrency?: string; amount_currency?: string })
-            .amountCurrency ??
-            (initialData as { amount_currency?: string }).amount_currency ??
-            "",
+          (initialData as { bookedAmountCurrency?: string; booked_amount_currency?: string })
+            .bookedAmountCurrency
+          ?? (initialData as { booked_amount_currency?: string }).booked_amount_currency
+          ?? (initialData as { originalDisplayCurrency?: string; original_display_currency?: string })
+            .originalDisplayCurrency
+          ?? (initialData as { original_display_currency?: string }).original_display_currency
+          ?? "",
         ).trim() || null
       : null;
   const accountCurrencyDiffersFromSpace =
@@ -296,29 +448,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const [conversionSnapshot, setConversionSnapshot] =
     useState<ConversionSnapshot | null>(() => {
       if (!isEditMode || !initialData) return null;
-      const d = initialData as any;
-      const rawConv = d.currencyConversion ?? d.currency_conversion;
-      const origCur = d.originalDisplayCurrency ?? d.original_display_currency;
-      if (!rawConv && origCur == null) return null;
-      const originalCurrency =
-        origCur != null && String(origCur).trim() !== ""
-          ? String(origCur)
-          : String((rawConv as any)?.originalCurrency ?? (rawConv as any)?.original_currency ?? "");
-      if (!originalCurrency) return null;
-      const exchangeRate = Number((rawConv as any)?.exchange_rate ?? (rawConv as any)?.exchangeRate ?? 1);
-      const source = (rawConv as any)?.source ?? "manual";
-      const exchangeRateSource = (source === "auto" || source === "recent" ? source : "manual") as "auto" | "manual" | "recent";
-      const targetCurrency = String(
-        (rawConv as any)?.converted_currency ??
-          (rawConv as any)?.convertedCurrency ??
-          "",
-      ).trim();
-      return {
-        originalCurrency,
-        targetCurrency: targetCurrency || originalCurrency,
-        exchangeRate,
-        exchangeRateSource,
-      };
+      return conversionSnapshotFromTransactionData(
+        initialData as unknown as Record<string, unknown>,
+      );
     });
 
   /** Target for amount conversion preview + rate API — always account ledger when it differs from amount. */
@@ -349,43 +481,108 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     [isEditMode, initialData],
   );
 
-  const amountPickerInitialConversion = useMemo(() => {
-    if (
-      !shouldUseStoredConversionForPreview({
-        isEditMode,
-        hadStoredConversion,
-        conversionSnapshot,
-        amountCurrency,
+  const storedTransactionConversion = useMemo(
+    () =>
+      storedConversionForEditForm({
+        data: initialData as unknown as Record<string, unknown> | undefined,
         targetCurrency: amountPickerTargetCurrency,
-        accountLedgerCurrency,
-        effectiveSpaceCurrency,
-      })
-    ) {
+      }),
+    [initialData, amountPickerTargetCurrency],
+  );
+
+  const isCrossCurrencyEdit = useMemo(
+    () => {
+      if (!isEditMode) return false;
+      if (hadStoredConversion) return true;
+      if (
+        amountPickerTargetCurrency != null
+        && amountCurrency.trim().toUpperCase()
+          !== amountPickerTargetCurrency.trim().toUpperCase()
+      ) {
+        return true;
+      }
+
+      return (
+        amountCurrency.trim().toUpperCase()
+        !== effectiveSpaceCurrency.trim().toUpperCase()
+      );
+    },
+    [
+      isEditMode,
+      hadStoredConversion,
+      amountCurrency,
+      amountPickerTargetCurrency,
+      effectiveSpaceCurrency,
+    ],
+  );
+
+  const suppressEditRateAutoFetch = useMemo(
+    () =>
+      isEditMode
+      && (
+        Boolean(storedTransactionConversion)
+        || hadStoredConversion
+        || isCrossCurrencyEdit
+      ),
+    [
+      isEditMode,
+      storedTransactionConversion,
+      hadStoredConversion,
+      isCrossCurrencyEdit,
+    ],
+  );
+
+  const amountPickerInitialConversion = useMemo(() => {
+    if (!isEditMode || !initialData) {
       return undefined;
     }
 
-    return conversionSnapshot ?? undefined;
+    return conversionSnapshot ?? storedTransactionConversion ?? undefined;
   }, [
     isEditMode,
-    hadStoredConversion,
+    initialData,
     conversionSnapshot,
-    amountPickerTargetCurrency,
-    accountLedgerCurrency,
-    effectiveSpaceCurrency,
+    storedTransactionConversion,
+  ]);
+
+  const handleAmountConversionChange = (next: ConversionSnapshot | null) => {
+    if (!next) {
+      if (!storedTransactionConversion) {
+        setConversionSnapshot(null);
+      }
+      return;
+    }
+
+    setConversionSnapshot(next);
+  };
+
+  useEffect(() => {
+    if (!isEditMode || !storedTransactionConversion) {
+      return;
+    }
+
+    setConversionSnapshot((previous) => {
+      if (
+        previous
+        && Math.abs(previous.exchangeRate - storedTransactionConversion.exchangeRate)
+          >= 1e-6
+      ) {
+        return previous;
+      }
+
+      return storedTransactionConversion;
+    });
+  }, [
+    isEditMode,
+    storedTransactionConversion,
+    initialData?.id,
   ]);
 
   const showAmountFxInEdit = shouldShowAmountFxInEdit({
     isEditMode,
-    conversionSnapshot,
+    conversionSnapshot: amountPickerInitialConversion ?? conversionSnapshot,
     amountCurrency,
     targetCurrency: amountPickerTargetCurrency,
-  });
-
-  const previewConversionOnlyInEdit = shouldPreviewConversionOnlyInEdit({
-    isEditMode,
-    hadStoredConversion,
-    targetCurrency: amountPickerTargetCurrency,
-    effectiveSpaceCurrency,
   });
 
   useEffect(() => {
@@ -402,10 +599,77 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       amountCurrency,
     );
 
-    if (targetMismatch || amountMismatch) {
-      setConversionSnapshot(null);
+    if (!targetMismatch && !amountMismatch) {
+      return;
     }
-  }, [amountPickerTargetCurrency, amountCurrency, conversionSnapshot]);
+
+    // Prefer repairing currency legs over clearing — clearing drops
+    // initialConversion and lets AmountWithRatePicker auto-fetch a live rate.
+    // Never reset exchangeRate here; that would undo a rate the user just applied.
+    if (hadStoredConversion && initialData) {
+      const stored = storedTransactionConversion
+        ?? conversionSnapshotFromTransactionData(
+          initialData as unknown as Record<string, unknown>,
+        )
+        ?? storedConversionForEditForm({
+          data: initialData as unknown as Record<string, unknown>,
+          targetCurrency: amountPickerTargetCurrency,
+        });
+      if (stored) {
+        setConversionSnapshot({
+          ...stored,
+          originalCurrency: amountCurrency || stored.originalCurrency,
+          targetCurrency:
+            amountPickerTargetCurrency
+            ?? stored.targetCurrency,
+        });
+        return;
+      }
+
+      const d = initialData as Record<string, unknown>;
+      const rawConv = (d.currencyConversion ?? d.currency_conversion) as
+        | Record<string, unknown>
+        | undefined;
+      const originalCurrency = String(
+        d.originalDisplayCurrency
+          ?? d.original_display_currency
+          ?? rawConv?.originalCurrency
+          ?? rawConv?.original_currency
+          ?? "",
+      ).trim();
+      if (originalCurrency) {
+        const repairedTarget =
+          amountPickerTargetCurrency
+          || String(
+            rawConv?.converted_currency
+              ?? rawConv?.convertedCurrency
+              ?? "",
+          ).trim()
+          || conversionSnapshot.targetCurrency
+          || amountCurrency;
+        setConversionSnapshot({
+          ...conversionSnapshot,
+          originalCurrency: amountCurrency || originalCurrency,
+          targetCurrency: repairedTarget,
+        });
+        return;
+      }
+    }
+
+    if (isEditMode && hadStoredConversion) {
+      return;
+    }
+
+    setConversionSnapshot(null);
+  }, [
+    amountPickerTargetCurrency,
+    amountCurrency,
+    conversionSnapshot,
+    hadStoredConversion,
+    initialData,
+    isEditMode,
+    storedTransactionConversion,
+  ]);
 
   const defaultCurrencySetRef = useRef(false);
   useEffect(() => {
@@ -433,11 +697,559 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // The user's chosen transaction currency (e.g. AED) should persist so the API
   // receives that currency and uses it for calculations/conversion.
 
+  const installmentPeriodMonths = useMemo(
+    () =>
+      scheduleType === ScheduleTypeEnum.INSTALLMENT
+        ? loanTermToMonths(
+            formState.installmentPeriod ?? "",
+            formState.installmentTermUnit ?? "months",
+          )
+        : 0,
+    [
+      scheduleType,
+      formState.installmentPeriod,
+      formState.installmentTermUnit,
+    ],
+  );
+  const isInstallmentSchedule = scheduleType === ScheduleTypeEnum.INSTALLMENT;
+  const installmentPaidSoFar = isEditMode
+    ? (installmentSeriesContext?.paidSoFarCents ?? 0) / 100
+    : 0;
+  const installmentCommittedMonthsCount = isEditMode
+    ? installmentSeriesContext?.committedMonthsCount ?? 0
+    : 0;
+  const installmentRemainingMonths = resolveRemainingInstallmentCount({
+    periodMonths: installmentPeriodMonths,
+    committedMonthsCount: installmentCommittedMonthsCount,
+  });
+  const installmentEditMode = useMemo(() => {
+    if (!isEditMode || !isInstallmentSchedule) {
+      return null;
+    }
+
+    if (!showInstallmentScopeSelector) {
+      return "legacy_plan" as const;
+    }
+
+    if (installmentUpdateScope === UpdateScopeEnum.THIS_ONLY) {
+      return "single_payment" as const;
+    }
+
+    if (installmentUpdateScope === UpdateScopeEnum.ALL_IN_SERIES) {
+      return "plan_without_committed" as const;
+    }
+
+    return "plan_with_committed" as const;
+  }, [
+    isEditMode,
+    isInstallmentSchedule,
+    showInstallmentScopeSelector,
+    installmentUpdateScope,
+  ]);
+  const isInstallmentSinglePaymentEdit = installmentEditMode === "single_payment";
+  const isInstallmentPlanEdit =
+    installmentEditMode === "plan_with_committed"
+    || installmentEditMode === "plan_without_committed"
+    || installmentEditMode === "legacy_plan";
+  const effectiveInstallmentCommittedMonthsCount =
+    installmentEditMode === "plan_with_committed"
+    || installmentEditMode === "legacy_plan"
+      ? installmentCommittedMonthsCount
+      : 0;
+  const effectiveInstallmentPaidSoFar =
+    installmentEditMode === "plan_with_committed"
+    || installmentEditMode === "legacy_plan"
+      ? installmentPaidSoFar
+      : 0;
+  const effectiveInstallmentRemainingMonths = useMemo(() => {
+    if (
+      installmentEditMode === "plan_with_committed"
+      && installmentPeriodMonths > 0
+      && initialData?.date
+    ) {
+      const seriesParentDate =
+        (initialData as { seriesParentDate?: string | null }).seriesParentDate
+        ?? initialData.date;
+
+      return installmentRemainingOccurrenceDates({
+        parentDate: getLocalIsoDateKey(seriesParentDate),
+        period: installmentPeriodMonths,
+        effectiveDate: getLocalIsoDateKey(initialData.date),
+        calculatedDates: installmentSeriesContext?.calculatedDates ?? [],
+      }).length;
+    }
+
+    return resolveRemainingInstallmentCount({
+      periodMonths: installmentPeriodMonths,
+      committedMonthsCount: effectiveInstallmentCommittedMonthsCount,
+    });
+  }, [
+    installmentEditMode,
+    installmentSeriesContext,
+    installmentPeriodMonths,
+    initialData?.date,
+    (initialData as { seriesParentDate?: string | null } | undefined)
+      ?.seriesParentDate,
+    effectiveInstallmentCommittedMonthsCount,
+  ]);
+  const installmentRevisionDates = useMemo(() => {
+    if (!initialData?.date) {
+      return null;
+    }
+
+    const seriesParentDate =
+      (initialData as { seriesParentDate?: string | null }).seriesParentDate
+      ?? initialData.date;
+
+    return {
+      parentDate: getLocalIsoDateKey(seriesParentDate),
+      effectiveDate: getLocalIsoDateKey(initialData.date),
+    };
+  }, [
+    initialData?.date,
+    (initialData as { seriesParentDate?: string | null } | undefined)
+      ?.seriesParentDate,
+  ]);
+  const canUseInstallmentRevisionSync =
+    installmentEditMode === "plan_with_committed"
+    && installmentRevisionDates != null
+    && installmentPeriodMonths > 0;
+  const installmentBaselineRef = useRef({
+    planTotal: 0,
+    paymentAmount: 0,
+  });
+  const installmentPriorPerPaymentCents =
+    installmentSeriesContext?.defaultPerPaymentCents
+    ?? Math.round((installmentBaselineRef.current.paymentAmount || 0) * 100);
+  const installmentOccurrenceCentsByDate =
+    installmentSeriesContext?.occurrenceCentsByDate;
+  const liveConversion = conversionSnapshot ?? storedTransactionConversion;
+  const installmentRevisionFxParams = useMemo(
+    () => {
+      return {
+        exchangeRate: Number(liveConversion?.exchangeRate ?? 0),
+        displayCurrency: amountCurrency,
+        ledgerCurrency:
+          liveConversion?.targetCurrency
+          ?? effectiveSpaceCurrency,
+      };
+    },
+    [
+      liveConversion,
+      amountCurrency,
+      effectiveSpaceCurrency,
+    ],
+  );
+  const syncInstallmentFieldsRef = useRef<
+    (anchor: InstallmentAmountAnchor, total: number, monthly: number) => void
+  >(() => {});
+
+  const thisPaymentDisplayRef = useRef<(value: string) => void>(() => {});
+  const amountDisplayRef = useRef<(value: string) => void>(() => {});
+
   // Number input hook for amount field
   const amountInput = useNumberInput({
     initialValue: formState.amount,
-    onValueChange: (cleanValue) => handleFieldChange("amount", cleanValue.toString())
+    onValueChange: (cleanValue) => {
+      if (scheduleType === ScheduleTypeEnum.INSTALLMENT) {
+        if (isInstallmentSinglePaymentEdit) {
+          const nextTotal = cleanValue;
+          const nextPayment = adjustInstallmentThisPaymentForPlanTotalChange({
+            originalPlanTotal: installmentBaselineRef.current.planTotal,
+            originalPaymentAmount: installmentBaselineRef.current.paymentAmount,
+            nextPlanTotal: nextTotal,
+          });
+          setFormState((prev) => ({
+            ...prev,
+            amount: nextTotal !== 0 ? String(nextTotal) : "",
+          }));
+          setInstallmentThisPaymentAmount(
+            nextPayment > 0 ? String(nextPayment) : "",
+          );
+          thisPaymentDisplayRef.current(
+            nextPayment > 0
+              ? numberFormatting.formatForInput(String(nextPayment))
+              : "",
+          );
+          return;
+        }
+
+        syncInstallmentFieldsRef.current(
+          "total",
+          cleanValue,
+          Number.parseFloat(installmentMonthlyAmount) || 0,
+        );
+        return;
+      }
+
+      handleFieldChange("amount", cleanValue !== 0 ? String(cleanValue) : "");
+      onPrefillAmountChange?.(cleanValue !== 0 ? String(cleanValue) : "");
+    },
   });
+
+  const monthlyAmountInput = useNumberInput({
+    initialValue: installmentMonthlyAmount,
+    onValueChange: (cleanValue) => {
+      if (scheduleType !== ScheduleTypeEnum.INSTALLMENT) {
+        return;
+      }
+
+      if (isInstallmentSinglePaymentEdit) {
+        return;
+      }
+
+      syncInstallmentFieldsRef.current(
+        "monthly",
+        Number.parseFloat(formState.amount) || 0,
+        cleanValue,
+      );
+    },
+  });
+
+  const thisPaymentAmountInput = useNumberInput({
+    initialValue: installmentThisPaymentAmount,
+    onValueChange: (cleanValue) => {
+      if (!isInstallmentSinglePaymentEdit) {
+        return;
+      }
+
+      const nextPayment = cleanValue;
+      const nextTotal = adjustInstallmentTotalForSinglePaymentChange({
+        planTotal: installmentBaselineRef.current.planTotal,
+        originalPaymentAmount: installmentBaselineRef.current.paymentAmount,
+        nextPaymentAmount: nextPayment,
+      });
+      setInstallmentThisPaymentAmount(
+        nextPayment !== 0 ? String(nextPayment) : "",
+      );
+      setFormState((prev) => ({
+        ...prev,
+        amount: nextTotal > 0 ? String(nextTotal) : "",
+      }));
+      amountDisplayRef.current(
+        nextTotal > 0
+          ? numberFormatting.formatForInput(String(nextTotal))
+          : "",
+      );
+    },
+  });
+  thisPaymentDisplayRef.current = (value) => {
+    thisPaymentAmountInput.setDisplayValue(value);
+  };
+  amountDisplayRef.current = (value) => {
+    amountInput.setDisplayValue(value);
+  };
+
+  syncInstallmentFieldsRef.current = (
+    anchor,
+    total,
+    monthly,
+  ) => {
+    const synced =
+      installmentPeriodMonths > 0
+        ? canUseInstallmentRevisionSync
+          ? syncInstallmentRevisionAmounts({
+              anchor,
+              total,
+              monthly,
+              parentDate: installmentRevisionDates!.parentDate,
+              effectiveDate: installmentRevisionDates!.effectiveDate,
+              periodMonths: installmentPeriodMonths,
+              paidSoFarCents: installmentSeriesContext?.paidSoFarCents ?? 0,
+              calculatedDates: installmentSeriesContext?.calculatedDates ?? [],
+              priorPerPaymentCents:
+                installmentPriorPerPaymentCents
+                || Math.round(monthly * 100),
+              occurrenceCentsByDate: installmentOccurrenceCentsByDate,
+              ...installmentRevisionFxParams,
+            })
+          : syncInstallmentAmounts({
+              anchor,
+              total,
+              monthly,
+              periodMonths: installmentPeriodMonths,
+              paidSoFar: effectiveInstallmentPaidSoFar,
+              committedMonthsCount: effectiveInstallmentCommittedMonthsCount,
+            })
+        : { total, monthly };
+
+    installmentAmountAnchorRef.current = anchor;
+    setFormState((prev) => ({
+      ...prev,
+      amount: synced.total > 0 ? String(synced.total) : "",
+    }));
+    setInstallmentMonthlyAmount(synced.monthly > 0 ? String(synced.monthly) : "");
+    amountInput.setDisplayValue(
+      synced.total > 0
+        ? numberFormatting.formatForInput(String(synced.total))
+        : "",
+    );
+    monthlyAmountInput.setDisplayValue(
+      synced.monthly > 0
+        ? numberFormatting.formatForInput(String(synced.monthly))
+        : "",
+    );
+
+    if (anchor === "total") {
+      onPrefillAmountChange?.(synced.total !== 0 ? String(synced.total) : "");
+    }
+  };
+
+  const prevInstallmentPeriodMonthsRef = useRef(installmentPeriodMonths);
+  useEffect(() => {
+    if (prevInstallmentPeriodMonthsRef.current === installmentPeriodMonths) {
+      return;
+    }
+
+    prevInstallmentPeriodMonthsRef.current = installmentPeriodMonths;
+
+    if (!isInstallmentSchedule || installmentPeriodMonths <= 0) {
+      return;
+    }
+
+    if (isInstallmentSinglePaymentEdit) {
+      return;
+    }
+
+    const total = Number.parseFloat(formState.amount) || 0;
+    const monthly = Number.parseFloat(installmentMonthlyAmount) || 0;
+
+    if (total <= 0 && monthly <= 0) {
+      return;
+    }
+
+    syncInstallmentFieldsRef.current(
+      installmentAmountAnchorRef.current,
+      total,
+      monthly,
+    );
+  }, [
+    installmentPeriodMonths,
+    isInstallmentSchedule,
+    isInstallmentSinglePaymentEdit,
+    formState.amount,
+    installmentMonthlyAmount,
+  ]);
+
+  const projectedInstallmentPlanTotal = useMemo(() => {
+    if (!isInstallmentSinglePaymentEdit) {
+      return null;
+    }
+
+    const nextPaymentAmount = Number.parseFloat(formState.amount) || 0;
+    const { planTotal, paymentAmount } = installmentBaselineRef.current;
+
+    return adjustInstallmentTotalForSinglePaymentChange({
+      planTotal,
+      originalPaymentAmount: paymentAmount,
+      nextPaymentAmount,
+    });
+  }, [isInstallmentSinglePaymentEdit, formState.amount]);
+
+  const prevInstallmentEditModeRef = useRef<typeof installmentEditMode | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!initialData || installmentEditMode == null) {
+      prevInstallmentEditModeRef.current = installmentEditMode;
+      return;
+    }
+
+    if (prevInstallmentEditModeRef.current === installmentEditMode) {
+      return;
+    }
+
+    prevInstallmentEditModeRef.current = installmentEditMode;
+
+    const { planTotal, paymentAmount } = installmentBaselineRef.current;
+    const periodMonths = loanTermToMonths(
+      initialData.installmentPeriod?.toString() ?? "",
+      "months",
+    );
+
+    if (installmentEditMode === "single_payment") {
+      const total = planTotal > 0 ? String(planTotal) : "";
+      const payment = paymentAmount > 0 ? String(paymentAmount) : "";
+      setFormState((prev) => ({ ...prev, amount: total }));
+      amountInput.setDisplayValue(
+        total ? numberFormatting.formatForInput(total) : "",
+      );
+      setInstallmentThisPaymentAmount(payment);
+      thisPaymentAmountInput.setDisplayValue(
+        payment ? numberFormatting.formatForInput(payment) : "",
+      );
+      return;
+    }
+
+    const scopedInstallmentAmounts = resolveInstallmentFormInitialAmounts({
+      installmentTotal: resolveInstallmentDisplayedPlanTotal({
+        enteredAmount: planTotal,
+        planTotal,
+        perPaymentAmount: paymentAmount,
+      }),
+      perPaymentAmount: paymentAmount,
+      periodMonths,
+      useStoredTotal: planTotal > 0 && planTotal !== paymentAmount,
+      paidSoFar: effectiveInstallmentPaidSoFar,
+      committedMonthsCount: effectiveInstallmentCommittedMonthsCount,
+      parentDate: installmentRevisionDates?.parentDate,
+      effectiveDate: installmentRevisionDates?.effectiveDate,
+      calculatedDates: installmentSeriesContext?.calculatedDates,
+      priorPerPaymentCents:
+        installmentPriorPerPaymentCents
+        || Math.round(paymentAmount * 100),
+      occurrenceCentsByDate: installmentOccurrenceCentsByDate,
+      ...installmentRevisionFxParams,
+    });
+
+    syncInstallmentFieldsRef.current(
+      "total",
+      scopedInstallmentAmounts.total,
+      scopedInstallmentAmounts.monthly,
+    );
+  }, [
+    installmentEditMode,
+    initialData,
+    effectiveInstallmentPaidSoFar,
+    effectiveInstallmentCommittedMonthsCount,
+    installmentRevisionDates,
+    installmentSeriesContext,
+    installmentPriorPerPaymentCents,
+    installmentOccurrenceCentsByDate,
+  ]);
+
+  const installmentRevisionContextKey = [
+    installmentSeriesContext?.paidSoFarCents ?? 0,
+    installmentSeriesContext?.committedMonthsCount ?? 0,
+    installmentSeriesContext?.calculatedDates?.join(",") ?? "",
+    installmentSeriesContext?.defaultPerPaymentCents ?? 0,
+    JSON.stringify(installmentSeriesContext?.occurrenceCentsByDate ?? {}),
+    initialData?.id,
+  ].join("|");
+  const prevInstallmentRevisionContextKeyRef = useRef(installmentRevisionContextKey);
+
+  useEffect(() => {
+    if (installmentEditMode !== "plan_with_committed") {
+      prevInstallmentRevisionContextKeyRef.current = installmentRevisionContextKey;
+      return;
+    }
+
+    if (prevInstallmentRevisionContextKeyRef.current === installmentRevisionContextKey) {
+      return;
+    }
+
+    prevInstallmentRevisionContextKeyRef.current = installmentRevisionContextKey;
+
+    const { planTotal, paymentAmount } = installmentBaselineRef.current;
+    const total = resolveInstallmentDisplayedPlanTotal({
+      enteredAmount:
+        Number.parseFloat(formState.amount)
+        || planTotal,
+      planTotal,
+      perPaymentAmount: paymentAmount,
+    });
+    const monthly =
+      Number.parseFloat(installmentMonthlyAmount)
+      || paymentAmount;
+
+    if (total <= 0 && monthly <= 0) {
+      return;
+    }
+
+    syncInstallmentFieldsRef.current(
+      installmentAmountAnchorRef.current,
+      total,
+      monthly,
+    );
+  }, [
+    installmentEditMode,
+    installmentRevisionContextKey,
+    installmentSeriesContext?.committedMonthsCount,
+    formState.amount,
+    installmentMonthlyAmount,
+  ]);
+
+  const prevSinglePaymentContextKeyRef = useRef(installmentRevisionContextKey);
+
+  useEffect(() => {
+    if (
+      installmentEditMode !== "single_payment"
+      || !installmentSeriesContext
+      || !initialData
+    ) {
+      prevSinglePaymentContextKeyRef.current = installmentRevisionContextKey;
+      return;
+    }
+
+    if (prevSinglePaymentContextKeyRef.current === installmentRevisionContextKey) {
+      return;
+    }
+
+    prevSinglePaymentContextKeyRef.current = installmentRevisionContextKey;
+
+    const periodMonths = initialData.installmentPeriod ?? 0;
+    if (periodMonths <= 0) {
+      return;
+    }
+
+    const commitmentTotal = resolveInstallmentThisOnlyPlanTotal({
+      target: initialData as UpdateTransactionType & {
+        seriesParentDate?: string | null;
+      },
+      context: installmentSeriesContext,
+      parentDate:
+        (initialData as { seriesParentDate?: string | null }).seriesParentDate
+        ?? initialData.date,
+      periodMonths,
+    });
+
+    if (commitmentTotal == null || commitmentTotal <= 0) {
+      return;
+    }
+
+    const perPaymentAmount =
+      installmentBaselineRef.current.paymentAmount
+      || Number.parseFloat(installmentThisPaymentAmount)
+      || 0;
+    const resolvedTotal = resolveInstallmentStoredPlanTotal({
+      installmentTotal: commitmentTotal,
+      perPaymentAmount,
+      periodMonths,
+      convertedPerPaymentAmount: Number(
+        initialData.currencyConversion?.convertedAmount ?? 0,
+      ),
+      exchangeRate: Number(initialData.currencyConversion?.exchangeRate ?? 0),
+    });
+
+    const currentTotal = Number.parseFloat(formState.amount) || 0;
+    if (
+      resolvedTotal <= currentTotal + 0.005
+      || Math.abs(currentTotal - resolvedTotal) < 0.005
+    ) {
+      return;
+    }
+
+    installmentBaselineRef.current = {
+      planTotal: resolvedTotal,
+      paymentAmount: perPaymentAmount,
+    };
+    setFormState((previous) => ({
+      ...previous,
+      amount: String(resolvedTotal),
+    }));
+    amountInput.setDisplayValue(
+      numberFormatting.formatForInput(String(resolvedTotal)),
+    );
+  }, [
+    installmentEditMode,
+    installmentRevisionContextKey,
+    installmentSeriesContext,
+    initialData,
+    formState.amount,
+    installmentThisPaymentAmount,
+    amountInput,
+    numberFormatting,
+  ]);
   
   // Store draftId separately since it's not part of the form values
   const [draftId, setDraftId] = useState<string | undefined>(initialData?.draftId);
@@ -490,11 +1302,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     const hasOriginal = originalAmount != null && originalCurrency != null && String(originalCurrency).trim() !== "";
 
     if (initialData && (initialData !== prevInitialDataRef.current)) {
-      const initialAmount = hasOriginal
-        ? String(originalAmount)
+      const rawInitialAmount = hasOriginal
+        ? originalAmount
         : rawConv != null
-          ? String((rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? "")
-          : (initialData.amount?.toString() ?? "");
+          ? (rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? ""
+          : (initialData.amount ?? "");
+
+      const initialAmount = positiveTransactionFormAmountString(rawInitialAmount);
 
       const displayCurrency = hasOriginal
         ? String(originalCurrency)
@@ -502,9 +1316,99 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           ? String((rawConv as any).original_currency ?? (rawConv as any).originalCurrency ?? effectiveSpaceCurrency)
           : effectiveSpaceCurrency;
       const useConversion = hasOriginal || (rawConv != null);
+      const isInstallment =
+        (initialData.scheduleType || ScheduleTypeEnum.ONE_TIME)
+        === ScheduleTypeEnum.INSTALLMENT;
+      const installmentPeriod = initialData.installmentPeriod || 0;
+      const perPaymentAmount = Number.parseFloat(initialAmount) || 0;
+      const storedFromDetail = resolveInstallmentStoredPlanTotal({
+        installmentTotal: initialData.installmentTotal,
+        perPaymentAmount,
+        periodMonths: installmentPeriod,
+        convertedPerPaymentAmount: Number(
+          (rawConv as { converted_amount?: unknown; convertedAmount?: unknown } | undefined)
+            ?.convertedAmount
+          ?? (rawConv as { converted_amount?: unknown; convertedAmount?: unknown } | undefined)
+            ?.converted_amount,
+        ),
+        exchangeRate: Number(
+          (rawConv as { exchange_rate?: unknown; exchangeRate?: unknown } | undefined)
+            ?.exchangeRate
+          ?? (rawConv as { exchange_rate?: unknown; exchangeRate?: unknown } | undefined)
+            ?.exchange_rate
+          ?? storedTransactionConversion?.exchangeRate
+          ?? 0,
+        ),
+      });
+      const commitmentPlanTotal =
+        isInstallment
+        && installmentUpdateScope === UpdateScopeEnum.THIS_ONLY
+        && installmentSeriesContext
+        && installmentPeriod > 0
+          ? resolveInstallmentThisOnlyPlanTotal({
+              target: initialData as UpdateTransactionType & {
+                seriesParentDate?: string | null;
+              },
+              context: installmentSeriesContext,
+              parentDate:
+                (initialData as { seriesParentDate?: string | null })
+                  .seriesParentDate
+                ?? initialData.date,
+              periodMonths: installmentPeriod,
+            })
+          : null;
+      const storedPlanTotal =
+        commitmentPlanTotal != null
+        && commitmentPlanTotal > storedFromDetail + 0.005
+          ? commitmentPlanTotal
+          : storedFromDetail;
+      const installmentAmounts = isInstallment
+        ? resolveInstallmentFormInitialAmounts({
+            installmentTotal: storedPlanTotal,
+            perPaymentAmount,
+            periodMonths: installmentPeriod,
+            useStoredTotal: storedPlanTotal > 0,
+            ...(
+              installmentUpdateScope === UpdateScopeEnum.THIS_AND_FUTURE
+              || installmentUpdateScope === UpdateScopeEnum.ALL_IN_SERIES
+                ? {
+                    paidSoFar: (installmentSeriesContext?.paidSoFarCents ?? 0) / 100,
+                    committedMonthsCount:
+                      installmentSeriesContext?.committedMonthsCount ?? 0,
+                    parentDate: getLocalIsoDateKey(
+                      (initialData as { seriesParentDate?: string | null })
+                        .seriesParentDate
+                      ?? initialData.date,
+                    ),
+                    effectiveDate: getLocalIsoDateKey(initialData.date),
+                    calculatedDates:
+                      installmentSeriesContext?.calculatedDates ?? [],
+                    priorPerPaymentCents:
+                      installmentSeriesContext?.defaultPerPaymentCents
+                      ?? Math.round(perPaymentAmount * 100),
+                    occurrenceCentsByDate:
+                      installmentSeriesContext?.occurrenceCentsByDate,
+                  }
+                : {}
+            ),
+            exchangeRate: Number(
+              (rawConv as { exchange_rate?: unknown; exchangeRate?: unknown } | undefined)
+                ?.exchangeRate
+              ?? (rawConv as { exchange_rate?: unknown; exchangeRate?: unknown } | undefined)
+                ?.exchange_rate
+              ?? storedTransactionConversion?.exchangeRate
+              ?? 0,
+            ),
+            ledgerCurrency: effectiveSpaceCurrency,
+            displayCurrency,
+          })
+        : null;
+      const formAmount = installmentAmounts
+        ? String(installmentAmounts.total)
+        : initialAmount;
 
       setFormState({
-        amount: initialAmount,
+        amount: formAmount,
         description: initialData.description || "",
         categoryName: categoryPickerValueFromReceiptOrTransaction(
           {
@@ -518,13 +1422,50 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         scheduleType: initialData.scheduleType || ScheduleTypeEnum.ONE_TIME,
         repeatInterval: initialData.repeatInterval || "",
         installmentPeriod: initialData.installmentPeriod?.toString() || "",
+        installmentTermUnit: "months",
         file: initialData.file || null,
       });
+      setEntityName(initialData.entityName || "");
+      setReceiptMerchantDetected(initialData.receiptMerchantDetected);
+      const nextTagIds =
+        initialData.tags?.map((tag) => tag.id) ?? initialData.tagIds ?? [];
+      const hasTagsInPayload =
+        (initialData.tags?.length ?? 0) > 0 ||
+        (initialData.tagIds?.length ?? 0) > 0;
+      if (hasTagsInPayload) {
+        setSelectedTagIds(nextTagIds);
+      }
 
-      if (initialAmount) {
-        amountInput.setDisplayValue(numberFormatting.formatForInput(initialAmount));
+      if (formAmount) {
+        amountInput.setDisplayValue(numberFormatting.formatForInput(formAmount));
       } else {
         amountInput.setDisplayValue("");
+      }
+
+      if (installmentAmounts) {
+        installmentBaselineRef.current = {
+          planTotal: storedPlanTotal > 0
+            ? storedPlanTotal
+            : installmentAmounts.total,
+          paymentAmount:
+            perPaymentAmount || installmentAmounts.monthly,
+        };
+        installmentAmountAnchorRef.current = "total";
+        setInstallmentMonthlyAmount(String(installmentAmounts.monthly));
+        monthlyAmountInput.setDisplayValue(
+          numberFormatting.formatForInput(String(installmentAmounts.monthly)),
+        );
+        setInstallmentThisPaymentAmount(String(installmentAmounts.monthly));
+        thisPaymentAmountInput.setDisplayValue(
+          numberFormatting.formatForInput(String(installmentAmounts.monthly)),
+        );
+      } else {
+        installmentBaselineRef.current = {
+          planTotal: 0,
+          paymentAmount: 0,
+        };
+        setInstallmentMonthlyAmount("");
+        monthlyAmountInput.setDisplayValue("");
       }
 
       if (useConversion) {
@@ -532,17 +1473,43 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           (a) => a.value === initialData.accountName,
         );
         setAmountCurrency(displayCurrency);
-        setConversionSnapshot({
-          originalCurrency: displayCurrency,
-          targetCurrency: String(
-            (rawConv as any)?.converted_currency ??
-              (rawConv as any)?.convertedCurrency ??
-              editAccount?.currency ??
-              effectiveSpaceCurrency,
-          ),
-          exchangeRate: Number((rawConv as any)?.exchange_rate ?? (rawConv as any)?.exchangeRate ?? 1),
-          exchangeRateSource: ((rawConv as any)?.source ?? "manual") as "auto" | "manual" | "recent",
-        });
+        const stored = storedConversionForEditForm({
+          data: initialData as unknown as Record<string, unknown>,
+          targetCurrency:
+            editAccount?.currency
+            ?? effectiveSpaceCurrency,
+        })
+          ?? conversionSnapshotFromTransactionData(
+            initialData as unknown as Record<string, unknown>,
+          );
+        if (stored) {
+          setConversionSnapshot({
+            ...stored,
+            targetCurrency:
+              stored.targetCurrency
+              ?? editAccount?.currency
+              ?? effectiveSpaceCurrency,
+          });
+        } else if (rawConv != null) {
+          setConversionSnapshot({
+            originalCurrency: displayCurrency,
+            targetCurrency: String(
+              (rawConv as any)?.converted_currency ??
+                (rawConv as any)?.convertedCurrency ??
+                editAccount?.currency ??
+                effectiveSpaceCurrency,
+            ),
+            exchangeRate: Number(
+              (rawConv as any)?.converted_amount
+                ?? (rawConv as any)?.convertedAmount
+                ?? 0,
+            ) / Math.max(Number(originalAmount) || 1, 1),
+            exchangeRateSource: ((rawConv as any)?.source ?? "manual") as
+              | "auto"
+              | "manual"
+              | "recent",
+          });
+        }
       } else {
         const apiCcy =
           (initialData as any).amountCurrency ??
@@ -579,10 +1546,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         scheduleType: ScheduleTypeEnum.ONE_TIME,
         repeatInterval: "",
         installmentPeriod: "",
+        installmentTermUnit: "months",
         file: null,
       });
-      // Reset number input hook
+      setEntityName("");
       amountInput.reset();
+      monthlyAmountInput.reset();
+      setInstallmentMonthlyAmount("");
       setDate(undefined);
       setScheduleType(ScheduleTypeEnum.ONE_TIME);
       setFormSubmitted(false);
@@ -650,6 +1620,87 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     // Special handling for schedule type
     if (field === "scheduleType") {
       setScheduleType(value as ScheduleTypeEnum);
+
+      if (value === ScheduleTypeEnum.INSTALLMENT) {
+        installmentAmountAnchorRef.current = "total";
+        const total = Number.parseFloat(formState.amount) || 0;
+        const monthly = Number.parseFloat(installmentMonthlyAmount) || 0;
+
+        if (total > 0 || monthly > 0) {
+          syncInstallmentFieldsRef.current(
+            total > 0 ? "total" : "monthly",
+            total,
+            monthly,
+          );
+        }
+      } else {
+        setInstallmentMonthlyAmount("");
+        monthlyAmountInput.setDisplayValue("");
+      }
+    }
+
+    if (
+      field === "installmentPeriod"
+      && scheduleType === ScheduleTypeEnum.INSTALLMENT
+    ) {
+      const periodMonths = loanTermToMonths(
+        String(value),
+        formState.installmentTermUnit ?? "months",
+      );
+      const total = Number.parseFloat(formState.amount) || 0;
+      const monthly = Number.parseFloat(installmentMonthlyAmount) || 0;
+
+      if (periodMonths > 0 && (total > 0 || monthly > 0)) {
+        const synced =
+          canUseInstallmentRevisionSync
+            ? syncInstallmentRevisionAmounts({
+                anchor: installmentAmountAnchorRef.current,
+                total,
+                monthly,
+                parentDate: installmentRevisionDates!.parentDate,
+                effectiveDate: installmentRevisionDates!.effectiveDate,
+                periodMonths,
+                paidSoFarCents: installmentSeriesContext?.paidSoFarCents ?? 0,
+                calculatedDates: installmentSeriesContext?.calculatedDates ?? [],
+                priorPerPaymentCents:
+                  installmentPriorPerPaymentCents
+                  || Math.round(monthly * 100),
+                occurrenceCentsByDate: installmentOccurrenceCentsByDate,
+                ...installmentRevisionFxParams,
+              })
+            : syncInstallmentAmounts({
+                anchor: installmentAmountAnchorRef.current,
+                total,
+                monthly,
+                periodMonths,
+                paidSoFar: effectiveInstallmentPaidSoFar,
+                committedMonthsCount: effectiveInstallmentCommittedMonthsCount,
+              });
+
+        setInstallmentMonthlyAmount(
+          synced.monthly > 0 ? String(synced.monthly) : "",
+        );
+        setFormState((prev) => ({
+          ...prev,
+          installmentPeriod: value,
+          amount: synced.total > 0 ? String(synced.total) : "",
+        }));
+        amountInput.setDisplayValue(
+          synced.total > 0
+            ? numberFormatting.formatForInput(String(synced.total))
+            : "",
+        );
+        monthlyAmountInput.setDisplayValue(
+          synced.monthly > 0
+            ? numberFormatting.formatForInput(String(synced.monthly))
+            : "",
+        );
+
+        if (formSubmitted) {
+          validateForm();
+        }
+        return;
+      }
     }
     
     // If form has been submitted once, validate on change to provide immediate feedback
@@ -661,6 +1712,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (editingLockedReason) {
+      return;
+    }
     
     // Prevent form submission if we're deleting a draft
     if (isDeletingDraft) {
@@ -683,11 +1738,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     }
 
     if (
-      !isEditMode &&
       createTransactionNeedsConversion({
         amountCurrency,
         targetCurrency: amountPickerTargetCurrency,
-        isEditMode,
       }) &&
       !conversionSnapshot
     ) {
@@ -723,11 +1776,29 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         isEditMode,
         hadAttachmentOnLoad: hadAttachmentOnLoadRef.current,
         file: formState.file,
+        initialFile: initialData?.file ?? null,
       });
 
+      const installmentPeriodForSubmit =
+        formState.scheduleType === ScheduleTypeEnum.INSTALLMENT
+          ? loanTermToMonths(
+              formState.installmentPeriod ?? "",
+              formState.installmentTermUnit ?? "months",
+            )
+          : 0;
+
       const transactionData = {
-        amount: numberFormatting.cleanForBackend(formState.amount),
-        description: formState.description || "",
+        amount: resolveInstallmentSubmitAmount({
+          isEditMode,
+          totalAmount: numberFormatting.cleanForBackend(formState.amount),
+          monthlyAmount: numberFormatting.cleanForBackend(installmentMonthlyAmount),
+          periodMonths: installmentPeriodForSubmit,
+          singlePaymentMode: isInstallmentSinglePaymentEdit,
+          thisPaymentAmount: numberFormatting.cleanForBackend(
+            installmentThisPaymentAmount,
+          ),
+        }),
+        description: formState.description?.trim() ?? "",
         transactionType: "expense" as const,
         ...categoryFields,
         accountName: formState.accountName,
@@ -737,18 +1808,57 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           repeatInterval: formState.repeatInterval
         }),
         ...(formState.scheduleType === ScheduleTypeEnum.INSTALLMENT && {
-          installmentPeriod: formState.installmentPeriod
-            ? parseInt(formState.installmentPeriod, 10)
-            : undefined
+          installmentPeriod:
+            loanTermToMonths(
+              formState.installmentPeriod ?? "",
+              formState.installmentTermUnit ?? "months",
+            )
+            || (isEditMode ? initialData?.installmentPeriod : undefined)
+            || undefined,
+          ...(isInstallmentSinglePaymentEdit
+            ? {
+                installmentTotal:
+                  Number.parseFloat(formState.amount) > 0
+                    ? Number.parseFloat(formState.amount)
+                    : undefined,
+              }
+            : {}),
+          ...(isInstallmentPlanEdit
+            ? {
+                installmentTotal:
+                  Number.parseFloat(formState.amount) > 0
+                    ? Number.parseFloat(formState.amount)
+                    : undefined,
+              }
+            : {}),
         }),
+        ...(showInstallmentScopeSelector && isEditMode
+          ? {
+              updateScope: installmentUpdateScope,
+            }
+          : {}),
         ...(fileId && { fileId }),
         ...fileFields,
         ...(draftId && { draftId }),
-        ...(conversionSnapshot && {
-          original_currency: conversionSnapshot.originalCurrency,
-          exchange_rate: conversionSnapshot.exchangeRate,
-          exchange_rate_source: conversionSnapshot.exchangeRateSource,
+        ...(liveConversion && {
+          original_currency: liveConversion.originalCurrency,
+          exchange_rate: liveConversion.exchangeRate,
+          exchange_rate_source: liveConversion.exchangeRateSource,
         }),
+        ...(isEditMode
+          ? { entityName: entityName.trim() }
+          : entityName.trim()
+            ? { entityName: entityName.trim() }
+            : {}),
+        ...(receiptMerchantDetected?.trim()
+          ? { receiptMerchantDetected: receiptMerchantDetected.trim() }
+          : {}),
+        tagIds: selectedTagIds,
+        ...(selectedTagIds.length > 0
+          ? {
+              tags: availableTags.filter((tag) => selectedTagIds.includes(tag.id)),
+            }
+          : {}),
       };
       
       let response;
@@ -759,10 +1869,74 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         response = await onSubmitSuccess?.(submitData);
         return; // Let parent handle the actual update
       } else {
-        // Create new transaction
-        response = await createTransaction(api, transactionData);
+        const namedShareParticipants = costShare.participants.filter(
+          (participant) => participant.entityName.trim().length > 0,
+        );
+        const shouldSplit =
+          hasPro
+          && shouldShowExpenseCostShare({
+            isEditMode,
+            scheduleType: formState.scheduleType,
+          })
+          && costShare.enabled;
+
+        if (shouldSplit) {
+          const allocation = previewExpenseCostShare({
+            totalAmount: transactionData.amount,
+            mode: costShare.mode,
+            participants: namedShareParticipants,
+          });
+          if (!allocation) {
+            toast.error("Add people and a share that fits within the bill.");
+            setIsSubmitting(false);
+            return;
+          }
+
+          response = await createExpenseWithCostShareLocalFirst(
+            api,
+            {
+              spaceId: spaceCode,
+              data: transactionData,
+              costShare: {
+                mode: costShare.mode,
+                participants: namedShareParticipants,
+              },
+              entryCurrency: amountCurrency,
+              spaceCurrency: effectiveSpaceCurrency,
+            },
+            {
+              queryClient,
+              waitForSync: false,
+            },
+          );
+        } else {
+          // Optimistic: patch list immediately after client validation; sync in background.
+          response = await createTransactionLocalFirst(
+            api,
+            {
+              spaceId: spaceCode,
+              data: transactionData,
+              entryCurrency: amountCurrency,
+              spaceCurrency: effectiveSpaceCurrency,
+            },
+            {
+              queryClient,
+              waitForSync: false,
+            },
+          );
+        }
         transactionCreated = true;
         toast.success("Expense created successfully");
+        void response.syncPromise.then((synced) => {
+          if (synced.pendingSync) {
+            toast.message("Expense saved on this device. Will sync when online.");
+          }
+        }).catch((error) => {
+          const fieldErrors = extractFieldErrors(error);
+          toast.error(
+            fieldErrors.detail || "Failed to create expense. Please try again.",
+          );
+        });
       }
       
       // Call onSubmitSuccess callback to notify parent component
@@ -784,7 +1958,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           scheduleType: ScheduleTypeEnum.ONE_TIME,
           repeatInterval: "",
           installmentPeriod: "",
+          installmentTermUnit: "months",
           file: null, // Reset file in formState
+        });
+        setEntityName("");
+        setCostShare({
+          enabled: false,
+          mode: "equal",
+          participants: [],
         });
         // Reset number input hook
         amountInput.reset();
@@ -876,6 +2057,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       scheduleType: draft.scheduleType || ScheduleTypeEnum.ONE_TIME,
       repeatInterval: draft.repeatInterval || "",
       installmentPeriod: draft.installmentPeriod?.toString() || "",
+      installmentTermUnit: "months",
       file: displayFile, // Set the display file for preview
     };
     
@@ -937,9 +2119,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         scheduleType: ScheduleTypeEnum.ONE_TIME,
         repeatInterval: "",
         installmentPeriod: "",
+        installmentTermUnit: "months",
         file: null,
       });
-      setFileId(null);
+      setEntityName("");
       setDate(new Date());
       setDraftId(undefined);
       
@@ -1000,6 +2183,129 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   const maxDate = endOfMonth(new Date());
   const currentYear = new Date().getFullYear();
+  const attachmentBaseline = useAttachmentDirtyBaseline(
+    initialData?.id,
+    initialData?.file,
+  );
+  const initialInstallmentAmounts = useMemo(() => {
+    if (initialData?.scheduleType !== ScheduleTypeEnum.INSTALLMENT) {
+      return null;
+    }
+
+    const perPaymentAmount = positiveTransactionFormAmount(
+      (initialData as { originalDisplayAmount?: unknown }).originalDisplayAmount
+      ?? (initialData as { original_display_amount?: unknown }).original_display_amount
+      ?? initialData.currencyConversion?.originalAmount
+      ?? initialData.amount,
+    );
+
+    return resolveInstallmentFormInitialAmounts({
+      installmentTotal: resolveInstallmentStoredPlanTotal({
+        installmentTotal: initialData.installmentTotal,
+        perPaymentAmount,
+        periodMonths: initialData.installmentPeriod || 0,
+        convertedPerPaymentAmount: Number(
+          initialData.currencyConversion?.convertedAmount,
+        ),
+        exchangeRate: Number(
+          initialData.currencyConversion?.exchangeRate
+          ?? storedTransactionConversion?.exchangeRate
+          ?? 0,
+        ),
+      }),
+      perPaymentAmount,
+      periodMonths: initialData.installmentPeriod || 0,
+      useStoredTotal: true,
+    });
+  }, [initialData, storedTransactionConversion]);
+  const hasUnsavedEdit = isEditSnapshotDirty(
+    isEditMode && Boolean(initialData),
+    {
+      date: dateDirtySignature(date),
+      amount: amountDirtySignature(
+        isInstallmentSchedule
+          ? formState.amount
+          : amountInput.displayValue,
+      ),
+      amountCurrency,
+      description: formState.description || "",
+      categoryName: formState.categoryName || "",
+      accountName: formState.accountName || "",
+      scheduleType: formState.scheduleType,
+      repeatInterval: formState.repeatInterval || "",
+      installmentPeriod: formState.installmentPeriod || "",
+      entityName,
+      tagIds: tagIdsDirtySignature(selectedTagIds),
+      file: fileDirtySignature(formState.file),
+      conversion: conversionDirtySignature(conversionSnapshot),
+      ...(showInstallmentScopeSelector
+        ? { installmentUpdateScope }
+        : {}),
+    },
+    {
+      date: dateDirtySignature(
+        initialData?.date ? new Date(initialData.date) : undefined,
+      ),
+      amount: amountDirtySignature(
+        initialInstallmentAmounts?.total
+        ?? (initialData as { originalDisplayAmount?: unknown } | undefined)
+          ?.originalDisplayAmount
+        ?? (initialData as { original_display_amount?: unknown } | undefined)
+          ?.original_display_amount
+        ?? initialData?.currencyConversion?.originalAmount
+        ?? initialData?.amount,
+      ),
+      amountCurrency:
+        String(
+          (initialData as { originalDisplayCurrency?: string } | undefined)
+            ?.originalDisplayCurrency
+          ?? (initialData as { original_display_currency?: string } | undefined)
+            ?.original_display_currency
+          ?? initialData?.currencyConversion?.originalCurrency
+          ?? (initialData as { amountCurrency?: string } | undefined)
+            ?.amountCurrency
+          ?? amountCurrency,
+        ),
+      description: initialData?.description || "",
+      categoryName:
+        categoryPickerValueFromReceiptOrTransaction(
+          {
+            categoryId: initialData?.categoryId,
+            subcategoryId: initialData?.subcategoryId,
+            categoryName: initialData?.categoryName,
+          },
+          categoryOptionsRaw,
+        ) || initialData?.categoryName || "",
+      accountName: initialData?.accountName || "",
+      scheduleType: initialData?.scheduleType || ScheduleTypeEnum.ONE_TIME,
+      repeatInterval: initialData?.repeatInterval || "",
+      installmentPeriod: initialData?.installmentPeriod?.toString() || "",
+      entityName: initialData?.entityName || "",
+      tagIds: tagIdsDirtySignature(
+        initialData?.tags?.map((tag) => tag.id) ?? initialData?.tagIds ?? [],
+      ),
+      file: attachmentBaseline,
+      conversion: conversionDirtySignature(
+        initialData?.currencyConversion
+          ? {
+              originalCurrency: initialData.currencyConversion.originalCurrency,
+              targetCurrency: initialData.currencyConversion.convertedCurrency,
+              exchangeRate: initialData.currencyConversion.exchangeRate,
+              exchangeRateSource:
+                (initialData.currencyConversion.source as ConversionSnapshot["exchangeRateSource"])
+                || "manual",
+            }
+          : null,
+      ),
+      ...(showInstallmentScopeSelector
+        ? { installmentUpdateScope: UpdateScopeEnum.THIS_ONLY }
+        : {}),
+    },
+  );
+
+  useLayoutEffect(() => {
+    onDirtyChange?.(hasUnsavedEdit);
+  }, [hasUnsavedEdit, onDirtyChange]);
 
   return (
     <form
@@ -1007,7 +2313,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       onSubmit={handleSubmit}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
+      {/* Scroll on a div — fieldset ignores overflow-y in most browsers. */}
       <div className={pinnedFormScrollAreaClassName}>
+      <fieldset
+        disabled={Boolean(editingLockedReason)}
+        className="min-w-0 space-y-4 border-0 p-0 m-0 disabled:pointer-events-none disabled:opacity-70"
+      >
         {!isEditMode && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -1043,6 +2354,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             )}
           </div>
         )}
+
+        {showInstallmentScopeSelector && onInstallmentUpdateScopeChange ? (
+          <InstallmentUpdateScopeSelector
+            value={installmentUpdateScope}
+            onChange={onInstallmentUpdateScopeChange}
+          />
+        ) : null}
 
         {/* Date + Amount: on mobile stack (Date row, then Amount row); on desktop side-by-side */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1100,8 +2418,18 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           <div className="min-w-0">
           <AmountWithRatePicker
             id="amount"
-            label="Amount"
-            amountDisplayValue={amountInput.displayValue}
+            label={
+              isInstallmentPlanEdit
+              || isInstallmentSinglePaymentEdit
+              || (isInstallmentSchedule && !isEditMode)
+                ? "Total amount"
+                : "Amount"
+            }
+            amountDisplayValue={
+              isInstallmentSinglePaymentEdit && formState.amount
+                ? numberFormatting.formatForInput(formState.amount)
+                : amountInput.displayValue
+            }
             onAmountChange={(value) => amountInput.handleInputChange(value)}
             fromCurrency={amountCurrency}
             onFromCurrencyChange={setAmountCurrency}
@@ -1115,100 +2443,170 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 ? "border-red-800 focus-visible:ring-red-800"
                 : ""
             }
-            lockFromCurrency={isEditMode}
+            lockFromCurrency={false}
             hideRatePicker={isEditMode && !showAmountFxInEdit}
-            previewOnly={previewConversionOnlyInEdit}
-            onConversionChange={setConversionSnapshot}
+            previewOnly={false}
+            suppressAutoFetch={suppressEditRateAutoFetch}
+            onConversionChange={handleAmountConversionChange}
             date={date ? format(date, "yyyy-MM-dd") : undefined}
             initialConversion={amountPickerInitialConversion}
           />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="min-w-0">
-            <FormControlField label="Schedule Type" htmlFor="scheduleType">
-              <Select
-                value={formState.scheduleType}
-                onValueChange={(value) => handleFieldChange("scheduleType", value)}
+          {isInstallmentSinglePaymentEdit ? (
+            <div className="mt-3">
+              <AmountWithRatePicker
+                id="installment-this-payment"
+                label="This payment only"
+                amountDisplayValue={thisPaymentAmountInput.displayValue}
+                onAmountChange={(value) =>
+                  thisPaymentAmountInput.handleInputChange(value)
+                }
+                fromCurrency={amountCurrency}
+                onFromCurrencyChange={setAmountCurrency}
+                toCurrency={amountPickerTargetCurrency}
+                amountCurrencyOptions={amountCurrencyOptions}
+                accountOptions={accountOptions}
+                placeholder="0.00"
+                lockFromCurrency
+                hideRatePicker
+                previewOnly
+                suppressAutoFetch={suppressEditRateAutoFetch}
+                onConversionChange={() => undefined}
+                date={date ? format(date, "yyyy-MM-dd") : undefined}
+                initialConversion={amountPickerInitialConversion}
+              />
+            </div>
+          ) : null}
+          {isInstallmentPlanEdit || (isInstallmentSchedule && !isEditMode) ? (
+            <div className="mt-3 space-y-3">
+              {installmentEditMode === "plan_with_committed"
+              && effectiveInstallmentRemainingMonths > 0
+              && effectiveInstallmentRemainingMonths < installmentPeriodMonths ? (
+                <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  {effectiveInstallmentCommittedMonthsCount > 0 ? (
+                    <p className="font-medium text-foreground">
+                      Already committed: {effectiveInstallmentCommittedMonthsCount}{" "}
+                      payment{effectiveInstallmentCommittedMonthsCount === 1 ? "" : "s"} ·{" "}
+                      {formatCurrency(effectiveInstallmentPaidSoFar, amountCurrency)}
+                    </p>
+                  ) : (
+                    <p className="font-medium text-foreground">
+                      This change applies to{" "}
+                      {installmentRemainingPaymentsLabel(effectiveInstallmentRemainingMonths)}.
+                    </p>
+                  )}
+                  <p className="mt-1">
+                    {effectiveInstallmentCommittedMonthsCount > 0
+                      ? "Recorded payments stay as-is. "
+                      : "Earlier payments stay at their current amounts. "}
+                    Changing the plan total or monthly amount only affects{" "}
+                    {installmentRemainingPaymentsLabel(effectiveInstallmentRemainingMonths)}.
+                  </p>
+                </div>
+              ) : effectiveInstallmentCommittedMonthsCount > 0 ? (
+                <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground">
+                    Already committed: {effectiveInstallmentCommittedMonthsCount}{" "}
+                    payment{effectiveInstallmentCommittedMonthsCount === 1 ? "" : "s"} ·{" "}
+                    {formatCurrency(effectiveInstallmentPaidSoFar, amountCurrency)}
+                  </p>
+                  <p className="mt-1">
+                    Recorded payments stay as-is. Changing the plan total or
+                    monthly amount only affects the remaining payments.
+                  </p>
+                </div>
+              ) : null}
+              <FormControlField
+                label={
+                  installmentEditMode === "plan_with_committed"
+                  && effectiveInstallmentRemainingMonths > 0
+                  && effectiveInstallmentRemainingMonths < installmentPeriodMonths
+                    ? `Monthly amount for ${installmentRemainingPaymentsLabel(effectiveInstallmentRemainingMonths)}`
+                    : "Monthly amount"
+                }
+                htmlFor="installment-monthly-amount"
               >
-                <SelectTrigger
-                  id="scheduleType"
-                  className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.scheduleType ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                >
-                  <SelectValue placeholder="Select schedule type" className="text-sm" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ScheduleTypeEnum.ONE_TIME} className="text-sm">One-Time</SelectItem>
-                  <SelectItem value={ScheduleTypeEnum.REPEAT} className="text-sm">Recurring</SelectItem>
-                  <SelectItem value={ScheduleTypeEnum.INSTALLMENT} className="text-sm">Installment</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormControlField>
-            {formSubmitted && formErrors.scheduleType?.map((error) => (
-              <FormError key={error}>{error}</FormError>
-            ))}
-
-            {/* Conditional Fields */}
-            {scheduleType === ScheduleTypeEnum.REPEAT && (
-              <div className="mt-3">
-                <Label htmlFor="repeatInterval" className="text-sm">Repeat Interval</Label>
-                <Select
-                  value={formState.repeatInterval || ""}
-                  onValueChange={(value) => handleFieldChange("repeatInterval", value)}
-                >
-                  <SelectTrigger 
-                    id="repeatInterval" 
-                    className={`w-full min-w-0 text-sm ${formSubmitted && formErrors.repeatInterval ? "border-red-800 focus-visible:ring-red-800" : ""}`}
-                  >
-                    <SelectValue placeholder="Select interval" className="text-sm" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REPEAT_INTERVALS.map(option => (
-                      <SelectItem key={option.value} value={option.value} className="text-sm">{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formSubmitted && formErrors.repeatInterval?.map((error) => (
-                  <FormError key={error}>{error}</FormError>
-                ))}
-              </div>
-            )}
-            
-            {scheduleType === ScheduleTypeEnum.INSTALLMENT && (
-              <div className="mt-3">
-                <Label htmlFor="installmentPeriod" className="text-sm">Number of Months</Label>
                 <Input
-                  id="installmentPeriod"
-                  name="installmentPeriod"
-                  value={formState.installmentPeriod || ""}
-                  onChange={(e) => handleFieldChange("installmentPeriod", e.target.value)}
-                  type="number"
-                  placeholder="Number of months"
-                  className={`text-sm ${formSubmitted && formErrors.installmentPeriod ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                  id="installment-monthly-amount"
+                  name="installmentMonthlyAmount"
+                  value={monthlyAmountInput.displayValue}
+                  onChange={(event) =>
+                    monthlyAmountInput.handleInputChange(event.target.value)
+                  }
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className="text-sm"
                 />
-                {formSubmitted && formErrors.installmentPeriod?.map((error) => (
-                  <FormError key={error}>{error}</FormError>
-                ))}
-              </div>
-            )}
-          </div>
+              </FormControlField>
+              <p className="text-xs text-muted-foreground">
+                {amountCurrency} per payment
+                {installmentPeriodMonths > 0
+                  ? installmentEditMode === "plan_with_committed"
+                    && effectiveInstallmentRemainingMonths > 0
+                    && effectiveInstallmentRemainingMonths < installmentPeriodMonths
+                    ? ` · ${installmentRemainingPaymentsLabel(effectiveInstallmentRemainingMonths)} of ${installmentPeriodMonths}`
+                    : effectiveInstallmentCommittedMonthsCount > 0
+                      ? ` · ${effectiveInstallmentRemainingMonths} remaining of ${installmentPeriodMonths}`
+                      : ` · ${installmentPeriodMonths} payments`
+                  : ""}
+              </p>
+              {(() => {
+                const monthly = Number.parseFloat(installmentMonthlyAmount);
+                const rate = conversionSnapshot?.exchangeRate;
+                const target =
+                  conversionSnapshot?.targetCurrency
+                  || amountPickerTargetCurrency
+                  || spaceCurrency;
+                if (
+                  !Number.isFinite(monthly)
+                  || monthly <= 0
+                  || !rate
+                  || !target
+                  || target === amountCurrency
+                ) {
+                  return null;
+                }
 
-          <FormControlField label="Expense Category" htmlFor="category">
-            <GridPicker
-              pickerKind="category"
-              label="Expense Category"
-              hideLabel
-              value={formState.categoryName}
-              onChange={(v) => handleFieldChange("categoryName", v)}
-              categories={categoryOptions}
-              error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
-              categoryType={CategoryTypeEnum.EXPENSE}
-              onCategoryCreated={handleCategoryCreated}
-              disabled={isCategoryLockedForEdit}
-            />
-          </FormControlField>
+                return (
+                  <p
+                    data-testid="installment-monthly-fx"
+                    className="text-xs text-muted-foreground"
+                  >
+                    → {target}{" "}
+                    {formatWithDelimiters(monthly * rate, {
+                      minFractionDigits: 3,
+                      maxFractionDigits: 3,
+                    })}
+                  </p>
+                );
+              })()}
+            </div>
+          ) : null}
+          </div>
         </div>
+
+        <TransactionDescriptionField
+          id="description"
+          value={formState.description || ""}
+          onChange={(value) => handleFieldChange("description", value)}
+          categoryName={formState.categoryName}
+          transactionType="expense"
+        />
+
+        <FormControlField label="Expense Category" htmlFor="category">
+          <GridPicker
+            pickerKind="category"
+            label="Expense Category"
+            hideLabel
+            value={formState.categoryName}
+            onChange={(v) => handleFieldChange("categoryName", v)}
+            categories={categoryOptions}
+            error={formSubmitted && formErrors.categoryName ? formErrors.categoryName : undefined}
+            categoryType={CategoryTypeEnum.EXPENSE}
+            onCategoryCreated={handleCategoryCreated}
+            disabled={isCategoryLockedForEdit}
+          />
+        </FormControlField>
         {formSubmitted && formErrors.categoryName?.map((error) => (
           <FormError key={error}>{error}</FormError>
         ))}
@@ -1247,30 +2645,158 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           )}
         </div>
 
-        <div className="min-w-0 space-y-2">
-          <Label htmlFor="description" className="text-sm">
-            Note (Optional)
-          </Label>
-          <NotesAutocomplete
-            id="description"
-            value={formState.description || ""}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-              handleFieldChange("description", e.target.value)
-            }
-            categoryName={formState.categoryName}
-            transactionType="expense"
-            placeholder="Add additional details"
-            className="text-sm"
-          />
-        </div>
+        <TransactionEntityField
+          id="expense-entity"
+          kind="merchant"
+          value={entityName}
+          onChange={setEntityName}
+        />
 
-        {/* File Upload Field */}
+        {showInstallmentScopeSelector ? (
+          isInstallmentPlanEdit && scheduleType === ScheduleTypeEnum.INSTALLMENT ? (
+            <div className="space-y-2">
+              <Label htmlFor="installmentPeriod" className="text-sm">
+                Installment Term
+              </Label>
+              <div className="relative">
+                <Input
+                  id="installmentPeriod"
+                  name="installmentPeriod"
+                  value={formState.installmentPeriod || ""}
+                  onChange={(e) =>
+                    handleFieldChange("installmentPeriod", e.target.value)
+                  }
+                  type="number"
+                  inputMode="decimal"
+                  min={
+                    (formState.installmentTermUnit ?? "months") === "months"
+                      ? "1"
+                      : "0.1"
+                  }
+                  step={
+                    (formState.installmentTermUnit ?? "months") === "months"
+                      ? "1"
+                      : "0.1"
+                  }
+                  placeholder="0"
+                  className={`pr-20 text-sm ${formSubmitted && formErrors.installmentPeriod ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                  onClick={() =>
+                    handleFieldChange(
+                      "installmentTermUnit",
+                      (formState.installmentTermUnit ?? "months") === "months"
+                        ? "years"
+                        : "months",
+                    )
+                  }
+                >
+                  {formatLoanTermUnitLabel(formState.installmentTermUnit ?? "months")}
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </div>
+              {formSubmitted && formErrors.installmentPeriod?.map((error) => (
+                <FormError key={error}>{error}</FormError>
+              ))}
+            </div>
+          ) : null
+        ) : (
+        <TransactionScheduleFields
+          scheduleType={formState.scheduleType}
+          onScheduleTypeChange={(value) => handleFieldChange("scheduleType", value)}
+          scheduleTypeOptions={EXPENSE_SCHEDULE_TYPE_OPTIONS}
+          repeatInterval={formState.repeatInterval}
+          onRepeatIntervalChange={(value) => handleFieldChange("repeatInterval", value)}
+          showRepeatInterval={scheduleType === ScheduleTypeEnum.REPEAT}
+          scheduleTypeErrors={formSubmitted ? formErrors.scheduleType : undefined}
+          repeatIntervalErrors={formSubmitted ? formErrors.repeatInterval : undefined}
+        >
+          {scheduleType === ScheduleTypeEnum.INSTALLMENT && (
+            <div className="space-y-2">
+              <Label htmlFor="installmentPeriod" className="text-sm">
+                Installment Term
+              </Label>
+              <div className="relative">
+                <Input
+                  id="installmentPeriod"
+                  name="installmentPeriod"
+                  value={formState.installmentPeriod || ""}
+                  onChange={(e) =>
+                    handleFieldChange("installmentPeriod", e.target.value)
+                  }
+                  type="number"
+                  inputMode="decimal"
+                  min={
+                    (formState.installmentTermUnit ?? "months") === "months"
+                      ? "1"
+                      : "0.1"
+                  }
+                  step={
+                    (formState.installmentTermUnit ?? "months") === "months"
+                      ? "1"
+                      : "0.1"
+                  }
+                  placeholder="0"
+                  className={`pr-20 text-sm ${formSubmitted && formErrors.installmentPeriod ? "border-red-800 focus-visible:ring-red-800" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={toggleInstallmentTermUnit}
+                  className="absolute inset-y-0 right-0 flex cursor-pointer items-center gap-0.5 pr-3 text-sm text-muted-foreground hover:text-foreground"
+                  aria-label={`Switch installment term unit to ${(formState.installmentTermUnit ?? "months") === "months" ? "years" : "months"}`}
+                >
+                  {formatLoanTermUnitLabel(
+                    formState.installmentTermUnit ?? "months",
+                    formState.installmentPeriod ?? "",
+                  )}
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                </button>
+              </div>
+              {formSubmitted && formErrors.installmentPeriod?.map((error) => (
+                <FormError key={error}>{error}</FormError>
+              ))}
+            </div>
+          )}
+        </TransactionScheduleFields>
+        )}
+
+        <TagMultiPicker
+          tags={availableTags}
+          value={selectedTagIds}
+          onChange={setSelectedTagIds}
+          onCreateTag={async (name, color) => {
+            const created = await createTag({ name, color });
+            const id = created?.data?.id as string | undefined;
+            if (id) {
+              return { id, name, color };
+            }
+            return undefined;
+          }}
+          disabled={Boolean(editingLockedReason)}
+        />
+
+        {shouldShowExpenseCostShare({
+          isEditMode,
+          scheduleType: formState.scheduleType,
+        }) ? (
+          <ExpenseCostShareFields
+            value={costShare}
+            onChange={setCostShare}
+            totalAmount={numberFormatting.cleanForBackend(formState.amount)}
+            currency={amountCurrency}
+            disabled={Boolean(editingLockedReason)}
+          />
+        ) : null}
+
         <FileUploadField
           file={formState.file}
           onFileChange={handleFileChange}
           onRemoveFile={handleRemoveFile}
         />
 
+      </fieldset>
       </div>
       <StickyFormActions>
         <div>
@@ -1280,8 +2806,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 e.preventDefault();
                 onDelete();
               }}
-              disabled={isSubmitting}
-              title="Delete transaction"
+              disabled={isSubmitting || Boolean(editingLockedReason)}
+              title={editingLockedReason ?? "Delete transaction"}
             />
           )}
         </div>
@@ -1292,7 +2818,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           <Button 
             type="submit" 
             className="bg-primary hover:bg-primary/80 text-sm" 
-            disabled={isSubmitting}
+            disabled={
+              isSubmitting
+              || Boolean(editingLockedReason)
+              || (isEditMode && !hasUnsavedEdit)
+            }
+            title={
+              editingLockedReason
+              ?? (isEditMode && !hasUnsavedEdit ? "No changes to save" : undefined)
+            }
             data-tutorial-target="add-expense-button"
           >
             {isSubmitting ? (isEditMode ? "Updating Expense..." : "Adding Expense...") : (isEditMode ? "Update Expense" : "Add Expense")}

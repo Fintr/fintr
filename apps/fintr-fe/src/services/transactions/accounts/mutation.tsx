@@ -91,10 +91,15 @@ export const updateAccount = async (
  */
 export const deleteAccount = async (
   api: AxiosInstance,
-  accountId: string
+  accountId: string,
+  options?: { removeTransactions?: boolean },
 ) => {
   try {
-    const response = await api.delete(`/transactions/accounts/${accountId}`);
+    const response = await api.delete(`/transactions/accounts/${accountId}`, {
+      data: {
+        removeTransactions: options?.removeTransactions === true,
+      },
+    });
     return response.data;
   } catch (error) {
     // Handle different error structures

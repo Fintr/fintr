@@ -1,0 +1,2 @@
+web: env SOLID_QUEUE_IN_PUMA=0 bundle exec rails server -p ${PORT:-3000}
+jobs: env SOLID_QUEUE_BOOT_SYNC=1 bin/jobs start

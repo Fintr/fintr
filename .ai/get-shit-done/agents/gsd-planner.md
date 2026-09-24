@@ -280,6 +280,8 @@ This prevents the "scavenger hunt" anti-pattern where executors explore the code
 
 **Standard tasks:** UI layout/styling, configuration, glue code, one-off scripts, simple CRUD with no business logic.
 
+**Fintr frontend:** `apps/fintr-fe` production TypeScript always uses skill `frontend-tdd` (run related tests first, change, update tests, re-run), even when the task is a standard `type="auto"` plan rather than `type: tdd`. Do not classify fintr-fe work as "skip tests."
+
 **Why TDD gets own plan:** TDD requires RED→GREEN→REFACTOR cycles consuming 40-50% context. Embedding in multi-task plans degrades quality.
 
 **Task-level TDD** (for code-producing tasks in standard plans): When a task creates or modifies production code, add `tdd="true"` and a `<behavior>` block to make test expectations explicit before implementation:

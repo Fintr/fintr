@@ -142,6 +142,17 @@ describe("buildTransactionFileUpdateFields", () => {
     ).toEqual({});
   });
 
+  it("leaves a cached IndexedDB file unchanged on edit", () => {
+    expect(
+      buildTransactionFileUpdateFields({
+        isEditMode: true,
+        hadAttachmentOnLoad: true,
+        file,
+        initialFile: file,
+      }),
+    ).toEqual({});
+  });
+
   it("does not request removal when the attachment was cleared but none existed on load", () => {
     expect(
       buildTransactionFileUpdateFields({

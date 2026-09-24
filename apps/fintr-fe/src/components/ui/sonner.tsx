@@ -1,11 +1,35 @@
 "use client"
 
+import type { CSSProperties } from "react"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, ToasterProps } from "sonner"
 
+import { toastSurfaceClassNameImportant } from "@/lib/toast-styles"
+
 const TOAST_DURATION_MS = 3000
 
-const Toaster = ({ ...props }: ToasterProps) => {
+const neutralToastClassName = toastSurfaceClassNameImportant
+
+const toasterCssVars = {
+  pointerEvents: "none",
+  "--normal-bg": "var(--background)",
+  "--normal-text": "var(--foreground)",
+  "--normal-border": "var(--border)",
+  "--success-bg": "var(--background)",
+  "--success-text": "var(--foreground)",
+  "--success-border": "var(--border)",
+  "--error-bg": "var(--background)",
+  "--error-text": "var(--foreground)",
+  "--error-border": "var(--border)",
+  "--warning-bg": "var(--background)",
+  "--warning-text": "var(--foreground)",
+  "--warning-border": "var(--border)",
+  "--info-bg": "var(--background)",
+  "--info-text": "var(--foreground)",
+  "--info-border": "var(--border)",
+} as CSSProperties
+
+const Toaster = ({ style, ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
 
   return (
@@ -15,14 +39,21 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-right"
       duration={TOAST_DURATION_MS}
       visibleToasts={3}
-      style={{ pointerEvents: "none" }}
+      style={{
+        ...toasterCssVars,
+        ...style,
+      }}
       toastOptions={{
         duration: TOAST_DURATION_MS,
         classNames: {
-          error: '!bg-red-50 !text-red-900 !border-red-300 dark:!bg-red-950 dark:!text-red-900/50 dark:!border-red-800',
-          success: '!bg-teal-50 !text-teal-600 !border-teal-300 dark:!bg-green-950 dark:!text-teal-500 dark:!border-green-800',
-          warning: '!bg-yellow-50 !text-yellow-600 !border-yellow-200 dark:!bg-yellow-950 dark:!text-yellow-300 dark:!border-yellow-800',
-          info: '!bg-blue-50 !text-blue-600 !border-blue-200 dark:!bg-blue-950 dark:!text-blue-300 dark:!border-blue-800',
+          toast: neutralToastClassName,
+          title: "!text-foreground",
+          description: "!text-muted-foreground",
+          success: neutralToastClassName,
+          error: neutralToastClassName,
+          warning: neutralToastClassName,
+          info: neutralToastClassName,
+          loading: neutralToastClassName,
         },
         style: { pointerEvents: "auto" },
       }}

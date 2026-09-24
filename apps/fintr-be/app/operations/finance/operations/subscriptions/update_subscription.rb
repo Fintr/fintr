@@ -432,8 +432,6 @@ module Finance
             new_plan:
           )
 
-          # Update local subscription to new plan
-          # Note: tokens_allocated in current cycle stays the same
           current_subscription.update!(
             subscription_plan_id: new_plan.id,
             metadata: current_subscription.metadata.merge(

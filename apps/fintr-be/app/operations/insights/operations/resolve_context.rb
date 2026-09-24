@@ -12,6 +12,7 @@ module Insights
           optional(:category_name).maybe(:string)
           optional(:category_id).maybe(:string)
           optional(:subcategory_id).maybe(:string)
+          optional(:tag_ids).array(:string)
         end
       end
 

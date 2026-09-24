@@ -6,7 +6,7 @@ RSpec.describe Finance::Operations::Subscriptions::CreateSubscription, :vcr, typ
   let(:operation) { described_class.new }
   let(:user) { create(:user) }
   let(:space) { create(:personal_space) }
-  let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", token_limit: 50, price_cents: 14_900, interval: "month") }
+  let(:subscription_plan) { create(:subscription_plan, slug: "basic-#{SecureRandom.hex(4)}", price_cents: 14_900, interval: "month") }
 
   let(:valid_params) do
     {
@@ -126,6 +126,78 @@ RSpec.describe Finance::Operations::Subscriptions::CreateSubscription, :vcr, typ
       allow(client_mock).to receive(:create_customer).and_return(
         { id: "cust-test-123", reference_id: "ref-test-456" }
       )
+    end
+
+    context "when subscribing to a Pro plan" do
+      let(:xendit_plan) do
+        {
+          id: "repl_pro",
+          reference_id: "sub-pro",
+          status: "REQUIRES_ACTION",
+          schedule: {
+            id: "resc_pro",
+            reference_id: "schedule-pro"
+          }
+        }
+      end
+
+      before do
+        allow(client_mock).to receive(:create_subscription_plan).and_return(xendit_plan)
+      end
+
+      context "with the monthly plan" do
+        let(:subscription_plan) do
+          create(
+            :subscription_plan,
+            price_cents: 10_000,
+            price_currency: "PHP",
+            interval: "month"
+          )
+        end
+
+        it "sends Xendit a 100 PHP charge every month" do
+          operation.call(valid_params)
+
+          expect(client_mock).to have_received(:create_subscription_plan).with(
+            params: hash_including(
+              amount: 100.0,
+              currency: "PHP",
+              description: subscription_plan.name,
+              schedule: hash_including(
+                interval: "MONTH",
+                interval_count: 1
+              )
+            )
+          )
+        end
+      end
+
+      context "with the yearly plan" do
+        let(:subscription_plan) do
+          create(
+            :subscription_plan,
+            price_cents: 100_000,
+            price_currency: "PHP",
+            interval: "year"
+          )
+        end
+
+        it "sends Xendit a 1000 PHP charge every year" do
+          operation.call(valid_params)
+
+          expect(client_mock).to have_received(:create_subscription_plan).with(
+            params: hash_including(
+              amount: 1_000.0,
+              currency: "PHP",
+              description: subscription_plan.name,
+              schedule: hash_including(
+                interval: "YEAR",
+                interval_count: 1
+              )
+            )
+          )
+        end
+      end
     end
 
     context "with valid parameters" do

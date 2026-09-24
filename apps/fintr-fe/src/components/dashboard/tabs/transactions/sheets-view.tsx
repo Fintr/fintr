@@ -1,5 +1,5 @@
 import { IndexTransaction, TransactionsPage, CombinedTransactionTypeEnum } from "@/types/transactionTypes";
-import { useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check, X, Image } from "lucide-react";
@@ -9,8 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { fetchTransactionById } from "@/services/transactions/queries";
-import { fetchTransferById } from "@/services/transactions/transfers/queries";
+import {
+  TRANSACTION_DAY_DATA_ATTR,
+  useAnchorTransactionsListToToday,
+} from "@/hooks/useAnchorTransactionsListToToday";
+import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { toast } from "sonner";
 import {
   Popover,
@@ -22,7 +27,12 @@ import {
   formatIndexTransactionListAmount,
   indexTransactionDisplayMoney,
 } from "@/utils/indexTransactionDisplay";
-import { formatTransactionRowDate } from "@/utils/dateUtils";
+import { formatTransactionRowDate, getLocalIsoDateKey } from "@/utils/dateUtils";
+import { activityShowsCalculatedIndicator } from "@/utils/activityDisplay";
+import {
+  transactionEntityLabel,
+  transactionRowTitle,
+} from "@/utils/transactionDescription";
 
 interface SheetsViewProps {
     isPending: boolean;
@@ -41,6 +51,12 @@ interface SheetsViewProps {
     hasNextPage: boolean;
     /** When true, amount column uses booked (ledger) currency from the API instead of space-normalized. */
     showBookedCurrencies?: boolean;
+    /** Land on today after reload (future days stay above). */
+    anchorToToday?: boolean;
+    queryStartDate?: string;
+    queryEndDate?: string;
+    fetchNextPage?: () => void;
+    anchorResetKey?: string;
 }
 export function SheetsView({
     isPending,
@@ -58,6 +74,11 @@ export function SheetsView({
     isFetchingNextPage,
     hasNextPage,
     showBookedCurrencies = false,
+    anchorToToday = false,
+    queryStartDate = "",
+    queryEndDate = "",
+    fetchNextPage,
+    anchorResetKey = "",
 }: SheetsViewProps) {
     const tableRef = useRef<HTMLTableElement>(null);
     const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
@@ -74,38 +95,78 @@ export function SheetsView({
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
     const [lightboxIndex, setLightboxIndex] = useState(0);
+    const lightboxRevokeRef = useRef<(() => void) | null>(null);
     const { api } = useAuthApi();
+    const [spaceCode] = useLocalStorage("spaceCode", "");
+    const preferLocal = usePreferLocalTransactionReads(spaceCode);
     
     // Get space context for currency
     const { currentSpace } = useSpaceContext(api);
     const spaceCurrency = currentSpace?.currency ?? "PHP";
+    const hasLoadedPages = Boolean(data?.pages?.length);
+
+    const dayKeysNewestFirst = useMemo(() => {
+      if (!data?.pages?.length) return [] as string[];
+
+      const keys: string[] = [];
+      let lastKey: string | null = null;
+      const allTransactions = data.pages.flatMap((page) => page.transactions);
+      for (const transaction of allTransactions) {
+        const dayKey = getLocalIsoDateKey(transaction.date);
+        if (dayKey !== lastKey) {
+          keys.push(dayKey);
+          lastKey = dayKey;
+        }
+      }
+      return keys;
+    }, [data]);
+
+    useAnchorTransactionsListToToday({
+      enabled: anchorToToday && Boolean(isSuccess || data?.pages?.length),
+      startDate: queryStartDate,
+      endDate: queryEndDate,
+      dayKeysNewestFirst,
+      hasNextPage: Boolean(hasNextPage),
+      isFetchingNextPage,
+      fetchNextPage,
+      resetKey: anchorResetKey,
+    });
+
+    const handleCloseLightbox = () => {
+        lightboxRevokeRef.current?.();
+        lightboxRevokeRef.current = null;
+        setLightboxOpen(false);
+    };
 
     const handleImageClick = async (transaction: IndexTransaction) => {
-        if (!api) return;
+        if (!preferLocal && !api) return;
 
         try {
-            let transactionData;
-            
-            if (transaction.type === CombinedTransactionTypeEnum.TRANSFER) {
-                transactionData = await fetchTransferById(api, transaction.id);
-            } else {
-                transactionData = await fetchTransactionById(api, transaction.id);
-            }
+            lightboxRevokeRef.current?.();
+            lightboxRevokeRef.current = null;
 
-            if (transactionData?.files && Array.isArray(transactionData.files) && transactionData.files.length > 0) {
-                const images = transactionData.files.map((file: any) => ({
-                    url: file.url,
-                    filename: file.filename,
-                    contentType: file.contentType,
-                    byteSize: file.byteSize,
-                }));
-                
-                setLightboxImages(images);
+            const result = await resolveAttachmentsForTransaction({
+                api,
+                spaceId: spaceCode,
+                transactionId: transaction.id,
+                type: transaction.type,
+                listRow: transaction,
+                preferLocal,
+            });
+
+            if (result.images.length > 0) {
+                lightboxRevokeRef.current = result.revoke;
+                setLightboxImages(result.images);
                 setLightboxIndex(0);
                 setLightboxOpen(true);
-            } else {
-                toast.error("No image found for this transaction.");
+                return;
             }
+
+            toast.error(
+                preferLocal
+                    ? "Image not available offline."
+                    : "No image found for this transaction.",
+            );
         } catch (error) {
             console.error("Error fetching transaction image:", error);
             toast.error("Failed to load transaction image.");
@@ -135,31 +196,31 @@ export function SheetsView({
                 </tr>
               </thead>
               <tbody>
-                {isPending && (
+                {isPending && !hasLoadedPages && (
                   <tr>
                     <td colSpan={4} className="text-center p-4">
                       <LoadingSpinner size="medium" />
                     </td>
                   </tr>
                 )}
-                {isError && (
+                {isError && !hasLoadedPages && (
                   <tr>
                     <td
                       colSpan={4}
                       className="text-center p-4 bg-red-800"
                     >
-                      Error: {error?.message}
+                      Error: {error?.message ?? "Failed to load transactions"}
                     </td>
                   </tr>
                 )}
-                {isSuccess &&
+                {hasLoadedPages &&
                   data?.pages && (() => {
                     // Flatten all transactions and deduplicate by ID as a safety measure
                     const allTransactions = data.pages.flatMap(page => page.transactions);
                     const uniqueTransactions = allTransactions.filter((transaction, index, array) => 
                       array.findIndex(t => t.id === transaction.id) === index
                     );
-                    
+                    let lastIsoDay: string | null = null;
                     return uniqueTransactions.map((transaction: IndexTransaction, index) => {
                       const { amount: rowAmount, currency: rowCurrencyCode } =
                         indexTransactionDisplayMoney(
@@ -167,17 +228,30 @@ export function SheetsView({
                           spaceCurrency,
                           showBookedCurrencies,
                         );
+                      const isoDay = getLocalIsoDateKey(transaction.date);
+                      const isFirstRowOfDay = isoDay !== lastIsoDay;
+                      lastIsoDay = isoDay;
+                      const merchantLine = transactionEntityLabel(
+                        transaction.entityName,
+                      );
+                      const descriptionLine =
+                        transactionRowTitle({
+                          description: transaction.description,
+                        }) || "—";
 
                       return (
+                      <Fragment key={transaction.id}>
                       <tr
-                        key={transaction.id}
-                        className={`relative ${
+                        className={`relative scroll-mt-3 ${
                           index % 2 === 0 ? "bg-white" : "bg-gray-50"
                         }`}
                         data-transaction-id={transaction.id}
+                        {...(isFirstRowOfDay
+                          ? { [TRANSACTION_DAY_DATA_ATTR]: isoDay }
+                          : {})}
                       >
                         {/* Calculated indicator - triangle in upper right corner */}
-                        {transaction.calculated && (
+                        {activityShowsCalculatedIndicator(transaction) && (
                           <Popover
                             open={hoveredCalculatedId === transaction.id}
                             onOpenChange={(open) => {
@@ -347,7 +421,17 @@ export function SheetsView({
                                 onKeyDown(e, transaction, "description")
                               }
                             >
-                              {transaction.description}
+                              <div className="min-w-0">
+                                <div>{descriptionLine}</div>
+                                {merchantLine ? (
+                                  <div
+                                    className="truncate text-xs text-muted-foreground"
+                                    title={merchantLine}
+                                  >
+                                    {merchantLine}
+                                  </div>
+                                ) : null}
+                              </div>
                             </div>
                           )}
                         </td>
@@ -539,16 +623,21 @@ export function SheetsView({
                         >
                         </td>
                       </tr>
+                      </Fragment>
                     );
                     });
                   })()}
+                {hasNextPage && hasLoadedPages && (
+                  <tr aria-hidden>
+                    <td colSpan={8} className="p-0">
+                      <div ref={loadMoreRef} className="h-8 w-full" />
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
-        
-        {/* Infinite scrolling elements */}
-        <div ref={loadMoreRef} style={{ height: "10px" }} />
         
         {isFetchingNextPage && (
           <div className="text-center py-4">
@@ -557,7 +646,7 @@ export function SheetsView({
         )}
         
         {!hasNextPage &&
-          isSuccess &&
+          hasLoadedPages &&
           data &&
           !data.pages.every((p) => p.transactions.length === 0) && (
             <div className="text-center py-4 text-gray-400">
@@ -566,7 +655,9 @@ export function SheetsView({
           )}
           
         {isSuccess &&
-          (!data || data.pages.every((p) => p.transactions.length === 0)) && (
+          hasLoadedPages &&
+          data &&
+          data.pages.every((p) => p.transactions.length === 0) && (
             <div className="text-center py-8 text-gray-500">
               No transactions found
             </div>
@@ -576,7 +667,7 @@ export function SheetsView({
           images={lightboxImages}
           isOpen={lightboxOpen}
           initialIndex={lightboxIndex}
-          onClose={() => setLightboxOpen(false)}
+          onClose={handleCloseLightbox}
         />
       </div>
     

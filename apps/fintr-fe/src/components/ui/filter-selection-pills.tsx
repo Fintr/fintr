@@ -88,7 +88,7 @@ export const FilterSelectionPills = ({
           <button
             type="button"
             className={cn(
-              "rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+              "rounded-full p-0.5 min-h-6 min-w-6 inline-flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
               variantClassNames.removeButton,
             )}
             aria-label={`Remove ${selection.label}`}

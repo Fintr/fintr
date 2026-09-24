@@ -90,3 +90,4 @@ apps/fintr-be/
 - **Models**: Use model specs with factories
 - **Operations/Services**: Use unit specs mocking dependencies
 - **Jobs**: Use job specs testing the `perform` method
+- Backend specs still cover operations that compute durable facts. After sync, the frontend does not use those GET responses as the live UI source — see `docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md`.

@@ -50,8 +50,8 @@ export interface MonthlyActiveUserOcrRow {
   month: string;
   monthLabel: string;
   activeUserCount: number;
-  totalOcrTokens: number;
-  averageOcrTokensPerActiveUser: number;
+  totalOcrScans: number;
+  averageOcrScansPerActiveUser: number;
 }
 
 export interface OcrActiveUserSummary {

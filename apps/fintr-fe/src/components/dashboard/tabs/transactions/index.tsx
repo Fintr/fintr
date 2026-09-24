@@ -35,34 +35,47 @@ import {
 } from "@/types/categoryTreeTypes";
 import { IndexTransaction, TransactionIndexInputType, TransactionTotals } from "@/types/transactionTypes";
 import { TransactionTotalsDisplay } from "./transaction-totals";
-import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
+import { TransactionEntryTypePills } from "./transaction-entry-type-pills";
+import type { TransactionEntryTypeFilter } from "@/utils/transactionEntryTypeFilter";
+import { entryTypeFilterToApiParam } from "@/utils/transactionEntryTypeFilter";
 import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
+import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
+import { collectDeleteScopeContextRows } from "@/services/transactions/local-cache";
+import { flattenTransactionsFromPages, transactionAllowsSeriesDeleteScope } from "@/services/transactions/resolve-delete-scope";
 import { deleteTransaction } from "@/services/transactions/mutation";
-import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from "@/hooks/useDebouncedValue";
-import { shouldShowV2Features } from "@/lib/utils";
+import { shouldShowV2Features, formatSummaryHeaderAmount } from "@/lib/utils";
+import { periodNetLabel } from "@/utils/periodNetLabel";
 import AddTransactionDialog from "../../add-transaction-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateTransactionsCsv } from "@/services/transactions/queries";
 import { getUserFacingExportErrorMessage } from "@/lib/user-facing-export-error";
 import { toast } from "sonner";
+import { transactionViewHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
+import { usePrefetchDetailHrefs } from "@/hooks/usePrefetchDetailHrefs";
+import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
 import { useAtom, useAtomValue } from "jotai";
-import { dateFilterTypeAtom, dateFilterStartDateAtom, dateFilterEndDateAtom, dateFilterMonthYearAtom } from "@/atoms/dateFilterAtoms";
 import {
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
-} from "@/atoms/dashboardAtoms";
-import { useSearchParams } from "next/navigation";
+  dateFilterTypeAtom,
+  dateFilterStartDateAtom,
+  dateFilterEndDateAtom,
+  dateFilterMonthYearAtom,
+  dateRangeToMonthYear,
+} from "@/atoms/dateFilterAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   areFilterValuesEqual,
   hasAppliedAccountFilters,
   hasAppliedCategoryFilters,
+  hasAppliedTagFilters,
   normalizeFilterValues,
   serializeFilterValues,
 } from "@/utils/transactionFilterValues";
@@ -74,16 +87,14 @@ interface TransactionsTabProps {
 const TransactionsTab = ({ }: TransactionsTabProps) => {
   const showV2Features = shouldShowV2Features();
   const searchParams = useSearchParams();
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
-  const incomeCategoryOptions = useAtomValue(incomeCategoryOptionsAtom);
+  const router = useRouter();
+  const {
+    expenseCategoryOptions,
+    incomeCategoryOptions,
+  } = useTransactionCategories();
   const categoryFromUrl = searchParams.get("category");
+  const tagFromUrl = searchParams.get("tag");
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const { firstDay, lastDay } = getCurrentMonthDates();
-  const currentMonth = new Date()
-    .toLocaleString("default", { month: "long" })
-    .toLowerCase();
-  const currentYear = new Date().getFullYear().toString();
-
   // Get filter type and dates from shared atoms (automatically determined by date range)
   const [filterType] = useAtom(dateFilterTypeAtom);
   const [startDate] = useAtom(dateFilterStartDateAtom);
@@ -110,22 +121,60 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Initialize appliedFilters with date filter atoms
-  const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => ({
-    selectedMonth: currentMonth,
-    selectedYear: currentYear,
-    startMonth: currentMonth,
-    startYear: currentYear,
-    endMonth: currentMonth,
-    endYear: currentYear,
-    selectedCategories: [],
-    appliedCategories: [],
-    queryStartDate: startDate,
-    queryEndDate: endDate,
-    appliedMinAmount: "",
-    appliedMaxAmount: "",
-    searchQuery: "",
-    appliedAccounts: [],
-  }));
+  const [appliedFilters, setAppliedFilters] = useState<FilterTypes>(() => {
+    const monthYearFromDates = dateRangeToMonthYear(startDate, endDate);
+
+    return {
+      selectedMonth: monthYearFromDates.selectedMonth,
+      selectedYear: monthYearFromDates.selectedYear,
+      startMonth: monthYearFromDates.startMonth,
+      startYear: monthYearFromDates.startYear,
+      endMonth: monthYearFromDates.endMonth,
+      endYear: monthYearFromDates.endYear,
+      selectedCategories: [],
+      appliedCategories: [],
+      queryStartDate: startDate,
+      queryEndDate: endDate,
+      appliedMinAmount: "",
+      appliedMaxAmount: "",
+      searchQuery: "",
+      appliedAccounts: [],
+      selectedTags: [],
+      appliedTags: [],
+    };
+  });
+
+  useEffect(() => {
+    setAppliedFilters((previous) => {
+      const monthYearFromDates = dateRangeToMonthYear(startDate, endDate);
+      const isSameDateRange =
+        previous.queryStartDate === startDate
+        && previous.queryEndDate === endDate;
+      const isSameMonthYear =
+        previous.selectedMonth === monthYearFromDates.selectedMonth
+        && previous.selectedYear === monthYearFromDates.selectedYear
+        && previous.startMonth === monthYearFromDates.startMonth
+        && previous.startYear === monthYearFromDates.startYear
+        && previous.endMonth === monthYearFromDates.endMonth
+        && previous.endYear === monthYearFromDates.endYear;
+
+      if (isSameDateRange && isSameMonthYear) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        selectedMonth: monthYearFromDates.selectedMonth,
+        selectedYear: monthYearFromDates.selectedYear,
+        startMonth: monthYearFromDates.startMonth,
+        startYear: monthYearFromDates.startYear,
+        endMonth: monthYearFromDates.endMonth,
+        endYear: monthYearFromDates.endYear,
+        queryStartDate: startDate,
+        queryEndDate: endDate,
+      };
+    });
+  }, [startDate, endDate]);
 
   useEffect(() => {
     if (!categoryFromUrl) {
@@ -171,6 +220,24 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     incomeCategoryOptions,
   ]);
 
+  useEffect(() => {
+    if (!tagFromUrl) {
+      return;
+    }
+
+    setAppliedFilters((previous) => {
+      if (areFilterValuesEqual(previous.appliedTags, [tagFromUrl])) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        selectedTags: [tagFromUrl],
+        appliedTags: [tagFromUrl],
+      };
+    });
+  }, [tagFromUrl]);
+
   // Check if any filters are active (beyond default date range)
   const hasActiveFilters = () => {
     const { firstDay, lastDay } = getCurrentMonthDates();
@@ -182,11 +249,14 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       appliedFilters.appliedMinAmount !== "" ||
       appliedFilters.appliedMaxAmount !== "" ||
       appliedFilters.searchQuery !== "" ||
-      hasAppliedAccountFilters(appliedFilters.appliedAccounts)
+      hasAppliedAccountFilters(appliedFilters.appliedAccounts) ||
+      hasAppliedTagFilters(appliedFilters.appliedTags)
     );
   };
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearchInput = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
+  const [entryTypeFilter, setEntryTypeFilter] =
+    useState<TransactionEntryTypeFilter>("all");
   const [showBookedCurrencies, setShowBookedCurrencies] = useState(false);
   useEffect(() => {
     setAppliedFilters((prev) => {
@@ -212,15 +282,12 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const [editValue, setEditValue] = useState<string>("");
   const editInputRef = useRef<HTMLInputElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const listAnchorRef = useRef<HTMLDivElement>(null);
   
   // Refs for timeout cleanup
   const deleteSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const editFocusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const deleteCancelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Edit dialog state
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<IndexTransaction | null>(null);
 
   // Delete scope modal state
   const [deleteScopeModalOpen, setDeleteScopeModalOpen] = useState(false);
@@ -234,11 +301,13 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const {
     data,
     error,
+    fetchNextPage,
     hasNextPage,
     isFetching,
     isFetchingNextPage,
     isError,
     isSuccess,
+    isLoading,
   } = useInfiniteTransactions({
     appliedCategories: appliedFilters.appliedCategories,
     queryStartDate: appliedFilters.queryStartDate,
@@ -247,9 +316,19 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     appliedMaxAmount: appliedFilters.appliedMaxAmount,
     searchQuery: appliedFilters.searchQuery,
     appliedAccountNames: appliedFilters.appliedAccounts,
+    appliedTagIds: appliedFilters.appliedTags,
+    entryType: entryTypeFilter,
     manualOnly: false,
     loadMoreRef,
   });
+
+  const detailPrefetchHrefs = useMemo(() => {
+    const rows = data?.pages?.flatMap((page) => page.transactions ?? []) ?? [];
+
+    return rows.map((row) => transactionViewHref(row));
+  }, [data?.pages]);
+
+  usePrefetchDetailHrefs(detailPrefetchHrefs);
 
   // Cleanup timeouts on component unmount
   useEffect(() => {
@@ -304,45 +383,88 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       id: string;
       deleteScope: DeleteScope;
       transactionType?: string;
+      listRow?: IndexTransaction | null;
     }) => {
       let result;
-      if (deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER) {
-        result = await deleteTransfer(api, {
-          id: deleteData.id,
-          deleteScope: deleteData.deleteScope,
+      const isOptimisticLocalFirstDelete =
+        deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER ||
+        deleteData.transactionType === CombinedTransactionTypeEnum.INCOME ||
+        deleteData.transactionType === CombinedTransactionTypeEnum.EXPENSE;
+      const isTransferDelete =
+        deleteData.transactionType === CombinedTransactionTypeEnum.TRANSFER;
+
+      if (isOptimisticLocalFirstDelete) {
+        result = await deleteTransactionLocalFirst(
+          api,
+          {
+            spaceId: spaceCode,
+            transactionId: deleteData.id,
+            deleteScope: deleteData.deleteScope as DeleteScopeEnum,
+            listRow: deleteData.listRow,
+          },
+          { queryClient, waitForSync: false },
+        );
+        toast.success(
+          isTransferDelete
+            ? "Transfer deleted successfully"
+            : "Transaction deleted successfully",
+        );
+        void Promise.resolve(result.syncPromise).then((synced) => {
+          if (synced.pendingSync) {
+            toast.message(
+              isTransferDelete
+                ? "Transfer deleted on this device. Will sync when online."
+                : "Transaction deleted on this device. Will sync when online.",
+            );
+          }
         });
       } else {
         result = await deleteTransaction(api, {
           id: deleteData.id,
           deleteScope: deleteData.deleteScope,
         });
+        toast.success("Transaction deleted successfully");
       }
 
-      queryClient.invalidateQueries({
-        queryKey: [
-          "transactions",
-          spaceCode,
-          serializeFilterValues(appliedFilters.appliedCategories),
-          appliedFilters.queryStartDate,
-          appliedFilters.queryEndDate,
-          appliedFilters.appliedMinAmount,
-          appliedFilters.appliedMaxAmount,
-          appliedFilters.searchQuery,
-          serializeFilterValues(appliedFilters.appliedAccounts),
-        ],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["dashboard", spaceCode, startDate, endDate],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["accounts"],
-        refetchType: "active",
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["insights"],
-        refetchType: "active",
-        exact: false,
-      });
+      const refreshSecondaryCaches = () => {
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", spaceCode, startDate, endDate],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["accounts"],
+          refetchType: "active",
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["insights"],
+          refetchType: "active",
+          exact: false,
+        });
+      };
+
+      if (isOptimisticLocalFirstDelete) {
+        // Avoid refetch racing the optimistic removal; refresh after sync.
+        void Promise.resolve(result.syncPromise)
+          .then(() => {
+            refreshSecondaryCaches();
+          })
+          .catch(() => undefined);
+      } else {
+        queryClient.invalidateQueries({
+          queryKey: [
+            "transactions",
+            spaceCode,
+            serializeFilterValues(appliedFilters.appliedCategories),
+            appliedFilters.queryStartDate,
+            appliedFilters.queryEndDate,
+            appliedFilters.appliedMinAmount,
+            appliedFilters.appliedMaxAmount,
+            appliedFilters.searchQuery,
+            serializeFilterValues(appliedFilters.appliedAccounts),
+            serializeFilterValues(appliedFilters.appliedTags),
+          ],
+        });
+        refreshSecondaryCaches();
+      }
 
       return result;
     },
@@ -581,6 +703,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
           appliedFilters.appliedMaxAmount,
           appliedFilters.searchQuery,
           serializeFilterValues(appliedFilters.appliedAccounts),
+          serializeFilterValues(appliedFilters.appliedTags),
         ],
         refetchType: 'active'
       });
@@ -605,42 +728,12 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   };
 
   const handleEditRow = (transaction: IndexTransaction) => {
-    if (transaction.hasLoanPayment) {
-      toast.error("This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.");
-      return;
-    }
-    setSelectedTransaction(transaction);
-    setEditDialogOpen(true);
+    pushDashboardDetail(router, transactionViewHref(transaction));
   };
 
-  const handleEditSuccess = () => {
-    // Invalidate all transaction list queries (any filters) so the list shows updated data
-    queryClient.invalidateQueries({
-      queryKey: ["transactions"],
-    });
+  const handleDeleteRow = async (id: string) => {
+    const allListRows = flattenTransactionsFromPages(data?.pages);
 
-    // Invalidate dashboard and accounts to refresh financial summary and balances
-    queryClient.invalidateQueries({
-      queryKey: ["dashboard", spaceCode, startDate, endDate],
-    });
-    queryClient.invalidateQueries({
-      queryKey: ["accounts"],
-      refetchType: "active",
-    });
-    // Invalidate insights so Insights tab stays in sync
-    queryClient.invalidateQueries({
-      queryKey: ["insights"],
-      refetchType: "active",
-      exact: false,
-    });
-  };
-
-  const handleEditClose = () => {
-    setEditDialogOpen(false);
-    setSelectedTransaction(null);
-  };
-
-  const handleDeleteRow = (id: string) => {
     // Find the transaction to get its inSeries status
     let transaction: IndexTransaction | null = null;
     if (data?.pages) {
@@ -658,31 +751,45 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
       return;
     }
 
-    setTransactionToDelete(transaction);
+    const { target: resolvedTransaction } = await collectDeleteScopeContextRows({
+      spaceId: spaceCode,
+      queryClient,
+      listRows: allListRows,
+      targetId: id,
+    });
+
+    if (!resolvedTransaction) {
+      return;
+    }
+
+    setTransactionToDelete(resolvedTransaction);
     
     // Always show modal to prevent accidental deletion
     // For non-series transactions, modal will only show "this_only" option
+    setSelectedDeleteScope(DeleteScopeEnum.THIS_ONLY);
     setDeleteScopeModalOpen(true);
   };
 
   const handleDeleteConfirm = (scope: Scope) => {
     if (transactionToDelete) {
+      // Close immediately — list is already patched optimistically.
+      setDeleteScopeModalOpen(false);
       deleteMutation.mutate(
         {
           id: transactionToDelete.id,
           deleteScope: scope as DeleteScope,
           transactionType: transactionToDelete.type,
+          listRow: transactionToDelete,
         },
         {
           onSuccess: () => {
-            setDeleteScopeModalOpen(false);
             deleteSuccessTimeoutRef.current = setTimeout(() => {
               setTransactionToDelete(null);
             }, 300);
           },
           onError: (error) => {
             console.error("Error deleting transaction:", error);
-          },
+            toast.error("Failed to delete transaction");          },
         },
       );
     }
@@ -714,6 +821,9 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         searchQuery: appliedFilters.searchQuery,
         ...(categoryFilters.length > 0 ? { categoryFilters } : {}),
         ...(accountNames.length > 0 ? { accountNames } : {}),
+        ...(entryTypeFilterToApiParam(entryTypeFilter)
+          ? { entryType: entryTypeFilterToApiParam(entryTypeFilter) }
+          : {}),
       };
       await generateTransactionsCsv(api, filterData);
     } catch (error) {
@@ -728,24 +838,34 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const netSavings = financialSummary?.netSavings ? parseFloat(financialSummary.netSavings) : 0;
   const totalIncome = financialSummary?.totalIncome ? parseFloat(financialSummary.totalIncome) : 0;
   const totalExpenses = financialSummary?.totalExpenses ? parseFloat(financialSummary.totalExpenses) : 0;
+  const hasTransactionPages = Boolean(data?.pages?.length);
 
   return (
     <>
       {/* Mobile Financial Summary Cards */}
-      <div className="mb-4 space-y-4 px-2 md:hidden md:px-0">
-        {/* Savings Card */}
+      <div className="mb-4 space-y-4 px-2 pt-4 md:hidden md:px-0">
+        {/* Period net card */}
         <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg dark:border-0 dark:bg-card dark:shadow-sm">
           {/* Decorative shapes */}
           <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-blue-600/20 blur-3xl dark:bg-primary/10" />
           <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-purple-600/20 blur-2xl dark:bg-primary/5" />
           
           <div className="relative z-10">
-            <p className="text-gray-400 text-md mb-2">Savings</p>
+            <p className="text-gray-400 text-md mb-2">
+              {periodNetLabel(netSavings)}
+            </p>
             <div className="flex items-center justify-between">
-              <p className="text-white text-3xl font-bold">
-                {spaceCurrency === "PHP" ? `₱${netSavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : netSavings.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              <p className={`text-3xl font-bold ${
+                netSavings < 0
+                  ? "text-red-200"
+                  : "text-white"
+              }`}>
+                {formatSummaryHeaderAmount(netSavings, spaceCurrency)}
               </p>
-              <Link href="/dashboard/space_settings/accounts">
+              <Link
+                href="/dashboard/insights"
+                aria-label="Open dashboard for this period"
+              >
                 <button className="bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors">
                   <ArrowRight className="h-5 w-5 text-white" />
                 </button>
@@ -767,7 +887,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 <p className="text-gray-400 text-md">Income</p>
               </div>
               <p className="text-white text-2xl font-bold">
-                {spaceCurrency === "PHP" ? `₱${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : totalIncome.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                {formatSummaryHeaderAmount(totalIncome, spaceCurrency)}
               </p>
             </div>
 
@@ -778,7 +898,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
                 <p className="text-gray-400 text-md">Expenses</p>
               </div>
               <p className="text-white text-2xl font-bold">
-                {spaceCurrency === "PHP" ? `₱${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : totalExpenses.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                {formatSummaryHeaderAmount(totalExpenses, spaceCurrency)}
               </p>
             </div>
           </div>
@@ -885,48 +1005,59 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             </div>
           </div>
 
+          <TransactionEntryTypePills
+            value={entryTypeFilter}
+            onChange={setEntryTypeFilter}
+            className="mb-6"
+          />
+
           {/* Transaction Totals Display */}
           <TransactionTotalsDisplay
             totals={data?.pages?.[0]?.totals ?? null}
-            isLoading={isFetching && !data}
+            isLoading={isLoading && !hasTransactionPages}
             spaceCurrency={spaceCurrency}
           />
 
-          {viewMode === "list" ? (
-            <ListView
-              isPending={isFetching}
-              isError={isError}
-              error={error as Error | null}
-              isSuccess={isSuccess}
-              data={data}
-              isFetchingNextPage={isFetchingNextPage}
-              hasNextPage={!!hasNextPage}
-              onRowEdit={handleEditRow}
-              onRowDelete={handleDeleteRow}
-              loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
-              showBookedCurrencies={showBookedCurrencies}
-            />
-          ) : viewMode === "sheets" ? (
-            <SheetsView
-              isPending={isFetching}
-              isError={isError}
-              error={error as Error | null}
-              isSuccess={isSuccess}
-              data={data}
-              onRowEdit={handleEditRow}
-              onRowDelete={handleDeleteRow}
-              onCellClick={handleCellClick}
-              onCellDoubleClick={handleCellDoubleClick}
-              onKeyDown={handleKeyDown}
-              onSaveEdit={handleSaveEdit}
-              loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
-              isFetchingNextPage={isFetchingNextPage}
-              hasNextPage={!!hasNextPage}
-              showBookedCurrencies={showBookedCurrencies}
-            />
-          ) : viewMode === "calendar" ? (
+          {spaceCode && viewMode === "list" ? (
+            <div ref={listAnchorRef}>
+              <ListView
+                isPending={isLoading}
+                isError={isError}
+                error={error as Error | null}
+                isSuccess={isSuccess}
+                data={data}
+                isFetchingNextPage={isFetchingNextPage}
+                hasNextPage={!!hasNextPage}
+                onRowEdit={handleEditRow}
+                onRowDelete={handleDeleteRow}
+                loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
+                showBookedCurrencies={showBookedCurrencies}
+                collapseToRecurringRules={entryTypeFilter === "recurring"}
+              />
+            </div>
+          ) : spaceCode && viewMode === "sheets" ? (
+            <div ref={listAnchorRef}>
+              <SheetsView
+                isPending={isLoading}
+                isError={isError}
+                error={error as Error | null}
+                isSuccess={isSuccess}
+                data={data}
+                onRowEdit={handleEditRow}
+                onRowDelete={handleDeleteRow}
+                onCellClick={handleCellClick}
+                onCellDoubleClick={handleCellDoubleClick}
+                onKeyDown={handleKeyDown}
+                onSaveEdit={handleSaveEdit}
+                loadMoreRef={loadMoreRef as React.RefObject<HTMLDivElement>}
+                isFetchingNextPage={isFetchingNextPage}
+                hasNextPage={!!hasNextPage}
+                showBookedCurrencies={showBookedCurrencies}
+              />
+            </div>
+          ) : spaceCode && viewMode === "calendar" ? (
             <CalendarView
-              isPending={isFetching}
+              isPending={isLoading}
               isError={isError}
               error={error as Error | null}
               isSuccess={isSuccess}
@@ -935,13 +1066,13 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         </CardContent>
       </Card>
       </div>
-      
-      <EditTransactionDialog
-        transaction={selectedTransaction}
-        isOpen={editDialogOpen}
-        onClose={handleEditClose}
-        onSuccess={handleEditSuccess}
-      />
+
+      {(viewMode === "list" || viewMode === "sheets") && (
+        <ScrollToTopButton
+          anchorRef={listAnchorRef}
+          contentKey={`${data?.pages?.length ?? 0}:${isFetchingNextPage ? 1 : 0}`}
+        />
+      )}
       
       <ScopeModal
         isOpen={deleteScopeModalOpen}
@@ -950,7 +1081,7 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
         selectedScope={selectedDeleteScope}
         onScopeChange={handleDeleteScopeChange}
         operationType="delete"
-        inSeries={transactionToDelete?.inSeries ?? true}
+        inSeries={transactionAllowsSeriesDeleteScope(transactionToDelete)}
         transactionType={transactionToDelete?.type}
       />
     </>

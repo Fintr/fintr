@@ -10,7 +10,8 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
     {
       "sub" => auth_id,
       "email" => user.email,
-      "full_name" => user.full_name
+      "full_name" => user.full_name,
+      "picture" => "https://example.com/avatar.jpg",
     }
   end
   let(:decoded_token) { Auth::Token.new([token_data]) }
@@ -24,20 +25,11 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
 
       def initialize(request_stub)
         @request_stub = request_stub
-        @reject_called = false
         # Don't call super - we're testing in isolation
       end
 
       def request
         @request_stub
-      end
-
-      def reject
-        @reject_called = true
-      end
-
-      def reject_called?
-        @reject_called
       end
     end
   end
@@ -175,7 +167,8 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
           hash_including(
             auth_id: auth_id,
             email: token_data["email"],
-            full_name: token_data["full_name"]
+            full_name: token_data["full_name"],
+            photo_url: token_data["picture"],
           )
         ).and_return(success_result)
       end
@@ -185,7 +178,8 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
           hash_including(
             auth_id: auth_id,
             email: token_data["email"],
-            full_name: token_data["full_name"]
+            full_name: token_data["full_name"],
+            photo_url: token_data["picture"],
           )
         )
         connection.find_or_create_user(auth_id, token_data)
@@ -242,9 +236,11 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
   end
 
   describe "#reject_unauthorized_connection" do
-    it "calls reject" do
-      connection.reject_unauthorized_connection
-      expect(connection.reject_called?).to be true
+    it "raises UnauthorizedError" do
+      allow(connection).to receive(:logger).and_return(Rails.logger)
+
+      expect { connection.reject_unauthorized_connection }
+        .to raise_error(ActionCable::Connection::Authorization::UnauthorizedError)
     end
   end
 

@@ -1,12 +1,19 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useAuthApi } from "../useAuthApi";
+import { useLocalStorage } from "../useLocalStorage";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import {
+  buildAccountActivitiesLocalQueryKey,
+  loadCachedAccountActivitiesInfiniteData,
+  loadCachedAccountActivitiesPage,
+} from "@/services/transactions/account-activities-local";
 import { fetchAccountActivitiesPage } from "@/services/transactions/accountActivities";
-import { serializeFilterValues } from "@/utils/transactionFilterValues";
 
 export const ACCOUNT_DETAIL_ACTIVITIES_KEY = "accountDetailActivities" as const;
 
 type UseAccountDetailActivitiesParams = {
   accountId: string;
+  accountName: string;
   startDate: string;
   endDate: string;
   categoryFilters: string[];
@@ -18,6 +25,7 @@ type UseAccountDetailActivitiesParams = {
 
 export const useAccountDetailActivities = ({
   accountId,
+  accountName,
   startDate,
   endDate,
   categoryFilters,
@@ -29,20 +37,54 @@ export const useAccountDetailActivities = ({
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+
+  const localParams = {
+    accountId,
+    startDate,
+    endDate,
+    categoryFilters,
+    searchQuery,
+    ...(minAmount !== undefined ? { minAmount } : {}),
+    ...(maxAmount !== undefined ? { maxAmount } : {}),
+  };
+
+  const localCacheQueryKey = buildAccountActivitiesLocalQueryKey(
+    spaceCode,
+    accountId,
+    accountName,
+    localParams,
+  );
+
+  const localCacheQuery = useQuery({
+    queryKey: localCacheQueryKey,
+    queryFn: async () =>
+      (await loadCachedAccountActivitiesInfiniteData(
+        spaceCode,
+        accountName,
+        localParams,
+      )) ?? null,
+    enabled: Boolean(spaceCode && accountId),
+    staleTime: Infinity,
+    networkMode: "always",
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
 
   return useInfiniteQuery({
     queryKey: [
       ACCOUNT_DETAIL_ACTIVITIES_KEY,
+      spaceCode,
       accountId,
       startDate,
       endDate,
-      serializeFilterValues(categoryFilters),
+      categoryFilters,
       minAmount,
       maxAmount,
       searchQuery,
     ],
-    queryFn: ({ pageParam = 1 }) =>
-      fetchAccountActivitiesPage(api, {
+    queryFn: async ({ pageParam = 1 }) => {
+      const pageParams = {
         accountId,
         startDate,
         endDate,
@@ -51,14 +93,58 @@ export const useAccountDetailActivities = ({
         page: pageParam,
         ...(minAmount !== undefined ? { minAmount } : {}),
         ...(maxAmount !== undefined ? { maxAmount } : {}),
-      }),
+      };
+
+      if (skipNetworkFetch) {
+        const cached = await loadCachedAccountActivitiesPage(
+          spaceCode,
+          accountName,
+          pageParams,
+        );
+
+        if (cached != null) {
+          return cached;
+        }
+
+        return {
+          activities: [],
+          nextPage: null,
+          totalPages: 1,
+          totalCount: 0,
+          totals: { income: 0, expense: 0, transfer: 0 },
+        };
+      }
+
+      try {
+        return await fetchAccountActivitiesPage(api, pageParams);
+      } catch (error) {
+        if (spaceCode && accountName) {
+          const cached = await loadCachedAccountActivitiesPage(
+            spaceCode,
+            accountName,
+            pageParams,
+          );
+
+          if (cached != null) {
+            return cached;
+          }
+        }
+
+        throw error;
+      }
+    },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
-    enabled: enabled && !!accountId,
+    enabled:
+      enabled &&
+      !!accountId &&
+      !!spaceCode &&
+      (!skipNetworkFetch || localCacheQuery.isSuccess),
     retry: false,
-    refetchOnMount: "always",
+    refetchOnMount: !skipNetworkFetch,
     refetchOnWindowFocus: false,
-    staleTime: 0,
+    staleTime: skipNetworkFetch ? Infinity : 0,
     gcTime: 300000,
+    placeholderData: localCacheQuery.data ?? undefined,
   });
 };

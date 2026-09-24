@@ -3,6 +3,7 @@ import {
   endOfWeek,
   endOfYear,
   format,
+  parseISO,
   startOfMonth,
   startOfWeek,
   startOfYear,
@@ -17,6 +18,7 @@ export type DateFilterMainPresetId =
   | "this_week"
   | "last_week"
   | "last_2_weeks"
+  | "this_month"
   | "last_month"
   | "last_2_months"
   | "this_year"
@@ -44,13 +46,51 @@ export const DATE_FILTER_TYPE_OPTIONS = [
   { value: "custom", label: "Custom Range" },
 ] as const;
 
-/** Earliest date used when the "All Time" predefined period is selected. */
-export const DATE_FILTER_ALL_TIME_START_DATE = "2000-01-01";
+export type PresetDateRangeOptions = {
+  earliestTransactionDate?: string | null;
+  spaceCreatedAt?: string | null;
+};
+
+const formatYmd = (date: Date): string => format(date, "yyyy-MM-dd");
+
+const parsePresetAnchorDate = (value?: string | null): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = parseISO(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+};
+
+/** Start date for "All Time" — earliest transaction, then space creation, then today. */
+export const resolveAllTimeStartDate = (
+  options: PresetDateRangeOptions = {},
+  referenceDate: Date = new Date(),
+): string => {
+  const earliestTransactionDate = parsePresetAnchorDate(
+    options.earliestTransactionDate,
+  );
+  const spaceCreatedAt = parsePresetAnchorDate(options.spaceCreatedAt);
+
+  const anchorDate = earliestTransactionDate ?? spaceCreatedAt;
+
+  if (anchorDate) {
+    return formatYmd(anchorDate);
+  }
+
+  return formatYmd(referenceDate);
+};
 
 export const DATE_FILTER_PRESETS: DateFilterPreset[] = [
   { id: "this_week", label: "This Week" },
   { id: "last_week", label: "Last Week" },
   { id: "last_2_weeks", label: "Last 2 Weeks" },
+  { id: "this_month", label: "This Month" },
   { id: "last_month", label: "Last Month" },
   { id: "last_2_months", label: "Last 2 Months" },
   { id: "this_year", label: "This Year" },
@@ -80,13 +120,13 @@ export const getDateFilterPresetLabel = (
   return preset?.label ?? presetId;
 };
 
-const WEEK_OPTIONS = { weekStartsOn: 0 as const };
-
-const formatYmd = (date: Date): string => format(date, "yyyy-MM-dd");
+// ISO 8601 weeks run Monday through Sunday, matching Rails Date#all_week in AI chat.
+const WEEK_OPTIONS = { weekStartsOn: 1 as const };
 
 export const getPresetDateRange = (
   presetId: DateFilterPresetId,
   referenceDate: Date = new Date(),
+  options: PresetDateRangeOptions = {},
 ): { startDate: string; endDate: string } => {
   switch (presetId) {
     case "this_week":
@@ -109,6 +149,11 @@ export const getPresetDateRange = (
         endDate: formatYmd(endOfWeek(oneWeekAgo, WEEK_OPTIONS)),
       };
     }
+    case "this_month":
+      return {
+        startDate: formatYmd(startOfMonth(referenceDate)),
+        endDate: formatYmd(referenceDate),
+      };
     case "last_month": {
       const month = subMonths(referenceDate, 1);
       return {
@@ -138,7 +183,7 @@ export const getPresetDateRange = (
     }
     case "all_time":
       return {
-        startDate: DATE_FILTER_ALL_TIME_START_DATE,
+        startDate: resolveAllTimeStartDate(options, referenceDate),
         endDate: formatYmd(referenceDate),
       };
     case "a_week_ago":
@@ -167,11 +212,18 @@ export const getPresetDateRange = (
 export const matchPresetFromDateRange = (
   startDate: string,
   endDate: string,
+  options: PresetDateRangeOptions = {},
 ): DateFilterPresetId | null => {
   const allPresets = [...DATE_FILTER_PRESETS, ...DATE_FILTER_RELATIVE_PRESETS];
 
   for (const preset of allPresets) {
-    const range = getPresetDateRange(preset.id);
+    // This Month uses the same dates as the current Single Month filter
+    // (month start through today), so that range stays Single Month.
+    if (preset.id === "this_month") {
+      continue;
+    }
+
+    const range = getPresetDateRange(preset.id, new Date(), options);
     if (range.startDate === startDate && range.endDate === endDate) {
       return preset.id;
     }
@@ -183,18 +235,27 @@ export const matchPresetFromDateRange = (
 export const inferDateFilterTypeSelector = (
   startDate: string,
   endDate: string,
+  options: PresetDateRangeOptions = {},
 ): DateFilterTypeSelector => {
-  if (matchPresetFromDateRange(startDate, endDate)) {
+  if (matchPresetFromDateRange(startDate, endDate, options)) {
     return "predefined";
   }
 
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const isFullMonth =
+  const referenceDate = new Date();
+  const isCalendarFullMonth =
     start.getDate() === 1 &&
     end.getDate() === new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate() &&
     start.getFullYear() === end.getFullYear() &&
     start.getMonth() === end.getMonth();
+  const isCurrentMonthThroughToday =
+    start.getDate() === 1 &&
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getFullYear() === referenceDate.getFullYear() &&
+    start.getMonth() === referenceDate.getMonth() &&
+    end.getDate() === referenceDate.getDate();
 
-  return isFullMonth ? "single" : "custom";
+  return isCalendarFullMonth || isCurrentMonthThroughToday ? "single" : "custom";
 };

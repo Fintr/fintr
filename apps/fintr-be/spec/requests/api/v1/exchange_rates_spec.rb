@@ -96,4 +96,70 @@ RSpec.describe "Api::V1::ExchangeRates", type: :request do
       end
     end
   end
+
+  describe "POST /api/v1/exchange_rates/batch" do
+    let(:mock_operation) { instance_double(ExchangeRates::Operations::FetchBatchRates) }
+    let(:batch_payload) do
+      {
+        rates: [
+          {
+            rate: 76.4,
+            from_currency: "GBP",
+            to_currency: "PHP",
+            date: Date.current,
+            source: "api",
+            timestamp: Time.current
+          }
+        ],
+        errors: []
+      }
+    end
+
+    context "when the operation succeeds" do
+      before do
+        allow(ExchangeRates::Operations::FetchBatchRates).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(Dry::Monads::Success(batch_payload))
+        post batch_api_v1_exchange_rates_path,
+             params: {
+               space_code: space.code,
+               requests: [
+                 {
+                   from_currency: "GBP",
+                   to_currency: "PHP",
+                   date: Date.current.iso8601
+                 }
+               ]
+             },
+             headers: headers,
+             as: :json
+      end
+
+      it "returns ok" do
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "returns batched rates" do
+        json = JSON.parse(response.body)
+        expect(json["success"]).to be(true)
+        expect(json["data"]["rates"].length).to eq(1)
+        expect(json["data"]["rates"].first["fromCurrency"]).to eq("GBP")
+        expect(json["data"]["rates"].first["rate"]).to eq(76.4)
+      end
+    end
+
+    context "when the operation fails" do
+      before do
+        allow(ExchangeRates::Operations::FetchBatchRates).to receive(:new).and_return(mock_operation)
+        allow(mock_operation).to receive(:call).and_return(Dry::Monads::Failure(requests: ["is missing"]))
+        post batch_api_v1_exchange_rates_path,
+             params: { space_code: space.code, requests: [] },
+             headers: headers,
+             as: :json
+      end
+
+      it "returns unprocessable_entity" do
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
+  end
 end

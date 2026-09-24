@@ -16,6 +16,10 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 - Deployment: Kamal
 - Github Actions for CI/CD
 
+**Installment plans:** Flat split of a fixed total (not loans). See **[docs/installment_plans.md](../../docs/installment_plans.md)**.
+
+**Realtime transactions:** ActionCable `TransactionsChannel` + `Transactions::Broadcasts::TransactionChange` (including transfer fees). See **[docs/transactions_realtime.md](docs/transactions_realtime.md)**. Frontend offline/local-first pairing: `apps/fintr-fe/docs/mobile/OFFLINE_INDEXEDDB_SPIKE.md`.
+
 ## Installation
 1. See `.ruby-version` for ruby versioning
 2. Install the ruby version. We prefer using [asdf](https://asdf-vm.com/) and [asdf-ruby](https://github.com/asdf-vm/asdf-ruby)
@@ -29,11 +33,14 @@ Fintr is a personal finance application with heavy integration with AI. Fintr wi
 10. Run `psql -U fintr_admin -d postgres`
 11. Run `ALTER USER fintr_rails WITH SUPERUSER;`
 12. Run `rails db:create db:migrate db:seed` in project root
-13. Run these commands normally
+13. Run the development stack (Overmind + Procfile: Rails web + Solid Queue jobs):
 ```
-rails s
-in another terminal: bin/jobs start
+brew install overmind   # once, if needed
+bin/dev
 ```
+`bin/dev` starts `web` (Rails) and `jobs` (`bin/jobs start`) via Overmind. If Overmind is not installed, it falls back to a single process with Solid Queue inside Puma.
+
+To run jobs inside Puma instead: `SOLID_QUEUE_IN_PUMA=1 bin/rails server` in one terminal (no separate `bin/jobs` process).
 
 ## How to get included in the seed
 

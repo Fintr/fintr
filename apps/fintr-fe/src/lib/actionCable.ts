@@ -1,7 +1,8 @@
 import { createConsumer, Consumer, Subscription } from '@rails/actioncable';
-import { getPublicBackendUrl } from '@/lib/public-backend-url';
+import { getActionCableBackendUrl } from '@/lib/public-backend-url';
 
 let consumer: Consumer | null = null;
+let consumerPromise: Promise<Consumer> | null = null;
 
 /**
  * Type for Action Cable messages
@@ -21,46 +22,55 @@ interface ActionCableClient {
   unsubscribe: (channel: string) => void;
 }
 
-/**
- * Creates or returns an existing Action Cable consumer with authentication
- * @param getToken Function to get the auth token
- * @returns Action Cable consumer
- */
-export const createActionCableConsumer = async (
-  getToken: () => Promise<string>
-): Promise<Consumer> => {
-  // Always create a new consumer to ensure fresh token
-  // Disconnect existing one if present
-  if (consumer) {
-    consumer.disconnect();
-    consumer = null;
-  }
-
-  const token = await getToken();
-  const baseUrl =
-    getPublicBackendUrl() ||
-    process.env.NEXT_PUBLIC_BE_URL ||
-    'http://localhost:3000';
-
-  // Convert http to ws and https to wss
-  // Action Cable uses query parameters for authentication, not headers
-  // Handle both http:// and https:// properly
+const buildCableUrl = (token: string): string => {
+  const baseUrl = getActionCableBackendUrl();
   let wsUrl: string;
   if (baseUrl.startsWith('https://')) {
     wsUrl = baseUrl.replace('https://', 'wss://');
   } else {
     wsUrl = baseUrl.replace('http://', 'ws://');
   }
-  wsUrl = `${wsUrl}/cable?token=${encodeURIComponent(token)}`;
+  return `${wsUrl}/cable?token=${encodeURIComponent(token)}`;
+};
 
-  console.log('[ActionCable] Creating consumer with URL:', wsUrl.replace(token, '[TOKEN]'));
+/**
+ * Creates or returns an existing Action Cable consumer with authentication.
+ * Reuses a single shared consumer so parallel hooks don't tear each other down.
+ */
+export const createActionCableConsumer = async (
+  getToken: () => Promise<string>
+): Promise<Consumer> => {
+  if (consumer) {
+    return consumer;
+  }
 
-  consumer = createConsumer(wsUrl);
+  if (consumerPromise) {
+    return consumerPromise;
+  }
 
-  // Log when consumer is created
-  console.log('[ActionCable] Consumer created:', consumer);
+  consumerPromise = (async () => {
+    const token = await getToken();
+    if (!token) {
+      throw new Error('[ActionCable] No access token available');
+    }
 
-  return consumer;
+    // Connect to Rails `/cable` directly (not the Next.js same-origin proxy).
+    const wsUrl = buildCableUrl(token);
+    console.log(
+      '[ActionCable] Creating consumer with URL:',
+      wsUrl.replace(token, '[TOKEN]'),
+    );
+
+    consumer = createConsumer(wsUrl);
+    console.log('[ActionCable] Consumer created');
+    return consumer;
+  })();
+
+  try {
+    return await consumerPromise;
+  } finally {
+    consumerPromise = null;
+  }
 };
 
 /**
@@ -71,6 +81,7 @@ export const disconnectActionCable = (): void => {
     consumer.disconnect();
     consumer = null;
   }
+  consumerPromise = null;
 };
 
 /**
@@ -180,4 +191,3 @@ export const getActionCableClient = (
     },
   };
 };
-

@@ -27,16 +27,25 @@ module Spaces
         validated_params = step validate(params:)
 
         recalc_space_id = nil
+        broadcast_context = nil
+        user = nil
         space = transaction do
-          user  = step find_user(validated_params)
+          user = step find_user(validated_params)
           space = step find_space(validated_params)
-          _     = step validate_user_access(user, space)
-          recalc_space_id = step update_space(space, validated_params)
+          _ = step validate_user_access(user, space)
+          update_result = step update_space(space, validated_params)
+          recalc_space_id = update_result[:recalc_space_id]
+          broadcast_context = update_result[:broadcast_context]
 
           space.reload
         end
 
         step enqueue_summary_recalculation(space_id: recalc_space_id)
+        step broadcast_currency_change(
+          space:,
+          user:,
+          broadcast_context:,
+        )
         space
       end
 
@@ -68,9 +77,12 @@ module Spaces
 
       def update_space(space, params)
         previous_currency = space.currency.to_s.upcase
+        previous_default = space.default_transaction_currency&.to_s&.upcase
         attrs = { name: params[:name] }
         attrs[:currency] = params[:currency] if params.key?(:currency)
-        attrs[:default_transaction_currency] = params[:default_transaction_currency] if params.key?(:default_transaction_currency)
+        if params.key?(:default_transaction_currency)
+          attrs[:default_transaction_currency] = params[:default_transaction_currency]
+        end
         space.update!(attrs)
 
         recalc_space_id = if params.key?(:currency) &&
@@ -78,9 +90,38 @@ module Spaces
                             space.id.to_s
         end
 
-        Success(recalc_space_id)
+        currency_changed = params.key?(:currency) &&
+          previous_currency != space.currency.to_s.upcase
+        default_changed = params.key?(:default_transaction_currency) &&
+          previous_default != space.default_transaction_currency&.to_s&.upcase
+        broadcast_context =
+          if currency_changed || default_changed
+            {
+              currency: space.currency.to_s.upcase,
+              default_transaction_currency:
+                space.default_transaction_currency&.to_s&.upcase,
+            }
+          end
+
+        Success(
+          recalc_space_id:,
+          broadcast_context:,
+        )
       rescue ActiveRecord::RecordInvalid => e
         Failure(errors: e.record.errors.full_messages, error: e, expected: true)
+      end
+
+      def broadcast_currency_change(space:, user:, broadcast_context:)
+        return Success(true) if broadcast_context.blank?
+
+        ::Spaces::Broadcasts::SettingsChange.currency_changed(
+          space:,
+          actor: user,
+          currency: broadcast_context[:currency],
+          default_transaction_currency:
+            broadcast_context[:default_transaction_currency],
+        )
+        Success(true)
       end
 
       def enqueue_summary_recalculation(space_id:)

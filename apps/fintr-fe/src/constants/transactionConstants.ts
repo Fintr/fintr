@@ -17,6 +17,16 @@ export enum ScheduleTypeEnum {
   INSTALLMENT = "installment"
 }
 
+export const BASIC_SCHEDULE_TYPE_OPTIONS = [
+  { label: "One-Time", value: ScheduleTypeEnum.ONE_TIME },
+  { label: "Recurring", value: ScheduleTypeEnum.REPEAT },
+] as const;
+
+export const EXPENSE_SCHEDULE_TYPE_OPTIONS = [
+  ...BASIC_SCHEDULE_TYPE_OPTIONS,
+  { label: "Installment", value: ScheduleTypeEnum.INSTALLMENT },
+] as const;
+
 // Transaction types (mirroring the types from transactionTypes.ts)
 export enum TransactionTypeEnum {
   EXPENSE = "expense",

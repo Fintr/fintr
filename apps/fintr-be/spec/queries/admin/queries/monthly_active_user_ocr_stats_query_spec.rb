@@ -7,7 +7,7 @@ RSpec.describe Admin::Queries::MonthlyActiveUserOcrStatsQuery, type: :query do
   let(:month_start) { Date.new(2026, 3, 1) }
   let(:month_end) { month_start.end_of_month }
 
-  it "counts users with 15+ active days and sums OCR tokens for that month only" do
+  it "counts users with 15+ active days and counts receipt scans for that month only" do
     user = create(:user)
     15.times do |i|
       UserActivity.create!(
@@ -27,7 +27,6 @@ RSpec.describe Admin::Queries::MonthlyActiveUserOcrStatsQuery, type: :query do
       user:,
       space:,
       ai_type: "pure_ai_ocr",
-      tokens_used: 12,
       created_at: month_start.in_time_zone + 2.days
     )
     create(
@@ -36,7 +35,6 @@ RSpec.describe Admin::Queries::MonthlyActiveUserOcrStatsQuery, type: :query do
       user:,
       space:,
       ai_type: "pure_ai_ocr",
-      tokens_used: 8,
       created_at: month_start.in_time_zone + 10.days
     )
 
@@ -51,8 +49,8 @@ RSpec.describe Admin::Queries::MonthlyActiveUserOcrStatsQuery, type: :query do
     bundle = result.value!
     row = bundle[:monthly_active_user_ocr].find { |r| r[:month] == month_start.to_s }
     expect(row[:active_user_count]).to eq(1)
-    expect(row[:total_ocr_tokens]).to eq(20)
-    expect(row[:average_ocr_tokens_per_active_user]).to eq(20.0)
+    expect(row[:total_ocr_scans]).to eq(2)
+    expect(row[:average_ocr_scans_per_active_user]).to eq(2.0)
     meta = bundle[:monthly_active_user_ocr_meta]
     expect(meta[:total_count]).to eq(1)
     expect(meta[:page]).to eq(1)
@@ -80,7 +78,6 @@ RSpec.describe Admin::Queries::MonthlyActiveUserOcrStatsQuery, type: :query do
       user:,
       space:,
       ai_type: "pure_ai_ocr",
-      tokens_used: 100,
       created_at: month_start.in_time_zone + 1.day
     )
 
@@ -94,7 +91,7 @@ RSpec.describe Admin::Queries::MonthlyActiveUserOcrStatsQuery, type: :query do
     expect(result).to be_success
     row = result.value![:monthly_active_user_ocr].find { |r| r[:month] == month_start.to_s }
     expect(row[:active_user_count]).to eq(0)
-    expect(row[:total_ocr_tokens]).to eq(0)
+    expect(row[:total_ocr_scans]).to eq(0)
   end
 
   it "paginates month rows while summary reflects the full range" do

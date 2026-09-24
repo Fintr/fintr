@@ -120,6 +120,7 @@ For each task:
 
 1. **If `type="auto"`:**
    - Check for `tdd="true"` → follow TDD execution flow
+   - If the task touches `apps/fintr-fe` production TS/TSX, follow skill `frontend-tdd` even when `tdd` is not set: run related tests first, change, update tests, re-run
    - Execute task, apply deviation rules as needed
    - Handle auth errors as authentication gates
    - Run verification, confirm done criteria
@@ -339,7 +340,9 @@ When executing task with `tdd="true"`:
 
 **4. REFACTOR (if needed):** Clean up, run tests (MUST still pass), commit only if changes: `refactor({phase}-{plan}): clean up [feature]`
 
-**Error handling:** RED doesn't fail ��� investigate. GREEN doesn't pass → debug/iterate. REFACTOR breaks → undo.
+**Error handling:** RED doesn't fail → investigate. GREEN doesn't pass → debug/iterate. REFACTOR breaks → undo.
+
+**Fintr frontend (`apps/fintr-fe`):** Follow skill `frontend-tdd` for every production TS/TSX change, including tasks without `tdd="true"`. Run related Vitest files before editing, update tests only for intentional behavior, re-run after. Use `pnpm test:ci` (not watch mode).
 
 ## Plan-Level TDD Gate Enforcement (type: tdd plans)
 

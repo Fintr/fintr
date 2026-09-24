@@ -43,3 +43,21 @@ export const createDisplayFileFromDraft = (draftFile: {
     fileId: draftFile.id
   } as any;
 };
+
+export const markExistingLocalAttachment = (file: File): File => {
+  (file as File & { isExistingLocalAttachment?: boolean }).isExistingLocalAttachment = true;
+  return file;
+};
+
+export const isExistingCachedAttachment = (file: unknown): boolean => {
+  if (!file || typeof file !== "object") {
+    return false;
+  }
+
+  const record = file as {
+    isExistingLocalAttachment?: boolean;
+    isRemoteFile?: boolean;
+  };
+
+  return Boolean(record.isExistingLocalAttachment || record.isRemoteFile);
+};

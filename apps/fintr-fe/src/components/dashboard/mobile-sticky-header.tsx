@@ -10,12 +10,18 @@ import {
   CategoryKind,
   findRootCategory,
 } from "@/utils/categoryManagement";
+import { shouldShowImmediateBackButton } from "@/lib/dashboard-back-button-routes";
+import { useDetailPushExit } from "@/components/dashboard/detail-push-transition";
+export { shouldShowImmediateBackButton };
 
 interface MobileStickyHeaderProps {
   title?: string;
 }
 
 const getPageTitle = (pathname: string): string => {
+  if (pathname.startsWith("/dashboard/home")) {
+    return "Home";
+  }
   if (pathname === "/dashboard" || pathname === "/dashboard/") {
     return "Transactions";
   }
@@ -40,8 +46,20 @@ const getPageTitle = (pathname: string): string => {
   if (pathname.startsWith("/dashboard/space_settings/categories")) {
     return "Category Management";
   }
+  if (pathname.startsWith("/dashboard/space_settings/tags")) {
+    return "Tags";
+  }
   if (pathname.startsWith("/dashboard/space_settings/accounts")) {
     return "Account Management";
+  }
+  if (pathname.includes("/space_settings/entities/detail")) {
+    return "Entity";
+  }
+  if (pathname.startsWith("/dashboard/transactions/detail")) {
+    return "Transaction";
+  }
+  if (pathname.startsWith("/dashboard/space_settings/entities")) {
+    return "Entities";
   }
   if (pathname.startsWith("/dashboard/space_settings/import")) {
     return "Import & Export";
@@ -65,20 +83,6 @@ const getPageTitle = (pathname: string): string => {
     return "Admin";
   }
   return "Dashboard";
-};
-
-/** Nested settings routes show back immediately (no scroll required). */
-export const shouldShowImmediateBackButton = (pathname: string): boolean => {
-  const immediateBackPrefixes = [
-    "/dashboard/space_settings/accounts/detail",
-    "/dashboard/space_settings/categories",
-    "/dashboard/space_settings/accounts",
-    "/dashboard/space_settings/import",
-    "/dashboard/space_settings/subscriptions",
-    "/dashboard/loans",
-  ];
-
-  return immediateBackPrefixes.some((prefix) => pathname.startsWith(prefix));
 };
 
 function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
@@ -135,8 +139,12 @@ function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const { requestExit } = useDetailPushExit();
+
   const handleBack = () => {
-    router.back();
+    requestExit(() => {
+      router.back();
+    });
   };
 
   // Android native: padding-top comes from globals.css (android-sticky-header-inset-top) so it
@@ -180,19 +188,21 @@ function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
           >
             <ArrowLeft className="h-5 w-5 text-primary" />
           </Button>
-          <h1
-            className={`
-              text-lg font-bold text-primary
-              transition-all
-              duration-300
-              ease-in-out
-              pt-1
-              leading-none
-              ${isScrolled ? "pl-0" : "pl-0"}
-            `}
-          >
-            {pageTitle}
-          </h1>
+          <div className="flex min-w-0 items-center gap-2">
+            <h1
+              className={`
+                text-lg font-bold text-primary
+                transition-all
+                duration-300
+                ease-in-out
+                pt-1
+                leading-none
+                ${isScrolled ? "pl-0" : "pl-0"}
+              `}
+            >
+              {pageTitle}
+            </h1>
+          </div>
         </div>
       </div>
       {/* Animated border that appears on scroll */}

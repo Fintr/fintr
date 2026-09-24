@@ -3,6 +3,8 @@
 module Transactions
   module Queries
     class FilteredTransactions < BaseQuery
+      include TransactionTagFilter
+
       class Contract < Dry::Validation::Contract
         params do
           required(:space_code).value(:string)
@@ -23,6 +25,8 @@ module Transactions
           optional(:paginate).value(:bool)
           optional(:search_query).value(:string)
           optional(:transaction_type).value(:string)
+          optional(:entry_type).value(:string)
+          optional(:tag_ids).array(:string)
 
           optional(:without_initial_balance).value(:bool)
         end
@@ -42,6 +46,13 @@ module Transactions
         rule(:transaction_type) do
           if value
             valid_types = ["Transactions::Income", "Transactions::Expense"]
+            key.failure("should be one of #{valid_types}") unless valid_types.include?(value)
+          end
+        end
+
+        rule(:entry_type) do
+          if value
+            valid_types = Transactions::Queries::CombinedEntryTypeFilter::ENTRY_TYPE_VALUES
             key.failure("should be one of #{valid_types}") unless valid_types.include?(value)
           end
         end
@@ -81,6 +92,7 @@ module Transactions
         relation = step by_balance_state(relation, params)
         relation = step by_date(relation, params)
         relation = step by_category(relation, params)
+        relation = step by_tag(relation, params)
         relation = step without_initial_balance(relation, params)
         relation = step by_amount(relation, params)
         relation = step by_search_query(relation, params)
@@ -139,6 +151,10 @@ module Transactions
 
         relation = relation.where(transactions_categories: { name: params[:category_name] })
         Success(relation)
+      end
+
+      def by_tag(relation, params)
+        apply_transaction_tag_filters(relation, params)
       end
 
       def category_filter_blank?(params)

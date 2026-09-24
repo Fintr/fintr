@@ -19,6 +19,10 @@ module Integrations
 
         # Create or retrieve a customer
         # https://docs.xendit.co/docs/customers
+        def get_customer(customer_id:)
+          get("/customers/#{customer_id}")
+        end
+
         def create_customer(email:, reference_id: nil, given_names: nil, surname: nil, type: "INDIVIDUAL", metadata: {})
           payload = {
             individual_detail: {

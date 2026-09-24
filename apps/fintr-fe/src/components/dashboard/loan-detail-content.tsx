@@ -2,60 +2,78 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
+import { commitDashboardClientNavigation } from "@/lib/dashboard-nav-routes";
 import {
   Calendar as CalendarLucide,
+  CheckCircle2,
   Clock,
   FileText,
   Percent,
   User,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useLoan, LOAN_DETAIL_KEY } from "@/hooks/async/useLoan";
+import { useLoanPayments } from "@/hooks/async/useLoanPayments";
 import { LoanDetailPanel } from "@/components/dashboard/loan-detail-panel";
 import { LoanSummaryStats } from "@/components/dashboard/loan-summary-stats";
+import { LoanPaydownProgress } from "@/components/dashboard/loan-paydown-progress";
 import EditLoanModal from "@/components/dashboard/forms/EditLoanModal";
 import DeleteLoanModal from "@/components/dashboard/forms/DeleteLoanModal";
+import RetireLoanModal from "@/components/dashboard/forms/RetireLoanModal";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { deleteLoan } from "@/services/loans/mutation";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { deleteLoanLocalFirst } from "@/services/loans/delete-local-first";
 import { useQueryClient } from "@tanstack/react-query";
 import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
 import { formatLoanTerm } from "@/utils/formatLoanTerm";
+import {
+  formatLoanDueLabel,
+  getNextLoanPaymentDeadline,
+} from "@/utils/loan-upcoming-deadlines";
+import type { LoanPaymentPrefill } from "@/types/loanPaymentTypes";
+import { formatLoanStatusLabel } from "@/utils/loan-status";
 
 type LoanDetailContentProps = {
   loanId: string;
 };
 
-type DetailItemProps = {
+type MetadataItemProps = {
   icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
 };
 
-function DetailStatBox({ icon, label, value }: DetailItemProps) {
+function MetadataItem({ icon, label, value }: MetadataItemProps) {
   return (
-    <div
-      className={cn(
-        "min-w-[9.5rem] shrink-0 rounded-xl border border-gray-200 bg-white px-4 py-3",
-        "dark:border-border dark:bg-card",
-        "sm:min-w-0 sm:flex-1",
-      )}
-    >
-      <div className="mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+    <div className="rounded-lg bg-muted/40 px-3 py-2.5">
+      <div className="mb-1 flex items-center gap-1.5 text-muted-foreground">
         <span className="shrink-0">{icon}</span>
-        <dt className="text-xs font-medium capitalize">{label}</dt>
+        <dt className="text-[11px] font-medium uppercase tracking-wide">
+          {label}
+        </dt>
       </div>
-      <dd className="text-sm font-semibold text-foreground md:text-base">{value}</dd>
+      <dd className="truncate text-sm font-semibold text-foreground">
+        {value}
+      </dd>
     </div>
   );
 }
 
 export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { data: loan, isLoading, isError, error, refetch } = useLoan(loanId);
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+  const { data: loan, isLoading, error, refetch } = useLoan(loanId);
+  const { payments } = useLoanPayments(loanId);
+  const [openPaymentRequestId, setOpenPaymentRequestId] = React.useState(0);
+  const [paymentPrefill, setPaymentPrefill] =
+    React.useState<LoanPaymentPrefill | null>(null);
+  const handledRecordPaymentParam = React.useRef(false);
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions write:transactions",
   });
@@ -65,18 +83,74 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
       throw new Error("API not available");
     }
 
-    const response = await deleteLoan(api, id);
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
-    queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, id] });
-    queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    queryClient.invalidateQueries({
-      queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
-      exact: false,
-    });
-    router.push("/dashboard/loans");
-    return response;
+    if (!loan || !spaceCode) {
+      throw new Error("Loan not found");
+    }
+
+    const result = await deleteLoanLocalFirst(
+      api,
+      { spaceId: spaceCode, loan },
+      { queryClient, waitForSync: false },
+    );
+
+    navigateDashboardClient("/dashboard/loans");
+
+    void Promise.resolve(result.syncPromise)
+      .then(async (synced) => {
+        if (synced.pendingSync) {
+          return;
+        }
+        await queryClient.invalidateQueries({ queryKey: ["loans"] });
+        await queryClient.invalidateQueries({ queryKey: [LOAN_DETAIL_KEY, id] });
+        await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        await queryClient.invalidateQueries({
+          queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+          exact: false,
+        });
+      })
+      .catch(() => undefined);
+
+    return { success: true, pendingSync: result.pendingSync };
   };
+
+  const requestOpenPayment = React.useCallback((prefill?: LoanPaymentPrefill) => {
+    setPaymentPrefill(prefill ?? null);
+    setOpenPaymentRequestId((current) => current + 1);
+  }, []);
+
+  React.useEffect(() => {
+    if (handledRecordPaymentParam.current || !loan) {
+      return;
+    }
+
+    if (searchParams.get("recordPayment") !== "1") {
+      return;
+    }
+
+    if (loan.status !== "active") {
+      handledRecordPaymentParam.current = true;
+      commitDashboardClientNavigation(
+        `/dashboard/loans/detail?loanId=${loanId}`,
+        { replace: true },
+      );
+      return;
+    }
+
+    handledRecordPaymentParam.current = true;
+
+    const prefillAmount = searchParams.get("prefillAmount");
+    requestOpenPayment({
+      amount: prefillAmount ?? undefined,
+      accountName: loan.accountName,
+      date: new Date(),
+    });
+
+    commitDashboardClientNavigation(
+      `/dashboard/loans/detail?loanId=${loanId}`,
+      { replace: true },
+    );
+  }, [loan, loanId, requestOpenPayment, searchParams]);
 
   if (isLoading) {
     return (
@@ -86,10 +160,10 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
     );
   }
 
-  if (isError || !loan) {
+  if (!loan) {
     return (
-      <div className="max-w-2xl mx-auto space-y-4 py-8">
-        <p className="text-red-900">
+      <div className="mx-auto max-w-2xl space-y-4 py-8">
+        <p className="text-destructive">
           {error instanceof Error ? error.message : "Failed to load loan"}
         </p>
         <div className="flex gap-2">
@@ -107,128 +181,269 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
   const loanDate = new Date(loan.date);
   const maturityDate = new Date(loan.maturityDate);
   const isBorrowed = loan.loanType === "borrowed";
-  const textColorClass = isBorrowed
-    ? "text-red-900 dark:text-red-700"
-    : "text-teal-600 dark:text-teal-500";
+  const accentClass = isBorrowed
+    ? "text-red-900 dark:text-red-400"
+    : "text-teal-600 dark:text-teal-400";
   const statusColorClass =
     loan.status === "paid_off"
-      ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400"
+      ? "bg-green-500/15 text-green-700 dark:text-green-400"
       : loan.status === "defaulted"
-        ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-700"
-        : "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400";
+        ? "bg-destructive/15 text-destructive"
+        : "bg-primary/15 text-primary dark:text-primary-dark-mode";
   const loanTypeBadgeClass = isBorrowed
-    ? "bg-red-800/10 text-red-900 dark:bg-red-800/20 dark:text-red-700"
-    : "bg-teal-600/10 text-teal-600 dark:bg-teal-600/20 dark:text-teal-500";
+    ? "bg-red-500/10 text-red-800 dark:text-red-400"
+    : "bg-teal-500/10 text-teal-700 dark:text-teal-400";
 
   const loanTitle = loan.description?.trim() || loan.entityName;
+  const principalAmount =
+    typeof loan.principalAmount === "string"
+      ? parseFloat(loan.principalAmount)
+      : loan.principalAmount;
+  const nextPaymentDeadline =
+    loan.status === "active"
+      ? getNextLoanPaymentDeadline(loan, payments)
+      : null;
 
   return (
-    <div className="max-w-3xl mx-auto px-2 pb-24 md:pb-8 space-y-5">
-      <section>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold text-primary truncate md:text-2xl">
+    <div className="mx-auto max-w-2xl space-y-6 pb-24 md:pb-8">
+      <section className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="border-b border-border px-4 py-4 md:px-5">
+          <div>
+            <h1 className="truncate text-lg font-bold text-primary md:text-xl">
               {loanTitle}
             </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-medium capitalize",
-                  statusColorClass,
-                )}
-              >
-                {loan.status.replace("_", " ")}
-              </span>
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
-                  loanTypeBadgeClass,
-                )}
-              >
-                {isBorrowed ? "Borrowed" : "Lent"}
-              </span>
-              {loan.adjustsAccountBalance === false ? (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  Ledger only
+            <div
+              className="mt-2 flex items-center justify-between gap-3"
+              data-testid="loan-detail-status-row"
+            >
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <span
+                  className={cn(
+                    "rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize",
+                    statusColorClass,
+                  )}
+                >
+                  {formatLoanStatusLabel(loan.status)}
                 </span>
-              ) : null}
+                <span
+                  className={cn(
+                    "rounded-md px-2 py-0.5 text-[11px] font-semibold",
+                    loanTypeBadgeClass,
+                  )}
+                >
+                  {isBorrowed ? "Borrowed" : "Lent"}
+                </span>
+                {loan.adjustsAccountBalance === false ? (
+                  <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    Ledger only
+                  </span>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <EditLoanModal loan={loan} triggerVariant="toolbar" />
+                <RetireLoanModal loan={loan} />
+                <DeleteLoanModal
+                  loan={loan}
+                  onDelete={handleDeleteLoan}
+                  triggerVariant="toolbar"
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-8 mb-6 text-center">
-          <p className="text-xs text-muted-foreground md:text-sm">
-            Outstanding balance
-          </p>
-          <p
-            className={cn(
-              "mt-2 text-3xl font-bold tracking-tight md:text-4xl",
-              textColorClass,
-            )}
-          >
-            {formatCurrency(
-              loan.outstandingBalance,
-              loan.outstandingBalanceCurrency,
-            )}
-          </p>
-        </div>
+        <div className="space-y-5 px-4 py-5 md:px-5">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">
+              Outstanding balance
+            </p>
+            <p
+              className={cn(
+                "mt-1 text-3xl font-bold tabular-nums tracking-tight md:text-4xl",
+                loan.status === "paid_off"
+                  ? "text-muted-foreground"
+                  : "text-foreground",
+              )}
+            >
+              {formatCurrency(
+                loan.outstandingBalance,
+                loan.outstandingBalanceCurrency,
+              )}
+            </p>
+            {loan.status === "defaulted" ? (
+              <p className="mt-1 text-sm font-medium text-destructive">
+                Retired · outstanding still shown
+              </p>
+            ) : loan.status !== "paid_off" ? (
+              <p className={cn("mt-1 text-sm font-medium", accentClass)}>
+                {isBorrowed ? "You owe" : "Owed to you"}
+              </p>
+            ) : null}
+          </div>
 
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <EditLoanModal loan={loan} triggerVariant="toolbar" />
-          <DeleteLoanModal
-            loan={loan}
-            onDelete={handleDeleteLoan}
-            triggerVariant="toolbar"
+          <LoanPaydownProgress
+            principalAmount={principalAmount}
+            outstandingBalance={loan.outstandingBalance}
+            isBorrowed={isBorrowed}
+            status={loan.status}
           />
+
+          {loan.status === "defaulted" ? (
+            <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-3">
+              <div>
+                <p className="text-sm font-semibold text-destructive">
+                  Loan retired
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  This loan is out of the active book. Outstanding is unchanged.
+                  Payments are frozen until you un-retire it.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {loan.status === "paid_off" ? (
+            <div className="flex items-start gap-2.5 rounded-xl border border-green-500/20 bg-green-500/10 px-3 py-3">
+              <CheckCircle2
+                className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400"
+                aria-hidden
+              />
+              <div>
+                <p className="text-sm font-semibold text-green-800 dark:text-green-400">
+                  Loan completed
+                </p>
+                {loan.paidOffDate ? (
+                  <p className="mt-0.5 text-xs text-green-700 dark:text-green-500">
+                    Paid off on{" "}
+                    {new Date(loan.paidOffDate).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {nextPaymentDeadline ? (
+            <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Next payment
+                </p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {formatCurrency(
+                    nextPaymentDeadline.paymentAmount,
+                    loan.outstandingBalanceCurrency,
+                  )}
+                  <span className="font-normal text-muted-foreground">
+                    {" "}
+                    ·{" "}
+                    {nextPaymentDeadline.dueDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Principal{" "}
+                  {formatCurrency(
+                    nextPaymentDeadline.principalPayment,
+                    loan.outstandingBalanceCurrency,
+                  )}
+                  {" · "}
+                  Interest{" "}
+                  {formatCurrency(
+                    nextPaymentDeadline.interestPayment,
+                    loan.outstandingBalanceCurrency,
+                  )}
+                </p>
+                <p
+                  className={cn(
+                    "mt-0.5 text-xs font-medium",
+                    nextPaymentDeadline.isOverdue
+                      ? "text-red-700 dark:text-red-400"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {formatLoanDueLabel(
+                    nextPaymentDeadline.dueDate,
+                    nextPaymentDeadline.isOverdue,
+                  )}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="shrink-0"
+                onClick={() =>
+                  requestOpenPayment({
+                    amount: String(nextPaymentDeadline.paymentAmount),
+                    accountName: loan.accountName,
+                    date: new Date(),
+                  })
+                }
+              >
+                <Wallet className="mr-1.5 h-3.5 w-3.5" />
+                Record payment
+              </Button>
+            </div>
+          ) : null}
         </div>
       </section>
 
       <LoanSummaryStats
         loan={loan}
         isBorrowed={isBorrowed}
-        textColorClass={textColorClass}
+        textColorClass={accentClass}
+        payments={payments}
       />
 
-      <section className="space-y-3">
-        <dl className="flex gap-2.5 overflow-x-auto pb-1 sm:overflow-visible">
-          <DetailStatBox
-            icon={<Clock className="h-3.5 w-3.5" />}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-primary">
+          Loan details
+        </h2>
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <MetadataItem
+            icon={<Clock className="h-3 w-3" />}
             label="Term"
             value={formatLoanTerm(loan.loanTermMonths)}
           />
-          <DetailStatBox
-            icon={<Percent className="h-3.5 w-3.5" />}
-            label="Interest rate"
+          <MetadataItem
+            icon={<Percent className="h-3 w-3" />}
+            label="Rate"
             value={`${loan.interestRate}%`}
           />
-          <DetailStatBox
-            icon={<CalendarLucide className="h-3.5 w-3.5" />}
-            label="Start date"
+          <MetadataItem
+            icon={<CalendarLucide className="h-3 w-3" />}
+            label="Start"
             value={loanDate.toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             })}
           />
-          <DetailStatBox
-            icon={<Clock className="h-3.5 w-3.5" />}
-            label="Maturity date"
+          <MetadataItem
+            icon={<CalendarLucide className="h-3 w-3" />}
+            label="Maturity"
             value={maturityDate.toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             })}
           />
-          <DetailStatBox
-            icon={<User className="h-3.5 w-3.5" />}
+          <MetadataItem
+            icon={<User className="h-3 w-3" />}
             label={isBorrowed ? "Lender" : "Borrower"}
             value={loan.entityName}
           />
           {loan.files && loan.files.length > 0 ? (
-            <DetailStatBox
-              icon={<FileText className="h-3.5 w-3.5" />}
-              label="Attachments"
-              value={`${loan.files.length} file${loan.files.length > 1 ? "s" : ""}`}
+            <MetadataItem
+              icon={<FileText className="h-3 w-3" />}
+              label="Files"
+              value={`${loan.files.length} attached`}
             />
           ) : null}
         </dl>
@@ -237,7 +452,12 @@ export default function LoanDetailContent({ loanId }: LoanDetailContentProps) {
       <LoanDetailPanel
         loan={loan}
         isBorrowed={isBorrowed}
-        textColorClass={textColorClass}
+        textColorClass={accentClass}
+        openPaymentRequestId={openPaymentRequestId}
+        paymentPrefill={paymentPrefill}
+        onPaymentRecorded={() => {
+          navigateDashboardClient("/dashboard/loans");
+        }}
       />
     </div>
   );

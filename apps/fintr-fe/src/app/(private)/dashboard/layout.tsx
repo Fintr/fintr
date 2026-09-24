@@ -1,16 +1,27 @@
 "use client";
-import dynamic from "next/dynamic";
 import { TabsWrapper } from "@/components/tabs-wrapper";
+import MobileStickyHeader from "@/components/dashboard/mobile-sticky-header";
+import BottomNavigation from "@/components/dashboard/bottom-navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useGetSpaceCode } from "@/hooks/useGetSpaceCode";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useTransactionsRealtime } from "@/hooks/useTransactionsRealtime";
+import { useSpaceSettingsRealtime } from "@/hooks/useSpaceSettingsRealtime";
+import { useOpenTransactionRequest } from "@/hooks/useOpenTransactionRequest";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
-import { shouldShowV2Features, formatCurrency } from "@/lib/utils";
-import { useEffect, useState } from "react";
-import { useSetAtom } from "jotai";
+import { cn, shouldShowV2Features, formatCurrency } from "@/lib/utils";
+import { periodNetLabel } from "@/utils/periodNetLabel";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useScrollToTopOnNavigate } from "@/hooks/scroll-to-top-on-navigate";
+import { useAtomValue, useSetAtom } from "jotai";
 import { dashboardShellReadyAtom } from "@/atoms/dashboardAtoms";
+import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
+import {
+  dateFilterEndDateAtom,
+  dateFilterStartDateAtom,
+} from "@/atoms/dateFilterAtoms";
 import { Edit, ArrowRight } from "lucide-react";
 import ExpandableTextarea from "@/components/ui/expandable-textarea";
 import { Button } from "@/components/ui/button";
@@ -20,31 +31,46 @@ import {
   UpdateFinancialFreedomDescriptionType,
 } from "@/services/goals/mutations";
 import { toast } from "sonner";
-import LoadingScreen from "@/components/ui/loading-screen";
-import { useBootstrapLoadingTimeout } from "@/hooks/useBootstrapLoadingTimeout";
-import { usePathname } from "next/navigation";
+import { prefetchRecurringSeries } from "@/hooks/async/useRecurringSeries";
+import { usePrefetchDashboardNavRoutes } from "@/hooks/usePrefetchDashboardNavRoutes";
+import { useBrowserOnline } from "@/hooks/useOfflineReadMode";
+import { warmBadgeImages } from "@/lib/badges/warm-badge-images";
+import { warmInsightProfileImages } from "@/lib/insights/warm-insight-profile-images";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
   calculateBottomPadding,
   calculateHeaderSpacerHeight,
 } from "@/lib/platform-detection";
+import { resolveDashboardShellPresentation } from "@/lib/dashboard-shell-route";
+import { DetailPushNavigationProvider, DashboardPushChildren } from "@/components/dashboard/detail-push-transition";
+import { shouldShowImmediateBackButton } from "@/lib/dashboard-back-button-routes";
+import { CachedBottomNavScreens } from "@/components/dashboard/cached-bottom-nav-screens";
+import { usePendingDashboardBottomTab } from "@/hooks/usePendingDashboardBottomTab";
+import {
+  commitDashboardClientNavigation,
+  interceptDashboardTabClick,
+  resolveDashboardClientNavigation,
+  syncDashboardCommittedPathnameFromLocation,
+} from "@/lib/dashboard-nav-routes";
+import { rememberDetailHref } from "@/utils/detailSearchParam";
+import { DashboardClientRoute } from "@/components/dashboard/dashboard-client-route";
+import CreateSubscriptionPage from "./subscriptions/create/page";
 
-// Dynamic imports for heavier components to reduce initial compile time
-const MobileStickyHeader = dynamic(
-  () => import("@/components/dashboard/mobile-sticky-header"),
-  { ssr: false }
-);
-const BottomNavigation = dynamic(
-  () => import("@/components/dashboard/bottom-navigation"),
-  { ssr: false }
-);
+const DashboardScrollToTop = ({
+  scrollContainerRef,
+}: {
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+}) => {
+  useScrollToTopOnNavigate(scrollContainerRef);
+  return null;
+};
 
 export default function Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const mainScrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     isAndroidNative,
@@ -67,20 +93,98 @@ export default function Layout({
     safeAreaInsetTop
   );
   
+  const { pendingTab, setPendingTab, pathname } = usePendingDashboardBottomTab();
   // Skip dashboard layout elements for standalone subscription create page
   const isStandalonePage = pathname.startsWith('/dashboard/subscriptions/create');
+  const onTabClick = (href: string) => (event: React.MouseEvent) => {
+    if (!interceptDashboardTabClick(event)) {
+      return;
+    }
+
+    commitDashboardClientNavigation(href);
+  };
+
+  useEffect(() => {
+    const onPopState = () => {
+      syncDashboardCommittedPathnameFromLocation();
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const anchor = target.closest("a");
+      if (!anchor) {
+        return;
+      }
+
+      const navigation = resolveDashboardClientNavigation({
+        href: anchor.getAttribute("href"),
+        origin: window.location.origin,
+        target: anchor.getAttribute("target"),
+        download: anchor.hasAttribute("download"),
+        event,
+      });
+      if (!navigation) {
+        return;
+      }
+
+      if (navigation.tab) {
+        setPendingTab(navigation.tab);
+      } else {
+        setPendingTab(null);
+      }
+
+      rememberDetailHref(navigation.href);
+      commitDashboardClientNavigation(navigation.href);
+    };
+
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [setPendingTab]);
+  const {
+    visibleTab,
+    usesEmbeddedHeroHeader,
+    isLightDashboardRoute,
+    showRouteChildren,
+  } = resolveDashboardShellPresentation({
+    pathname,
+    pendingTab,
+  });
   const { api, isAuthenticated } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions read:users",
   });
   
   const { spaceCode } = useGetSpaceCode(api, isAuthenticated);
-  const { data, isLoading: isLoadingDashboardData, isError, refetch } = useDashboardData();
-  const isWaitingForDashboardShell =
-    !spaceCode ||
-    (isLoadingDashboardData && !isError);
-  const { shouldBlock: shouldBlockOnDashboardLoading } = useBootstrapLoadingTimeout(
-    isWaitingForDashboardShell,
-  );
+  useTransactionsRealtime({ spaceId: spaceCode ?? "" });
+  useSpaceSettingsRealtime({ spaceId: spaceCode ?? "" });
+  useOpenTransactionRequest();
+  const startDate = useAtomValue(dateFilterStartDateAtom);
+  const endDate = useAtomValue(dateFilterEndDateAtom);
+  const { data, isLoading: isLoadingDashboardData } =
+    useDashboardData(startDate, endDate, { shellOnly: isLightDashboardRoute });
+  const offlineSyncReady = useAtomValue(offlineSyncReadyAtom);
+  const isOnline = useBrowserOnline();
+  usePrefetchDashboardNavRoutes();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!spaceCode) {
+      return;
+    }
+
+    void prefetchRecurringSeries(queryClient, spaceCode);
+  }, [offlineSyncReady, queryClient, spaceCode]);
   const setDashboardShellReady = useSetAtom(dashboardShellReadyAtom);
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
@@ -89,13 +193,8 @@ export default function Layout({
 
   const [isEditingGoalDescription, setIsEditingGoalDescription] = useState(false);
   const [goalDescription, setGoalDescription] = useState(data?.goalDescription || "Set your own financial freedom goal, whatever milestone or lifestyle you’re aiming for.");
-  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (spaceCode) {
-      refetch();
-    }
-  }, [spaceCode, refetch]);
+  // spaceCode is already in useDashboardData query keys — no manual refetch loop.
 
   useEffect(() => {
     if (data?.goalDescription) {
@@ -104,10 +203,20 @@ export default function Layout({
   }, [data?.goalDescription]);
 
   useEffect(() => {
+    void warmInsightProfileImages();
+    void warmBadgeImages();
+  }, []);
+
+  useEffect(() => {
     const ready =
       !isStandalonePage &&
       Boolean(spaceCode) &&
-      !isLoadingDashboardData;
+      (
+        isLightDashboardRoute ||
+        !isLoadingDashboardData ||
+        !isOnline ||
+        offlineSyncReady
+      );
 
     setDashboardShellReady(ready);
 
@@ -117,7 +226,10 @@ export default function Layout({
   }, [
     isStandalonePage,
     spaceCode,
+    isLightDashboardRoute,
     isLoadingDashboardData,
+    isOnline,
+    offlineSyncReady,
     setDashboardShellReady,
   ]);
 
@@ -136,25 +248,33 @@ export default function Layout({
     },
   });
 
-  // For standalone pages, just return children without dashboard layout
+  // Client navigations leave Next's route children on the previous page.
+  // Those pages render TabsContent, which crashes once this shell unmounts Tabs.
   if (isStandalonePage) {
-    return <>{children}</>;
-  }
-
-  if (shouldBlockOnDashboardLoading) {
-    return <LoadingScreen />;
+    return <CreateSubscriptionPage />;
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Mobile Sticky Header */}
-      <MobileStickyHeader />
+    <DetailPushNavigationProvider>
+    <div
+      className={cn(
+        "flex min-h-screen flex-col",
+        usesEmbeddedHeroHeader &&
+          "max-md:h-dvh max-md:max-h-dvh max-md:overflow-hidden",
+      )}
+    >
+      {!usesEmbeddedHeroHeader ? (
+        <>
+          {/* Mobile Sticky Header */}
+          <MobileStickyHeader />
 
-      {/* Spacer for fixed header on mobile (includes safe area for status bar) */}
-      <div
-        className="mobile-header-spacer md:hidden"
-        style={{ height: headerSpacerHeight }}
-      />
+          {/* Spacer for fixed header on mobile (includes safe area for status bar) */}
+          <div
+            className="mobile-header-spacer md:hidden"
+            style={{ height: headerSpacerHeight }}
+          />
+        </>
+      ) : null}
 
       <div className="p-0 md:p-4 md:px-8 flex flex-col">
             <div className="hidden md:flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-2 md:gap-0">
@@ -215,10 +335,11 @@ export default function Layout({
                   )}
                 </div>
                 
-                {/* Current Savings Display */}
                 {data?.financialSummary && (
                   <div className="mt-2">
-                    <span className="text-md text-primary/70">Savings: </span>
+                    <span className="text-md text-primary/70">
+                      {periodNetLabel(parseFloat(data.financialSummary.netSavings))}:{" "}
+                    </span>
                     <span className={`text-md font-bold ${
                       parseFloat(data.financialSummary.netSavings) >= 0
                         ? "text-teal-600 dark:text-teal-500"
@@ -231,19 +352,62 @@ export default function Layout({
               </div>
             </div>
           </div>
-          <div>
-            <TabsWrapper>
+          <div
+            className={cn(
+              usesEmbeddedHeroHeader &&
+                "max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col",
+            )}
+          >
+            <TabsWrapper
+              className={
+                usesEmbeddedHeroHeader
+                  ? "max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col"
+                  : undefined
+              }
+            >
               <div className="w-full">
                 {/* Desktop Horizontal Layout */}
                 <TabsList className="hidden md:flex w-full min-w-0 flex-nowrap overflow-x-auto bg-white dark:bg-card dark:shadow-sm">
                   <TabsTrigger asChild value="transactions">
-                    <Link href="/dashboard/">Transactions</Link>
+                    <Link
+                      href="/dashboard/"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("transactions")}
+                      onClick={onTabClick("/dashboard/")}
+                    >
+                      Transactions
+                    </Link>
+                  </TabsTrigger>
+                  <TabsTrigger asChild value="recurring">
+                    <Link
+                      href="/dashboard/recurring"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("recurring")}
+                      onClick={onTabClick("/dashboard/recurring")}
+                    >
+                      Recurring
+                    </Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="budgets">
-                    <Link href="/dashboard/budgets">Budgets</Link>
+                    <Link
+                      href="/dashboard/budgets"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("budgets")}
+                      onClick={onTabClick("/dashboard/budgets")}
+                    >
+                      Budgets
+                    </Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="loans">
-                    <Link href="/dashboard/loans" data-tutorial-target="dashboard-loan-tab">Loans</Link>
+                    <Link
+                      href="/dashboard/loans"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("loans")}
+                      onClick={onTabClick("/dashboard/loans")}
+                      data-tutorial-target="dashboard-loan-tab"
+                    >
+                      Loans
+                    </Link>
                   </TabsTrigger>
                   {showV2Features && (
                     <>
@@ -257,23 +421,70 @@ export default function Layout({
                   )}
                   <TabsTrigger asChild value="insights">
                     {/* Insights -> Dashboard */}
-                    <Link href="/dashboard/insights" data-tutorial-target="dashboard-tab">Dashboard</Link>
+                    <Link
+                      href="/dashboard/insights"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("insights")}
+                      onClick={onTabClick("/dashboard/insights")}
+                      data-tutorial-target="dashboard-tab"
+                    >
+                      Dashboard
+                    </Link>
                   </TabsTrigger>
                   <TabsTrigger asChild value="space_settings">
-                    <Link href="/dashboard/space_settings">Settings</Link>
+                    <Link
+                      href="/dashboard/space_settings"
+                      scroll={false}
+                      onPointerDown={() => setPendingTab("space_settings")}
+                      onClick={onTabClick("/dashboard/space_settings")}
+                    >
+                      Settings
+                    </Link>
                   </TabsTrigger>
                 </TabsList>
               </div>
               <div
-                className="pt-0 md:pt-2 flex-1 overflow-y-auto md:pb-0"
-                style={{ paddingBottom: bottomPadding }}
+                ref={mainScrollContainerRef}
+                className={cn(
+                  "pt-0 md:pt-2 flex-1 overflow-y-auto md:pb-0",
+                  shouldShowImmediateBackButton(pathname) && "overflow-x-hidden",
+                  usesEmbeddedHeroHeader &&
+                    "max-md:min-h-0 max-md:bg-background max-md:overscroll-y-auto md:bg-transparent",
+                )}
+                style={{
+                  paddingBottom: usesEmbeddedHeroHeader ? undefined : bottomPadding,
+                }}
               >
-                {children}
+                <CachedBottomNavScreens
+                  activeTab={visibleTab}
+                  scrollContainerRef={mainScrollContainerRef}
+                />
+                <Suspense fallback={null}>
+                  <DashboardScrollToTop
+                    scrollContainerRef={mainScrollContainerRef}
+                  />
+                  {showRouteChildren ? (
+                    <DashboardPushChildren
+                      pathname={pathname}
+                      search={
+                        typeof window === "undefined"
+                          ? undefined
+                          : window.location.search.replace(/^\?/, "")
+                      }
+                    >
+                      <DashboardClientRoute
+                        pathname={pathname}
+                        fallback={children}
+                      />
+                    </DashboardPushChildren>
+                  ) : null}
+                </Suspense>
               </div>
             </TabsWrapper>
           </div>
       {/* Bottom Navigation for Mobile */}
       <BottomNavigation />
     </div>
+    </DetailPushNavigationProvider>
   );
 }

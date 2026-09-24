@@ -7,7 +7,8 @@ import { Label } from '../../../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { updateUser, requestPasswordReset } from '@/services/auth/user/mutations';
+import { requestPasswordReset } from '@/services/auth/user/mutations';
+import { updateUserSettingsLocalFirst } from '@/services/auth/user/update-settings-local-first';
 import { getUserAuth0Settings } from '@/services/auth/user/queries';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { CheckCircle, AlertTriangle, Users } from 'lucide-react';
@@ -18,6 +19,7 @@ import {
 import ResetDataDialog from '../../../../components/dashboard/reset-data-dialog';
 import DeleteUserAccountDialog from '../../../../components/dashboard/delete-user-account-dialog';
 import SpaceAccessCard from '../../../../components/dashboard/space-access-card';
+import { ProPlanCard } from '@/components/settings/pro-plan-card';
 
 /**
  * Renders the settings page where users can manage their profile information.
@@ -50,8 +52,19 @@ const SettingsPage = () => {
   const handleUpdateName = async () => {
     setIsNameLoading(true);
     try {
-      const response = await updateUser({ api, name });
-      toast.success(response.message);
+      const result = await updateUserSettingsLocalFirst(
+        api,
+        { name },
+        { waitForSync: false },
+      );
+      toast.success("Name updated successfully");
+      void result.syncPromise.then((synced) => {
+        if (synced.pendingSync) {
+          toast.message("Update saved on this device. Will sync when online.");
+        }
+      }).catch((error) => {
+        toast.error(`Failed to update name: ${(error as Error).message}`);
+      });
     } catch (error) {
       toast.error(`Failed to update name: ${(error as Error).message}`);
       console.error('Failed to update name:', error);
@@ -68,8 +81,19 @@ const SettingsPage = () => {
   const handleUpdateEmail = async () => {
     setIsEmailLoading(true);
     try {
-      const response = await updateUser({ api, email });
-      toast.success(response.message);
+      const result = await updateUserSettingsLocalFirst(
+        api,
+        { email },
+        { waitForSync: false },
+      );
+      toast.success("Email updated successfully");
+      void result.syncPromise.then((synced) => {
+        if (synced.pendingSync) {
+          toast.message("Update saved on this device. Will sync when online.");
+        }
+      }).catch((error) => {
+        toast.error(`Failed to update email: ${(error as Error).message}`);
+      });
     } catch (error) {
       toast.error(`Failed to update email: ${(error as Error).message}`);
       console.error('Failed to update email:', error);
@@ -104,6 +128,9 @@ const SettingsPage = () => {
     <div className="container mx-auto sm:py-8 px-2 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold mb-8 hidden md:block">Settings</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="md:col-span-2">
+          <ProPlanCard />
+        </div>
         <Card className="px-2">
           <CardHeader>
             <CardTitle>Update Profile</CardTitle>

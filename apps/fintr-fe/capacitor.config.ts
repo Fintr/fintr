@@ -2,8 +2,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // When CAPACITOR_SERVER_URL is set, the app loads the web app from that URL.
 // - Development: set to http://localhost:5173 (or your machine IP) for live reload
-// - Production: set to https://www.fintr.ai so the app always loads the latest website
-//   (no app store update needed when you deploy web changes)
+// - Production (FIN-194 default): leave UNSET so the native app loads bundled `out/`
+//   (see scripts/mobile/build-production.sh / build-production-android.sh)
 //
 // 10.0.2.2 is the Android emulator alias for the host machine. It does not work on
 // iOS Simulator — if it gets baked into ios/App/App/capacitor.config.json, the WebView

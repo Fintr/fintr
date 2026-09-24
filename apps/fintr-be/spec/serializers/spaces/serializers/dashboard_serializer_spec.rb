@@ -22,6 +22,8 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
       value: category.id,
       name: category.name,
       parent_id: nil,
+      icon: category.icon,
+      color: category.color,
       children: []
     }
   end
@@ -52,6 +54,24 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
       actual_options = serialized_hash[:expense_category_options].sort_by { |h| h[:label] }
       expect(actual_options).to match_array(expected_options)
     end
+
+    it 'includes the stored icon on expense category options' do
+      expense_cat1.update!(icon: "church")
+
+      expect(
+        described_class.render_as_hash(space)[:expense_category_options]
+          .find { |option| option[:id] == expense_cat1.id }[:icon]
+      ).to eq("church")
+    end
+
+    it 'includes the stored color on expense category options' do
+      expense_cat1.update!(color: "#1E88E5")
+
+      expect(
+        described_class.render_as_hash(space)[:expense_category_options]
+          .find { |option| option[:id] == expense_cat1.id }[:color]
+      ).to eq("#1E88E5")
+    end
   end
 
   describe ':income_category_options field' do
@@ -72,7 +92,9 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
         {
           label: account.name,
           value: account.name,
-          currency: account.balance_currency
+          currency: account.balance_currency,
+          account_category: account.account_category,
+          balance: account.balance.amount
         }
       end.sort_by { |h| h[:label] }
     end
@@ -114,9 +136,43 @@ RSpec.describe Spaces::Serializers::DashboardSerializer do
       :income_category_options,
       :account_options,
       :goal_description,
-      :financial_summary
+      :financial_summary,
+      :earliest_transaction_date
     ]
     expect(serialized_hash.keys).to match_array(expected_keys)
+  end
+
+  describe ':earliest_transaction_date field' do
+    let(:user) { create(:user) }
+    let(:account) { create(:account, space:) }
+    let(:category) { create(:category, space:, category_type: "expense") }
+
+    it 'returns nil when the space has no calculated transactions' do
+      expect(serialized_hash[:earliest_transaction_date]).to be_nil
+    end
+
+    it 'returns the earliest calculated transaction date excluding initial balance' do
+      create(
+        :expense_transaction,
+        space:,
+        user:,
+        account:,
+        category:,
+        date: Date.new(2024, 4, 10),
+        balance_state: :calculated
+      )
+      create(
+        :expense_transaction,
+        space:,
+        user:,
+        account:,
+        category:,
+        date: Date.new(2024, 2, 15),
+        balance_state: :calculated
+      )
+
+      expect(serialized_hash[:earliest_transaction_date]).to eq(Date.new(2024, 2, 15).iso8601)
+    end
   end
 
   context 'when a space has no associated items' do

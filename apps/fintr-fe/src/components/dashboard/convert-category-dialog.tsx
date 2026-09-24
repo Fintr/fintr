@@ -20,10 +20,12 @@ import {
 } from "@/components/ui/select";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  convertCategoryHierarchy,
-  previewCategoryConversion,
-} from "@/services/transactions/categories/mutation";
+  convertCategoryLocalFirst,
+  previewCategoryConversionLocal,
+} from "@/services/transactions/categories/convert-local-first";
 import {
   CategoryConversionPreview,
   CategoryConversionType,
@@ -41,6 +43,10 @@ type ConvertCategoryDialogProps = {
   rootCategories: TransactionCategory[];
   currencyCode?: string;
   onConverted: (redirectParentId: string) => void;
+  onConfirmConvert?: (input: {
+    conversionType: CategoryConversionType;
+    newParentId: string | null;
+  }) => Promise<{ redirectParentId: string }>;
 };
 
 const ConvertCategoryDialog: React.FC<ConvertCategoryDialogProps> = ({
@@ -52,8 +58,11 @@ const ConvertCategoryDialog: React.FC<ConvertCategoryDialogProps> = ({
   rootCategories,
   currencyCode = "PHP",
   onConverted,
+  onConfirmConvert,
 }) => {
   const { api } = useAuthApi();
+  const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   const [newParentId, setNewParentId] = useState<string>("");
   const [preview, setPreview] = useState<CategoryConversionPreview | null>(
     null,
@@ -99,7 +108,9 @@ const ConvertCategoryDialog: React.FC<ConvertCategoryDialogProps> = ({
       setError(null);
 
       try {
-        const data = await previewCategoryConversion(api, category.id, {
+        const data = await previewCategoryConversionLocal({
+          spaceCode,
+          categoryId: category.id,
           conversionType,
           newParentId:
             conversionType === "to_subcategory" ? newParentId : null,
@@ -128,7 +139,7 @@ const ConvertCategoryDialog: React.FC<ConvertCategoryDialogProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [api, open, canLoadPreview, category.id, conversionType, newParentId]);
+  }, [open, canLoadPreview, category.id, conversionType, newParentId, spaceCode]);
 
   const title =
     conversionType === "to_subcategory"
@@ -140,6 +151,31 @@ const ConvertCategoryDialog: React.FC<ConvertCategoryDialogProps> = ({
       ? "Transactions and budgets using this category will be moved under the parent you choose."
       : "This subcategory will become its own category. Transactions will no longer be grouped under its parent.";
 
+  const convertMutation = useMutation({
+    mutationFn: async () => {
+      if (onConfirmConvert) {
+        return onConfirmConvert({
+          conversionType,
+          newParentId:
+            conversionType === "to_subcategory" ? newParentId : null,
+        });
+      }
+
+      return convertCategoryLocalFirst(
+        api,
+        {
+          spaceCode,
+          categoryId: category.id,
+          conversionType,
+          newParentId:
+            conversionType === "to_subcategory" ? newParentId : null,
+        },
+        { queryClient, waitForSync: false },
+      );
+    },
+    networkMode: "always",
+  });
+
   const handleConfirm = async () => {
     if (!canLoadPreview) {
       return;
@@ -149,11 +185,7 @@ const ConvertCategoryDialog: React.FC<ConvertCategoryDialogProps> = ({
     setError(null);
 
     try {
-      const result = await convertCategoryHierarchy(api, category.id, {
-        conversionType,
-        newParentId:
-          conversionType === "to_subcategory" ? newParentId : null,
-      });
+      const result = await convertMutation.mutateAsync();
 
       toast.success(
         conversionType === "to_subcategory"

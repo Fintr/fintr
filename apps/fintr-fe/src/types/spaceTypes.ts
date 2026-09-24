@@ -16,6 +16,8 @@ export interface DashboardData {
   expenseCategoryOptions: CategoryTreeOption[];
   incomeCategoryOptions: CategoryTreeOption[];
   goalDescription: string;
+  /** Earliest calculated transaction date (excludes initial balance). */
+  earliestTransactionDate?: string | null;
   financialSummary: FinancialSummary;
 }
 
@@ -36,6 +38,10 @@ export interface Space {
   hasNewInvitation: boolean;
   isOwner: boolean;
   ownerId: string | null;
+  /** Joined members (excludes pending invite-only rows). Absent on older cached payloads. */
+  memberCount?: number;
+  /** Derived: solo | couple | household */
+  compositionKey?: "solo" | "couple" | "household";
 }
 
 export interface SpacePermissions {

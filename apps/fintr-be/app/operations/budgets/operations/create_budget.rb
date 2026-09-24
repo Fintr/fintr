@@ -5,9 +5,11 @@ module Budgets
     class CreateBudget < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
+          optional(:user_id).maybe(:string)
           optional(:category_name).maybe(:string)
           optional(:category_id).maybe(:string)
           optional(:subcategory_id).maybe(:string)
+          optional(:id).maybe(:string)
           required(:space_id).value(:string)
           required(:amount).value(:integer)
           required(:date).value(:date)
@@ -34,10 +36,20 @@ module Budgets
         _           = step validate_allocation(params:)
         params      = step update_params(params:)
         budget      = step create_budget(params:)
+        step try_unlock_achievements(params:)
         budget.reload
       end
 
       private
+
+      def try_unlock_achievements(params:)
+        Achievements::EventHook.evaluate(
+          user_id: params[:user_id],
+          space_id: params[:space_id],
+          event: "budget_created",
+        )
+        Success(true)
+      end
 
       def resolve_category_ids(params:)
         if params[:category_id].present?
@@ -80,7 +92,7 @@ module Budgets
       def create_budget(params:)
         budget = Budget.new
         budget.assign_attributes(
-          **params.slice(:space_id, :category_id, :subcategory_id, :amount_cents, :amount_currency, :date)
+          **params.slice(:space_id, :category_id, :subcategory_id, :amount_cents, :amount_currency, :date, :id)
         )
         budget.save!
         Success(budget)

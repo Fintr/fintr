@@ -91,7 +91,7 @@ module Budgets
         )
       end
 
-      def process_monthly_budgets(_monthly_budgets_query, monthly_transactions_query, date_range:)
+      def process_monthly_budgets(_monthly_budgets_query, _monthly_transactions_query, date_range:)
         start_month = date_range[:start_date].to_date.beginning_of_month
         end_month = date_range[:end_date].to_date.end_of_month
 
@@ -109,20 +109,23 @@ module Budgets
         return budget_rows_result unless budget_rows_result.success?
 
         budget_rows = budget_rows_result.value!
-
-        usage_values = step Insights::Operations::ComputeBudgetUsage.new.call(
-          budget_records: monthly_budgets_array,
-          transactions: monthly_transactions_query,
-          space:
-        )
+        total_budget = budget_rows.sum { |row| row[:amount].to_d }
+        total_spent = budget_rows.sum { |row| row[:total_spent].to_d }
+        remaining = total_budget - total_spent
+        usage_percentage =
+          if total_budget.zero?
+            nil
+          else
+            ((total_spent / total_budget) * 100).round(2)
+          end
 
         output = {
           budgets: budget_rows,
           summary: {
-            total_budget: usage_values[:total_budget].round.to_i,
-            total_spent: usage_values[:total_expenses].round.to_i,
-            total_spent_percentage: usage_values[:total_budget].zero? ? nil : usage_values[:usage_percentage].round(2),
-            remaining: usage_values[:remaining].round.to_i
+            total_budget: total_budget.round.to_i,
+            total_spent: total_spent.round(2),
+            total_spent_percentage: usage_percentage,
+            remaining: remaining.round(2)
           }
         }
         Success(output)

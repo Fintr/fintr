@@ -60,6 +60,7 @@ Rails.application.routes.draw do
         end
         namespace :finance do
           resources :sponsor_codes, only: %i[index show create update destroy]
+          resources :pro_grants, only: %i[index create]
           resources :free_subscriptions, only: %i[create] do
             collection do
               delete :remove
@@ -96,10 +97,18 @@ Rails.application.routes.draw do
             post :convert
           end
         end
+        resources :tags, only: %i[index create update destroy] do
+          member do
+            put :toggle_default
+            post :generate_style_image
+            post :assign_style_image
+          end
+        end
         resources :accounts, only: %i[index create update destroy] do
           member do
             post "adjust_balance"
             get "activities"
+            get "balance_timeline"
           end
         end
         resources :transfers, only: %i[create show update destroy]
@@ -132,12 +141,17 @@ Rails.application.routes.draw do
           get :generate_csv
           get :note_suggestions
         end
+
+        member do
+          post :materialize_series
+        end
       end
 
       resources :exchange_rates, only: [] do
         collection do
           get :current
           get :recent
+          post :batch
         end
       end
 
@@ -148,7 +162,16 @@ Rails.application.routes.draw do
         end
       end
       resources :budgets, only: %i[index create update destroy]
-      resources :entities, only: %i[index create]
+      resources :entities, only: %i[index show create update] do
+        member do
+          post :search_photos
+          post :generate_photo
+        end
+
+        resources :identifiers,
+                  only: %i[create destroy],
+                  controller: "entities/identifiers"
+      end
       resources :insights, only: [:index] do
         collection do
           get :summary
@@ -172,7 +195,15 @@ Rails.application.routes.draw do
         end
       end
 
+      # Raw monthly summary buckets for offline/insights combine-on-client.
+      resources :monthly_financial_summaries, only: [:index]
+
       resources :product_pulse_feedbacks, only: %i[create]
+
+      namespace :achievements do
+        resource :profile, only: [:show]
+        resources :achievements, only: [:index]
+      end
 
       namespace :imports do
         resources :imports, only: [:index, :show, :create] do
@@ -189,6 +220,11 @@ Rails.application.routes.draw do
       end
 
       # Space management routes
+      namespace :spaces do
+        get "sync/changes", to: "sync#changes"
+        get "sync/bootstrap", to: "sync#bootstrap"
+      end
+
       resources :spaces, only: [:index, :show, :create, :update, :destroy] do
         member do
           post :join
@@ -209,6 +245,11 @@ Rails.application.routes.draw do
 
       # Finance routes
       namespace :finance do
+        resource :pro_access, only: [:show], controller: "pro_access"
+        resource :pro_grant_acknowledgement,
+                 only: [:create],
+                 controller: "pro_grant_acknowledgements"
+        resource :revenuecat_sync, only: [:create], controller: "revenuecat_sync"
         resources :subscriptions, only: %i[index create update] do
           collection do
             get :current_subscriptions
@@ -231,5 +272,6 @@ Rails.application.routes.draw do
   # Webhook endpoints (external API callbacks - no authentication required)
   namespace :webhooks do
     post "/xendit", to: "xendit#create"
+    post "/revenuecat", to: "revenuecat#create"
   end
 end

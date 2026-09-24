@@ -1,0 +1,78 @@
+/*
+ * Bottom sheets move with transform only. The shared exit keyframe also
+ * animates filter, and duration utilities set a transition on every property,
+ * so the slide stays on the main thread and pauses before it moves.
+ */
+@keyframes fintr-sheet-in-bottom {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fintr-sheet-out-bottom {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@keyframes fintr-sheet-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fintr-sheet-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.fintr-sheet-bottom {
+  transition-property: none;
+  will-change: transform;
+}
+
+.fintr-sheet-bottom[data-state="open"] {
+  animation: fintr-sheet-in-bottom 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.fintr-sheet-bottom[data-state="closed"] {
+  animation: fintr-sheet-out-bottom 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.fintr-sheet-overlay {
+  transition-property: none;
+}
+
+.fintr-sheet-overlay[data-state="open"] {
+  animation: fintr-sheet-fade-in 160ms ease-out both;
+}
+
+.fintr-sheet-overlay[data-state="closed"] {
+  animation: fintr-sheet-fade-out 160ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fintr-sheet-bottom[data-state="open"],
+  .fintr-sheet-bottom[data-state="closed"],
+  .fintr-sheet-overlay[data-state="open"],
+  .fintr-sheet-overlay[data-state="closed"] {
+    animation-duration: 1ms;
+  }
+}

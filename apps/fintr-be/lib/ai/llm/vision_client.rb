@@ -1,31 +1,27 @@
 # frozen_string_literal: true
 
+require "base64"
+require "tempfile"
+
 module Ai
   module Llm
-    # Plug-and-play vision client for document/receipt extraction.
-    # OLD way: OpenAI GPT-4o (set AI_VISION_PROVIDER=openai or only OPENAI_API_KEY).
-    # NEW way: OpenRouter + Gemini 2.0 Flash (set OPENROUTER_API_KEY, optional AI_VISION_PROVIDER=openrouter).
+    # Receipt vision chat through RubyLLM's OpenRouter provider.
+    # Pass a file path or a data URL. Bare Gemini ids get the OpenRouter `google/` prefix.
     class VisionClient
-      PROVIDER_OPENAI    = "openai"
-      PROVIDER_OPENROUTER = "openrouter"
-
-      OPENAI_DEFAULT_MODEL    = "gpt-4o"
-      OPENROUTER_DEFAULT_MODEL = "google/gemini-2.5-flash-lite"
+      PROVIDER = :openrouter
+      DEFAULT_MODEL = "google/gemini-2.5-flash-lite"
       DEFAULT_REQUEST_TIMEOUT_SECONDS = 12
 
-      # No trailing /v1 — ruby-openai appends /v1/ to uri_base
-      OPENROUTER_URI_BASE = "https://openrouter.ai/api"
-
       class << self
-        def openrouter?
-          case ENV["AI_VISION_PROVIDER"].to_s.strip.downcase
-          when PROVIDER_OPENAI
-            false
-          when PROVIDER_OPENROUTER
-            ENV["OPENROUTER_API_KEY"].present?
-          else
-            ENV["OPENROUTER_API_KEY"].present?
-          end
+        def provider
+          PROVIDER
+        end
+
+        def model
+          raw = ENV["AI_VISION_MODEL"].presence || DEFAULT_MODEL
+          return raw if raw.include?("/")
+
+          "google/#{raw}"
         end
 
         def request_timeout_seconds
@@ -36,50 +32,77 @@ module Ai
           seconds.positive? ? seconds : DEFAULT_REQUEST_TIMEOUT_SECONDS
         end
 
-        # OpenRouter-only: route to the lowest-latency provider for the model.
-        def openrouter_chat_extras
-          return {} unless openrouter?
-
-          {
-            provider: {
-              sort: "latency"
-            }
-          }
-        end
-        # Returns an OpenAI-compatible client (either OpenAI or OpenRouter).
-        # Use for chat completions with vision (e.g. receipt/document extraction).
-        def client
-          timeout = request_timeout_seconds
-
-          if openrouter?
-            OpenAI::Client.new(
-              access_token: ENV.fetch("OPENROUTER_API_KEY"),
-              uri_base: OPENROUTER_URI_BASE,
-              request_timeout: timeout,
-            )
-          else
-            OpenAI::Client.new(
-              access_token: ENV["OPENAI_API_KEY"] || Rails.application.credentials.openai_api_key,
-              request_timeout: timeout,
-            )
-          end
-        end
-
-        # Model name to use for vision (chat completions).
-        # Override with AI_VISION_MODEL if set.
-        def model
-          ENV["AI_VISION_MODEL"].presence || default_model
-        end
-
-        # Current provider in use (for logging/debugging).
-        def provider
-          openrouter? ? PROVIDER_OPENROUTER : PROVIDER_OPENAI
+        def ask(
+          instructions:,
+          prompt:,
+          image:,
+          max_output_tokens:
+        )
+          attachment = nil
+          attachment = attachment_for(image:)
+          message = vision_chat(max_output_tokens:).ask(
+            "#{instructions}\n\n#{prompt}",
+            with: [attachment],
+          )
+          message_text(message)
+        ensure
+          release_attachment(attachment)
         end
 
         private
 
-        def default_model
-          openrouter? ? OPENROUTER_DEFAULT_MODEL : OPENAI_DEFAULT_MODEL
+        def vision_chat(max_output_tokens:)
+          context = RubyLLM.context do |config|
+            config.request_timeout = request_timeout_seconds
+          end
+
+          context.chat(
+            model: model,
+            provider: provider,
+            assume_model_exists: true,
+          )
+            .with_temperature(0.0)
+            .with_params(
+              max_tokens: max_output_tokens,
+              provider: {
+                sort: "latency"
+              },
+            )
+        end
+
+        def message_text(message)
+          content = message.content
+          text = content.respond_to?(:text) ? content.text : content
+          text.to_s.strip
+        end
+
+        def attachment_for(image:)
+          return image unless data_url?(image)
+
+          header, encoded = image.split(",", 2)
+          file = Tempfile.new(["receipt-vision", extension_for(header)])
+          file.binmode
+          file.write(Base64.strict_decode64(encoded.to_s))
+          file.rewind
+          file
+        end
+
+        def data_url?(image)
+          image.is_a?(String) && image.start_with?("data:")
+        end
+
+        def extension_for(header)
+          subtype = header.to_s[%r{image/([a-z0-9.+-]+)}i, 1]
+          return ".jpg" if subtype.blank?
+
+          ".#{subtype.split('+').first}"
+        end
+
+        def release_attachment(attachment)
+          return unless attachment.is_a?(Tempfile)
+
+          attachment.close
+          attachment.unlink
         end
       end
     end

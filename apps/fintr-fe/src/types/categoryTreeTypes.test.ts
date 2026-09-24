@@ -4,6 +4,7 @@ import {
   categoryPickerValueFromName,
   categoryPickerValueFromReceiptOrTransaction,
   categoryPickerValueFromTransaction,
+  findCategoryTreeOptionForTransaction,
   formatCategoryPickerValue,
   getCategoryDisplayLabel,
   getCategoryNameForApi,
@@ -11,6 +12,7 @@ import {
   isCategoryPickerId,
   parseCategoryPickerValue,
   resolveCategoryFilterFromDisplayName,
+  resolveTransactionCategoryAssignment,
 } from "./categoryTreeTypes";
 
 const PARENT_ID = "11111111-1111-4111-8111-111111111111";
@@ -49,6 +51,41 @@ describe("categoryTreeTypes", () => {
     expect(isCategoryPickerId("Dine Out & Entertainment")).toBe(false);
   });
 
+  it("recognizes offline local-first category picker ids", () => {
+    const localId = "local:cid-cat-1234567890-abc123";
+    const localSubId = "local:cid-cat-9876543210-def456";
+
+    expect(isCategoryPickerId(localId)).toBe(true);
+    expect(parseCategoryPickerValue(localId)).toEqual({
+      categoryId: localId,
+      subcategoryId: null,
+    });
+    expect(parseCategoryPickerValue(`${localId}:${localSubId}`)).toEqual({
+      categoryId: localId,
+      subcategoryId: localSubId,
+    });
+  });
+
+  it("shows labels for offline local category picker values", () => {
+    const localId = "local:cid-cat-1234567890-abc123";
+    const localTree = [
+      {
+        id: localId,
+        label: "a2",
+        value: localId,
+        name: "a2",
+        parentId: null,
+        children: [],
+      },
+    ];
+
+    expect(getCategoryDisplayLabel(localId, localTree)).toBe("a2");
+    expect(getCategoryTriggerDisplay(localId, localTree)).toEqual({
+      primary: "a2",
+      secondary: null,
+    });
+  });
+
   it("formats and parses parent-only values", () => {
     const encoded = formatCategoryPickerValue({
       categoryId: PARENT_ID,
@@ -65,6 +102,38 @@ describe("categoryTreeTypes", () => {
   it("rejects plain category names as picker values", () => {
     expect(parseCategoryPickerValue("Dine Out & Entertainment")).toBeNull();
     expect(parseCategoryPickerValue("Transfer Fee")).toBeNull();
+  });
+
+  it("finds category tree option for transaction rows", () => {
+    expect(
+      findCategoryTreeOptionForTransaction(
+        { categoryName: "Food", subcategoryName: "Groceries" },
+        tree,
+        [],
+      ),
+    ).toMatchObject({
+      id: SUB_ID,
+      name: "Groceries",
+    });
+
+    expect(
+      findCategoryTreeOptionForTransaction(
+        { categoryName: "Others" },
+        [
+          {
+            ...tree[0],
+            name: "Others",
+            label: "Others",
+            icon: "tag",
+            color: "#0A3D62",
+          },
+        ],
+        [],
+      ),
+    ).toMatchObject({
+      name: "Others",
+      icon: "tag",
+    });
   });
 
   it("resolves category filter from display name for transactions URL", () => {
@@ -103,6 +172,39 @@ describe("categoryTreeTypes", () => {
         categoryName: "Food",
       }),
     ).toBe(`${PARENT_ID}:${SUB_ID}`);
+  });
+
+  it("resolves transaction category assignment from names when ids are missing", () => {
+    expect(
+      resolveTransactionCategoryAssignment(
+        {
+          categoryName: "Food",
+          subcategoryName: "Groceries",
+        },
+        tree,
+        [],
+      ),
+    ).toEqual({
+      categoryId: PARENT_ID,
+      subcategoryId: SUB_ID,
+    });
+  });
+
+  it("normalizes a subcategory id stored in categoryId to its parent", () => {
+    expect(
+      resolveTransactionCategoryAssignment(
+        {
+          categoryId: SUB_ID,
+          categoryName: "Food",
+          subcategoryName: "Groceries",
+        },
+        tree,
+        [],
+      ),
+    ).toEqual({
+      categoryId: PARENT_ID,
+      subcategoryId: SUB_ID,
+    });
   });
 
   it("resolves receipt category name to picker value", () => {
@@ -160,6 +262,39 @@ describe("categoryTreeTypes", () => {
     ).toEqual({
       categoryName: "Dine Out & Entertainment",
       categoryId: "33333333-3333-4333-8333-333333333333",
+    });
+  });
+
+  it("resolves parent name from income options when not in expense tree", () => {
+    const incomeTree = [
+      {
+        id: "44444444-4444-4444-8444-444444444444",
+        label: "Salary",
+        value: "44444444-4444-4444-8444-444444444444",
+        name: "Salary",
+        parentId: null,
+        children: [],
+      },
+    ];
+
+    expect(
+      buildTransactionCategoryFields(
+        "44444444-4444-4444-8444-444444444444",
+        [],
+        incomeTree,
+      ),
+    ).toEqual({
+      categoryName: "Salary",
+      categoryId: "44444444-4444-4444-8444-444444444444",
+    });
+  });
+
+  it("returns ids without a uuid categoryName when tree is not loaded yet", () => {
+    expect(
+      buildTransactionCategoryFields(PARENT_ID, [], []),
+    ).toEqual({
+      categoryId: PARENT_ID,
+      categoryName: "",
     });
   });
 

@@ -1,0 +1,12 @@
+{
+  "id": "e3d2231c",
+  "operation": "accept",
+  "variantId": "1",
+  "result": {
+    "handled": true,
+    "file": "src/components/dashboard/tabs/insights-tab.tsx",
+    "carbonize": true,
+    "todo": "REQUIRED before next poll: carbonize cleanup in src/components/dashboard/tabs/insights-tab.tsx. See reference/live.md \"Required after accept\"."
+  },
+  "completedAt": "2026-08-08T09:32:19.239Z"
+}

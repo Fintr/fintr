@@ -19,10 +19,13 @@ module Transactions
             required(:entity_name).value(:string)
             required(:account_name).value(:string)
             required(:loan_term_months).value(:integer, gt?: 0)
+            optional(:id).maybe(:string)
             optional(:description).value(:string)
             optional(:adjusts_account_balance).maybe(:bool)
             optional(:file)
             optional(:file_id).maybe(:string)
+            # Client-generated UUID for idempotent offline / retry creates.
+            optional(:client_mutation_id).value(:string)
           end
 
           rule(:loan_type) do
@@ -46,21 +49,98 @@ module Transactions
         include Dry::Operation::Extensions::ActiveRecord
 
         def call(params)
-          loan = transaction do
-            params = step validate(params:)
-            entity = step find_or_create_entity(params:)
-            account = step find_account(params:)
-            params = step transform_params(params:, entity:, account:)
-            loan = step create_loan(params:)
-            _ = step update_account_balance(loan:, account:)
-            loan.reload
-          end
+          params = step validate(params:)
+          loan = step perform_create(params:)
           _ = step attach_file(loan:, params:)
           _ = step generate_embedding_async(loan:)
-          loan.reload
+          loan = loan.reload
+          step broadcast_created(loan:, params:)
+          step try_unlock_achievements(loan:, params:)
         end
 
         private
+
+        def try_unlock_achievements(loan:, params:)
+          Achievements::EventHook.evaluate(
+            user_id: params[:user_id],
+            space_id: loan.space_id,
+            event: "loan_created",
+          )
+          Success(loan)
+        end
+
+        def perform_create(params:)
+          existing = find_idempotent_loan(params:)
+          return Success(existing) if existing
+
+          client_mutation_id = params[:client_mutation_id]
+
+          begin
+            loan = transaction do
+              entity = step find_or_create_entity(params:)
+              account = step find_account(params:)
+              params = step transform_params(params:, entity:, account:)
+              loan = step create_loan(params:)
+              _ = step persist_client_mutation(
+                params: params.merge(client_mutation_id:),
+                loan:,
+              )
+              _ = step update_account_balance(loan:, account:)
+              loan.reload
+            end
+            Success(loan)
+          rescue ActiveRecord::RecordNotUnique
+            replayed = find_idempotent_loan(
+              params: params.merge(client_mutation_id:),
+            )
+            return Success(replayed) if replayed
+
+            raise
+          end
+        end
+
+        def find_idempotent_loan(params:)
+          client_mutation_id = params[:client_mutation_id].to_s
+          return nil if client_mutation_id.blank?
+
+          mutation = Sync::ClientMutation.find_by(
+            space_id: params[:space_id],
+            client_mutation_id:,
+          )
+          return nil unless mutation
+
+          Transactions::Loan.find_by(id: mutation.resource_id)
+        end
+
+        def persist_client_mutation(params:, loan:)
+          client_mutation_id = params[:client_mutation_id].to_s
+          return Success(loan) if client_mutation_id.blank?
+
+          Sync::ClientMutation.create!(
+            space_id: params[:space_id],
+            client_mutation_id:,
+            resource_type: loan.class.name,
+            resource_id: loan.id,
+            response_snapshot: { "id" => loan.id },
+          )
+          Success(loan)
+        end
+
+        def broadcast_created(loan:, params:)
+          actor = Auth::User.find_by(id: params[:user_id]) || loan.user
+          origin_client_mutation_id = params[:client_mutation_id].presence
+          Transactions::Broadcasts::TransactionChange.created(
+            transaction: loan,
+            actor:,
+            origin_client_mutation_id:,
+          )
+          ::Loans::Broadcasts::LoanChange.loan_created(
+            loan:,
+            actor:,
+            origin_client_mutation_id:,
+          )
+          Success(loan)
+        end
 
         def find_or_create_entity(params:)
           entity = Entities::Entity.find_or_create_by!(
@@ -100,6 +180,7 @@ module Transactions
           params.delete(:account_name)
           params.delete(:file)
           params.delete(:file_id)
+          params.delete(:client_mutation_id)
 
           Success(params)
         end

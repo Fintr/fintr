@@ -43,6 +43,20 @@ export function formatFxQuoteLabel(quote: FxQuoteDisplay): string {
 }
 
 /**
+ * Compact quote for summaries (e.g. home): "PHP 62 to 1 USD".
+ * Uses {@link humanFxQuote} so the larger numeric amount is shown.
+ */
+export function formatFxQuoteCompact(
+  multiplier: number,
+  fromCurrency: string,
+  toCurrency: string,
+  formatValue: (value: number) => string,
+): string {
+  const quote = humanFxQuote(multiplier, fromCurrency, toCurrency);
+  return `${quote.unitCurrency} ${formatValue(quote.displayValue)} to 1 ${quote.baseCurrency}`;
+}
+
+/**
  * Converts a manual rate typed to match the on-screen quote into the operative multiplier.
  * Uses the current auto/recent rate as a hint when the quote format is ambiguous.
  */
@@ -78,4 +92,23 @@ export function operativeMultiplierFromManualQuote(
   }
 
   return asDirect;
+}
+
+/**
+ * Operative multiplier from source amount and desired total in the target currency.
+ * fromAmount * multiplier = finalAmountInTarget
+ */
+export function operativeMultiplierFromFinalAmount(
+  sourceAmount: number,
+  finalAmountInTarget: number,
+): number | null {
+  if (!Number.isFinite(sourceAmount) || sourceAmount <= 0) {
+    return null;
+  }
+
+  if (!Number.isFinite(finalAmountInTarget) || finalAmountInTarget <= 0) {
+    return null;
+  }
+
+  return finalAmountInTarget / sourceAmount;
 }

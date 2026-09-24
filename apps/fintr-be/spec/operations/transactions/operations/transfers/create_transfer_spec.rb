@@ -46,6 +46,31 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
         expect(transfer.balance_state).to eq("calculated")
       end
 
+      it "broadcasts sync_change for the transfer on the space channel" do
+        expect do
+          operation.call(valid_params)
+        end.to have_broadcasted_to(
+          "transactions:#{space.id}",
+        ).with(
+          hash_including(
+            type: "sync_change",
+            op: "transaction.created",
+            spaceId: space.id.to_s,
+            payload: hash_including(
+              transactions: array_including(
+                hash_including(
+                  description: "Monthly transfer",
+                  type: "transfer",
+                ),
+              ),
+            ),
+            actor: hash_including(
+              userId: user.id.to_s,
+            ),
+          ),
+        )
+      end
+
       it 'updates account balances correctly' do
         result = operation.call(valid_params)
         expect(result).to be_success
@@ -193,7 +218,8 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
             transfer_id: kind_of(String),
             balance_state: "calculated",
             date_start: (past_date + 1.day).to_datetime,
-            date_end: Time.zone.today
+            date_end: Time.zone.today,
+            suppress_actor_toast: true,
           }
         )
       end
@@ -211,7 +237,8 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
             transfer_id: kind_of(String),
             balance_state: "pending",
             date_start: Time.zone.tomorrow,
-            date_end: Time.zone.today + 1.month
+            date_end: Time.zone.today + 1.month,
+            suppress_actor_toast: true,
           }
         )
       end
@@ -799,7 +826,8 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
             transfer_id: transfer.id,
             balance_state: "calculated",
             date_start: (transfer.date + 1.day).to_datetime,
-            date_end: Time.zone.today
+            date_end: Time.zone.today,
+            suppress_actor_toast: true,
           }
         )
       end
@@ -845,7 +873,8 @@ RSpec.describe Transactions::Operations::Transfers::CreateTransfer do
             transfer_id: transfer.id,
             balance_state: "pending",
             date_start: Time.zone.tomorrow,
-            date_end: Time.zone.today + 1.month
+            date_end: Time.zone.today + 1.month,
+            suppress_actor_toast: true,
           }
         )
       end

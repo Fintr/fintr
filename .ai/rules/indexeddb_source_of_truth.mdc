@@ -1,0 +1,46 @@
+---
+description: After sync, frontend screens read IndexedDB. Backend is the sync + durable-facts layer, not the live UI query engine.
+globs: apps/fintr-fe/**/*.{ts,tsx},apps/fintr-be/app/operations/**/*.rb,apps/fintr-be/app/controllers/**/*.rb
+alwaysApply: false
+---
+
+# IndexedDB is the frontend source of truth
+
+After `offlineSyncReady`, **space-scoped UI reads IndexedDB**. Rails bootstrap, outbox drain, change-log pull, and ActionCable **write facts into IndexedDB**. Screens must not treat a live `GET` as the source of Net / lists / insights.
+
+## React Query must not block IndexedDB
+
+TanStack Query v5 default `networkMode` is `"online"`. That **pauses** `queryFn` and `mutationFn` while `navigator.onLine === false`. IndexedDB and the outbox do not need a network.
+
+Before any offline-first change, list every `useQuery` / `useInfiniteQuery` / `useMutation` on the path:
+
+- IDB reads (`loadCached*`, Dexie, `local-cache.ts`) → `networkMode: "always"`
+- IDB + outbox writes (`*-local-first.ts`) → `networkMode: "always"`
+- UI: `waitForSync: false`. Do not `await syncPromise` before closing or navigating.
+- `isPending` / "Recording…" must clear after the local write, not after Rails.
+
+If a mutation keeps the default, local-first never runs offline and the outbox stays empty.
+
+## Reads
+
+- Load from `services/**/local-cache.ts`, Dexie, or offline calc over local rows.
+- React Query schedules the **local** read (`networkMode: "always"` for IndexedDB queries). It is not a financial source.
+- Online refetch may **write-through** to IndexedDB. Do not paint an in-flight or empty network result over a good local snapshot (no flicker).
+- Use `useSkipCachedNetworkFetch` (or equivalent) so hooks do not block on the API after sync.
+
+## Writes
+
+- `*-local-first.ts`: validate with `@fintr/domain` → RQ + IndexedDB + outbox → drain to Rails. UI is done after the local write.
+- Backend still **processes** durable facts (balances, monthly buckets, series). Sync the **result** back to IndexedDB. Do not re-sum the same money on the client from a different slice.
+
+## Do not dual-process money
+
+One calculator per number. Persisted totals come from synced artifacts (e.g. monthly financial summaries). UI-only views (narratives, charts) compute on the frontend from those facts. If both layers must compute the same rule, put it in `@fintr/domain` with parity tests — do not keep two ad-hoc implementations.
+
+Insights: buckets own Net / In / Out; period transactions only enrich breakdowns.
+
+## Not IndexedDB
+
+Bundled `/profiles/*` and `/badges/*` images are Cache Storage (service worker), not IndexedDB.
+
+See `docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md` and skill `indexeddb-source-of-truth`.

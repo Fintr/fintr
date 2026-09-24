@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { CalculatorInput } from "../../ui/calculator-input";
@@ -17,15 +17,14 @@ import { format } from "date-fns";
 import ExpandableTextarea from "../../ui/expandable-textarea";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useQueryClient } from "@tanstack/react-query";
-import { createLoan } from "@/services/loans/mutation";
+import { createLoanLocalFirst } from "@/services/loans/create-local-first";
 import { numberFormatting } from "@/lib/utils";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
-import { ComboBox } from "@/components/ui/combobox";
-import { fetchEntities, createEntity } from "@/services/entities/mutation";
-import EntityCreationForm from "./EntityCreationForm";
+import LoanEntityField from "./LoanEntityField";
 import { useAtomValue } from "jotai";
 import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
 import GridPicker from "./GridPicker";
@@ -44,6 +43,9 @@ interface LoanFormProps {
   setDate?: React.Dispatch<React.SetStateAction<Date | undefined>>;
   onSubmitSuccess?: (data: any) => void;
   onCancel?: () => void;
+  /** Amount carried across Add Transaction tabs (expense/income/transfer/loan). */
+  prefillAmount?: string;
+  onPrefillAmountChange?: (amount: string) => void;
 }
 
 const LoanForm: React.FC<LoanFormProps> = ({
@@ -51,13 +53,16 @@ const LoanForm: React.FC<LoanFormProps> = ({
   setDate,
   onSubmitSuccess = () => {},
   onCancel = () => {},
+  prefillAmount,
+  onPrefillAmountChange,
 }) => {
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
   
   // Internal state for the form
   const [loanForm, setLoanForm] = useState({
-    amount: "",
+    amount: prefillAmount || "",
     description: "",
     type: "borrowed" as "borrowed" | "lent",
     entityName: "",
@@ -75,14 +80,13 @@ const LoanForm: React.FC<LoanFormProps> = ({
     initialValue: loanForm.amount,
     onValueChange: (cleanValue) => {
       setLoanForm((prev) => ({ ...prev, amount: cleanValue.toString() }));
-    }
+      onPrefillAmountChange?.(cleanValue !== 0 ? String(cleanValue) : "");
+    },
   });
 
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string | string[]>>({});
-  const [showEntityCreation, setShowEntityCreation] = useState(false);
-  const [isCreatingEntity, setIsCreatingEntity] = useState(false);
   const [adjustsAccountBalance, setAdjustsAccountBalance] = useState(true);
   const [loanTermUnit, setLoanTermUnit] = useState<LoanTermUnit>("years");
 
@@ -101,83 +105,6 @@ const LoanForm: React.FC<LoanFormProps> = ({
       ...prev,
       loanTerm: nextTerm,
     }));
-  };
-
-  const fetchEntityOptions = useCallback(async (query: string): Promise<Array<{ label: string; value: string }>> => {
-    try {
-      const response = await fetchEntities(api, {
-        entityType: 'loan',
-        search: query
-      });
-      // Response structure from fetchEntities: { success: true, data: [...] }
-      // The data array contains entities with camelCase keys (fullName)
-      const entities = response?.data || [];
-      return entities.map((entity: { id: string; fullName: string }) => {
-        const fullName = entity.fullName || '';
-        return {
-          label: fullName,
-          value: fullName
-        };
-      });
-    } catch (error: any) {
-      // Silently handle errors to prevent console spam and stack frame requests
-      // Only log if it's not a validation error (422) or auth error
-      if (error?.error?.message !== "Unprocessable Entity" && error?.status !== 422) {
-        console.error('Error fetching entities:', error);
-      }
-      return [];
-    }
-  }, [api]);
-
-  const handleEntityCreated = (fullName: string) => {
-    if (fullName) {
-      setLoanForm((prev) => ({ ...prev, entityName: fullName }));
-    }
-    setShowEntityCreation(false);
-  };
-
-  const handleAutoCreateEntity = async (fullName: string, onSuccess?: () => void) => {
-    if (!fullName.trim()) return;
-    
-    setIsCreatingEntity(true);
-    try {
-      const response = await createEntity(api, {
-        fullName: fullName.trim(),
-        entityType: 'loan'
-      });
-      
-      const createdEntityName = response?.data?.fullName || fullName.trim();
-      
-      // Invalidate queries to refresh the entity list
-      queryClient.invalidateQueries({ queryKey: ['entities'] });
-      
-      // Update the form with the created entity
-      setLoanForm((prev) => ({ ...prev, entityName: createdEntityName }));
-      
-      toast.success(`"${createdEntityName}" has been created and selected.`);
-      
-      // Call success callback to close combobox
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error: any) {
-      console.error("Failed to create entity:", error);
-      
-      // Extract and show validation errors
-      const fieldErrors = extractFieldErrors(error);
-      if (fieldErrors.fullName || fieldErrors.full_name) {
-        const errorMessage = Array.isArray(fieldErrors.fullName) 
-          ? fieldErrors.fullName[0]
-          : Array.isArray(fieldErrors.full_name)
-          ? fieldErrors.full_name[0]
-          : String(fieldErrors.fullName || fieldErrors.full_name || "Failed to create entity");
-        toast.error(errorMessage);
-      } else {
-        toast.error("Failed to create entity. Please try again.");
-      }
-    } finally {
-      setIsCreatingEntity(false);
-    }
   };
 
   // Handle file upload for this form
@@ -259,9 +186,29 @@ const LoanForm: React.FC<LoanFormProps> = ({
                 ...(loanForm.receipt && { file: loanForm.receipt })
               };
 
-      const response = await createLoan(api, loanData);
+      const response = await createLoanLocalFirst(
+        api,
+        {
+          spaceId: spaceCode,
+          data: loanData,
+        },
+        {
+          queryClient,
+          waitForSync: false,
+        },
+      );
       toast.success("Loan created successfully");
-      
+      void response.syncPromise.then((synced) => {
+        if (synced.pendingSync) {
+          toast.message("Loan saved on this device. Will sync when online.");
+        }
+      }).catch((error) => {
+        const fieldErrors = extractFieldErrors(error);
+        toast.error(
+          fieldErrors.detail || "Failed to create loan. Please try again.",
+        );
+      });
+
       if (onSubmitSuccess) {
         onSubmitSuccess(response);
       }
@@ -439,95 +386,51 @@ const LoanForm: React.FC<LoanFormProps> = ({
         </div>
       </div>
 
-      {/* Third row: Loan Type and Person */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="loan-type" className="text-sm">Loan Type</Label>
-          <Select
-            value={loanForm.type}
-            onValueChange={(value) => {
-              setLoanForm((prev) => ({ ...prev, type: value as "borrowed" | "lent" }));
-            }}
-          >
-            <SelectTrigger id="loan-type" className="text-sm w-full">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="borrowed" className="text-sm">Money Borrowed</SelectItem>
-              <SelectItem value="lent" className="text-sm">Money Lent</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-                <div className="space-y-2">
-                  <Label htmlFor="loan-entity" className="text-sm">
-                    {loanForm.type === "borrowed" ? "Lender" : "Borrower"}
-                  </Label>
-                  {!showEntityCreation ? (
-                    <>
-                      <ComboBox
-                        filterType="backend"
-                        fetchOptions={fetchEntityOptions}
-                        debounceTime={300}
-                        placeholder={
-                          loanForm.type === "borrowed"
-                            ? "Type to search lender..."
-                            : "Type to search borrower..."
-                        }
-                        value={loanForm.entityName || undefined}
-                        onChange={(value) => {
-                          setLoanForm((prev) => ({ ...prev, entityName: value }));
-                          if (formSubmitted && validationErrors.entityName) {
-                            setValidationErrors((prev) => ({ ...prev, entityName: "" }));
-                          }
-                        }}
-                        renderNotFound={(searchValue, selectValue) => (
-                          <div className="p-2">
-                            <div className="text-sm text-gray-500 mb-2">
-                              No entity found for "{searchValue}"
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                handleAutoCreateEntity(searchValue, selectValue);
-                              }}
-                              disabled={isCreatingEntity}
-                              className="w-full"
-                            >
-                              {isCreatingEntity ? "Creating..." : `+ Create "${searchValue}"`}
-                            </Button>
-                          </div>
-                        )}
-                        className={
-                          formSubmitted && validationErrors.entityName
-                            ? "border-red-800 focus-visible:ring-red-800"
-                            : ""
-                        }
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowEntityCreation(true)}
-                        className="text-xs text-primary mt-1"
-                      >
-                        + Add New {loanForm.type === "borrowed" ? "Lender" : "Borrower"}
-                      </Button>
-                    </>
-                  ) : (
-                    <EntityCreationForm
-                      onSuccess={handleEntityCreated}
-                      entityType="loan"
-                    />
-                  )}
-                  {formSubmitted && validationErrors.entityName && (
-                    <FormError message={Array.isArray(validationErrors.entityName) ? validationErrors.entityName[0] : validationErrors.entityName} />
-                  )}
-                </div>
+      {/* Third row: Loan Type */}
+      <div className="space-y-2">
+        <Label htmlFor="loan-type" className="text-sm">Loan Type</Label>
+        <Select
+          value={loanForm.type}
+          onValueChange={(value) => {
+            setLoanForm((prev) => ({ ...prev, type: value as "borrowed" | "lent" }));
+          }}
+        >
+          <SelectTrigger id="loan-type" className="text-sm w-full">
+            <SelectValue placeholder="Select type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="borrowed" className="text-sm">Money Borrowed</SelectItem>
+            <SelectItem value="lent" className="text-sm">Money Lent</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Fourth row: Account */}
+      {/* Fourth row: Lender / Borrower */}
+      <div className="space-y-2">
+        <LoanEntityField
+          id="loan-entity"
+          loanType={loanForm.type}
+          value={loanForm.entityName}
+          onChange={(entityName) => {
+            setLoanForm((prev) => ({ ...prev, entityName }));
+            if (formSubmitted && validationErrors.entityName) {
+              setValidationErrors((prev) => ({ ...prev, entityName: "" }));
+            }
+          }}
+          hasError={formSubmitted && Boolean(validationErrors.entityName)}
+        />
+        {formSubmitted && validationErrors.entityName && (
+          <FormError
+            message={
+              Array.isArray(validationErrors.entityName)
+                ? validationErrors.entityName[0]
+                : validationErrors.entityName
+            }
+          />
+        )}
+      </div>
+
+      {/* Fifth row: Account */}
       <div className="space-y-2">
         <GridPicker
           pickerKind="account"

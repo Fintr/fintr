@@ -12,7 +12,6 @@ RSpec.describe "Api::V1::Admin::Finance::FreeSubscriptions", type: :request do
       :subscription_plan,
       slug: "free-plan-#{SecureRandom.hex(4)}",
       interval: "month",
-      token_limit: 1_000
     )
   end
 

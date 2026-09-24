@@ -276,7 +276,7 @@ TDD features get dedicated plans with `type: tdd`.
 
 **Heuristic:** Can you write `expect(fn(input)).toBe(output)` before writing `fn`?
 → Yes: Create a TDD plan
-→ No: Standard task in standard plan
+→ No: Standard task in standard plan. For `apps/fintr-fe`, still follow skill `frontend-tdd` (tests first → change → update tests → re-run).
 
 See `.ai/get-shit-done/references/tdd.md` for TDD plan structure.
 

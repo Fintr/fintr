@@ -87,11 +87,15 @@ RSpec.describe Finance::Operations::Customers::FindOrCreateCustomerForSpace, typ
 
   describe "#call" do
     context "when space already has a customer" do
+      let(:xendit_client) { instance_double(Integrations::Payments::Xendit::Client) }
+
       before do
         space.update!(
           xendit_customer_id: "cust-existing-123",
           xendit_customer_reference_id: "ref-existing-456"
         )
+        allow(Integrations::Payments::Xendit::Client).to receive(:new).and_return(xendit_client)
+        allow(xendit_client).to receive(:get_customer).and_return(id: "cust-existing-123")
       end
 
       it "returns success" do
@@ -112,6 +116,93 @@ RSpec.describe Finance::Operations::Customers::FindOrCreateCustomerForSpace, typ
 
         customer_data = result.value!
         expect(customer_data[:reference_id]).to eq("ref-existing-456")
+      end
+
+      it "asks Xendit whether the stored customer still exists" do
+        operation.call(valid_params)
+
+        expect(xendit_client).to have_received(:get_customer).with(customer_id: "cust-existing-123")
+      end
+    end
+
+    context "when the stored Xendit customer no longer exists" do
+      let(:xendit_client) { instance_double(Integrations::Payments::Xendit::Client) }
+      let(:create_customer_operation) do
+        instance_double(Finance::Operations::Customers::CreateCustomer)
+      end
+      let(:customer_data) do
+        {
+          id: "cust-replacement-123",
+          reference_id: "ref-replacement-456"
+        }
+      end
+
+      before do
+        space.update!(
+          xendit_customer_id: "cust-missing-123",
+          xendit_customer_reference_id: "ref-missing-456"
+        )
+        allow(Integrations::Payments::Xendit::Client).to receive(:new).and_return(xendit_client)
+        allow(xendit_client).to receive(:get_customer).and_raise(
+          Integrations::Payments::Xendit::Error.new(
+            message: "Provided id does not exist",
+            status: 404,
+            code: "DATA_NOT_FOUND"
+          )
+        )
+        allow(Finance::Operations::Customers::CreateCustomer).to receive(:new)
+          .and_return(create_customer_operation)
+        allow(create_customer_operation).to receive(:call)
+          .and_return(Dry::Monads::Success(customer_data))
+      end
+
+      it "returns the newly created customer" do
+        result = operation.call(valid_params)
+
+        expect(result.value![:id]).to eq("cust-replacement-123")
+      end
+
+      it "replaces the stored customer id" do
+        operation.call(valid_params)
+
+        expect(space.reload.xendit_customer_id).to eq("cust-replacement-123")
+      end
+
+      it "replaces the stored customer reference id" do
+        operation.call(valid_params)
+
+        expect(space.reload.xendit_customer_reference_id).to eq("ref-replacement-456")
+      end
+    end
+
+    context "when looking up the stored Xendit customer fails for another reason" do
+      let(:xendit_client) { instance_double(Integrations::Payments::Xendit::Client) }
+
+      before do
+        space.update!(
+          xendit_customer_id: "cust-existing-123",
+          xendit_customer_reference_id: "ref-existing-456"
+        )
+        allow(Integrations::Payments::Xendit::Client).to receive(:new).and_return(xendit_client)
+        allow(xendit_client).to receive(:get_customer).and_raise(
+          Integrations::Payments::Xendit::Error.new(
+            message: "Invalid API key",
+            status: 401,
+            code: "INVALID_API_KEY"
+          )
+        )
+      end
+
+      it "returns the Xendit error" do
+        result = operation.call(valid_params)
+
+        expect(result.failure[:xendit_error]).to eq("Invalid API key")
+      end
+
+      it "keeps the stored customer id" do
+        operation.call(valid_params)
+
+        expect(space.reload.xendit_customer_id).to eq("cust-existing-123")
       end
     end
 

@@ -56,7 +56,6 @@ module Finance
         cycle_number: next_cycle_number.to_f,
         span: (next_start..next_end),
         status: "paid",
-        tokens_allocated: subscription.subscription_plan.token_limit,
         paid_at: Time.zone.now,
         xendit_cycle_id: nil,
         metadata: {

@@ -11,6 +11,10 @@ import React, {
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  clampBoundedDraft,
+  finalizeBoundedDraft,
+} from "@/lib/clamp-bounded-draft";
 import { cn } from "@/lib/utils";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
@@ -18,6 +22,12 @@ import {
   getSafeAreaInsets,
 } from "@/lib/platform-detection";
 import { numberFormatting } from "@/lib/utils";
+import { getNestedOverlayPortalRoot } from "@/lib/nested-overlay-portal";
+import {
+  acquireCalculatorHistoryEntry,
+  releaseCalculatorHistoryEntry,
+  subscribeCalculatorPopState,
+} from "@/lib/calculator-keyboard-history";
 import {
   acquireCalculatorScrollPadding,
   computeKeyboardPlacement,
@@ -38,6 +48,10 @@ interface CalculatorInputProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  minValue?: number;
+  maxValue?: number;
+  /** When set, the field shows `value` if a keystroke is outside the cap. */
+  followValue?: boolean;
 }
 
 // iOS-style calculator layout
@@ -81,99 +95,54 @@ const DESKTOP_KEYBOARD_MIN_HEIGHT =
   + 4 * DESKTOP_CALC_GRID_GAP_PX;
 /** Minimum touch target for bottom-sheet calculator keys (WCAG / Material). */
 export const MOBILE_CALC_BUTTON_MIN_HEIGHT_PX = 48;
-const MOBILE_CALC_GRID_GAP_CLASS = "gap-2.5";
-const MOBILE_CALC_BUTTON_ROW_CLASS = "h-12 min-h-12 w-full";
+/** Swallow leftover pointerup/click after `=` dismisses the keypad (ghost tap). */
+export const CALCULATOR_CLICK_THROUGH_GUARD_MS = 450;
 
-const CALCULATOR_KEYBOARD_HISTORY_KEY = "__fintrCalculatorKeyboard";
+const CLICK_THROUGH_EVENT_TYPES = [
+  "pointerup",
+  "pointercancel",
+  "mouseup",
+  "click",
+  "touchend",
+] as const;
 
-const calculatorHistoryRegistry = {
-  openCount: 0,
-  historyActive: false,
-};
-
-let pendingCalculatorHistoryBackTimer: ReturnType<typeof setTimeout> | null = null;
-const calculatorPopStateSubscribers = new Set<() => void>();
-let calculatorPopStateListenerAttached = false;
-
-function cancelPendingCalculatorHistoryBack() {
-  if (pendingCalculatorHistoryBackTimer !== null) {
-    clearTimeout(pendingCalculatorHistoryBackTimer);
-    pendingCalculatorHistoryBackTimer = null;
-  }
-}
-
-function handleCalculatorPopState(event: PopStateEvent) {
-  if (event.state?.[CALCULATOR_KEYBOARD_HISTORY_KEY]) {
-    return;
+function armCalculatorClickThroughGuard(durationMs: number): () => void {
+  if (typeof document === "undefined") {
+    return () => undefined;
   }
 
-  calculatorHistoryRegistry.historyActive = false;
-  calculatorHistoryRegistry.openCount = 0;
-  cancelPendingCalculatorHistoryBack();
-  calculatorPopStateSubscribers.forEach((subscriber) => subscriber());
-}
+  const swallow = (event: Event) => {
+    if (event.cancelable) {
+      event.preventDefault();
+    }
 
-function ensureCalculatorPopStateListener() {
-  if (calculatorPopStateListenerAttached) {
-    return;
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  };
+
+  for (const type of CLICK_THROUGH_EVENT_TYPES) {
+    document.addEventListener(type, swallow, true);
   }
 
-  window.addEventListener("popstate", handleCalculatorPopState);
-  calculatorPopStateListenerAttached = true;
-}
-
-function acquireCalculatorHistoryEntry() {
-  cancelPendingCalculatorHistoryBack();
-
-  if (!calculatorHistoryRegistry.historyActive) {
-    window.history.pushState({ [CALCULATOR_KEYBOARD_HISTORY_KEY]: true }, "");
-    calculatorHistoryRegistry.historyActive = true;
-  }
-
-  calculatorHistoryRegistry.openCount += 1;
-}
-
-function releaseCalculatorHistoryEntry() {
-  calculatorHistoryRegistry.openCount = Math.max(
-    0,
-    calculatorHistoryRegistry.openCount - 1,
+  const timeoutId = window.setTimeout(
+    () => {
+      disarm();
+    },
+    durationMs,
   );
 
-  if (calculatorHistoryRegistry.openCount > 0) {
-    cancelPendingCalculatorHistoryBack();
-    return;
-  }
+  const disarm = () => {
+    window.clearTimeout(timeoutId);
 
-  cancelPendingCalculatorHistoryBack();
-  pendingCalculatorHistoryBackTimer = setTimeout(() => {
-    pendingCalculatorHistoryBackTimer = null;
-
-    if (calculatorHistoryRegistry.openCount > 0) {
-      return;
-    }
-
-    if (!calculatorHistoryRegistry.historyActive) {
-      return;
-    }
-
-    calculatorHistoryRegistry.historyActive = false;
-    window.history.back();
-  }, 0);
-}
-
-function subscribeCalculatorPopState(onClose: () => void) {
-  ensureCalculatorPopStateListener();
-  calculatorPopStateSubscribers.add(onClose);
-
-  return () => {
-    calculatorPopStateSubscribers.delete(onClose);
-
-    if (calculatorPopStateSubscribers.size === 0 && calculatorPopStateListenerAttached) {
-      window.removeEventListener("popstate", handleCalculatorPopState);
-      calculatorPopStateListenerAttached = false;
+    for (const type of CLICK_THROUGH_EVENT_TYPES) {
+      document.removeEventListener(type, swallow, true);
     }
   };
+
+  return disarm;
 }
+const MOBILE_CALC_GRID_GAP_CLASS = "gap-2.5";
+const MOBILE_CALC_BUTTON_ROW_CLASS = "h-12 min-h-12 w-full";
 
 function useCalculatorKeyboardHistory(
   open: boolean,
@@ -273,6 +242,9 @@ export function CalculatorInput({
   placeholder = "0.00",
   className = "",
   disabled = false,
+  minValue,
+  maxValue,
+  followValue = false,
 }: CalculatorInputProps) {
   const [showKeyboard, setShowKeyboard] = useState(false);
   // Internal expression state - may contain operators
@@ -314,6 +286,19 @@ export function CalculatorInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const keyboardRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const expressionRef = useRef(expression);
+  const isExpressionModeRef = useRef(isExpressionMode);
+  const minValueRef = useRef(minValue);
+  const maxValueRef = useRef(maxValue);
+  const skipNextCalculatorButtonClickRef = useRef(false);
+  const disarmClickThroughGuardRef = useRef<(() => void) | null>(null);
+  const clickGuardTimeoutRef = useRef<number | null>(null);
+  const [showClickGuard, setShowClickGuard] = useState(false);
+
+  expressionRef.current = expression;
+  isExpressionModeRef.current = isExpressionMode;
+  minValueRef.current = minValue;
+  maxValueRef.current = maxValue;
 
   const collapseSelectionToEnd = useCallback(() => {
     const input = inputRef.current;
@@ -460,9 +445,26 @@ export function CalculatorInput({
   // Sync with external value when not in expression mode
   useEffect(() => {
     if (!isExpressionMode) {
-      setExpression(numberFormatting.stripDelimiters(value));
+      const next = numberFormatting.stripDelimiters(value);
+      expressionRef.current = next;
+      setExpression(next);
     }
   }, [value, isExpressionMode]);
+
+  useLayoutEffect(() => {
+    if (!followValue || isExpressionMode) {
+      return;
+    }
+
+    const next = numberFormatting.stripDelimiters(value);
+    if (expression === next) {
+      expressionRef.current = next;
+      return;
+    }
+
+    expressionRef.current = next;
+    setExpression(next);
+  }, [expression, followValue, isExpressionMode, value]);
 
   // Avoid select-all flash when the value updates from calculator keys
   useEffect(() => {
@@ -473,22 +475,69 @@ export function CalculatorInput({
     requestAnimationFrame(collapseSelectionToEnd);
   }, [expression, showKeyboard, collapseSelectionToEnd]);
 
+  const applyExpressionUpdate = useCallback(
+    (
+      nextExpression: string,
+      nextIsExpressionMode: boolean,
+      options?: { notifyChange?: boolean },
+    ) => {
+      const limitedExpression = nextIsExpressionMode
+        ? nextExpression
+        : clampBoundedDraft(nextExpression, {
+            min: minValueRef.current,
+            max: maxValueRef.current,
+          });
+
+      expressionRef.current = limitedExpression;
+      isExpressionModeRef.current = nextIsExpressionMode;
+      setExpression(limitedExpression);
+      setIsExpressionMode(nextIsExpressionMode);
+
+      if (options?.notifyChange && !nextIsExpressionMode) {
+        onChange(limitedExpression);
+      }
+    },
+    [maxValue, minValue, onChange],
+  );
+
+  const commitBoundedDraft = useCallback(() => {
+    if (minValue == null && maxValue == null) {
+      return;
+    }
+
+    if (isExpressionModeRef.current) {
+      return;
+    }
+
+    const finalized = finalizeBoundedDraft(expressionRef.current, {
+      min: minValueRef.current,
+      max: maxValueRef.current,
+    });
+    if (finalized === expressionRef.current) {
+      return;
+    }
+
+    applyExpressionUpdate(finalized, false, { notifyChange: true });
+  }, [applyExpressionUpdate, maxValue, minValue]);
+
   const dismissKeyboard = useCallback(() => {
     setShowKeyboard(false);
-    if (isExpressionMode && hasOperator(expression)) {
-      const result = safeEvaluate(expression);
+    const currentExpression = expressionRef.current;
+
+    if (isExpressionModeRef.current && hasOperator(currentExpression)) {
+      const result = safeEvaluate(currentExpression);
       if (result !== null) {
         const rounded = Math.round(result * 100) / 100;
         const resultStr = rounded.toString();
-        setExpression(resultStr);
-        setIsExpressionMode(false);
-        onChange(resultStr);
+        applyExpressionUpdate(resultStr, false, { notifyChange: true });
       } else {
-        setIsExpressionMode(false);
-        setExpression(value);
+        applyExpressionUpdate(value, false);
       }
+      return;
     }
-  }, [expression, isExpressionMode, onChange, value]);
+
+    commitBoundedDraft();
+  }, [applyExpressionUpdate, commitBoundedDraft, value]);
 
   const dismissKeyboardRef = useRef(dismissKeyboard);
   dismissKeyboardRef.current = dismissKeyboard;
@@ -569,47 +618,42 @@ export function CalculatorInput({
       const filtered = toRawExpression(e.target.value);
 
       if (hasOperator(filtered)) {
-        setIsExpressionMode(true);
-        setExpression(filtered);
+        applyExpressionUpdate(filtered, true);
       } else {
-        setIsExpressionMode(false);
-        setExpression(filtered);
-        onChange(filtered);
+        applyExpressionUpdate(filtered, false, { notifyChange: true });
       }
     },
-    [onChange]
+    [applyExpressionUpdate],
   );
 
   const handleBackspace = useCallback(() => {
-    const newExpression = expression.slice(0, -1);
-    
+    const newExpression = expressionRef.current.slice(0, -1);
+
     if (hasOperator(newExpression)) {
-      setIsExpressionMode(true);
-      setExpression(newExpression);
+      applyExpressionUpdate(newExpression, true);
     } else {
-      setIsExpressionMode(false);
-      setExpression(newExpression);
-      onChange(newExpression);
+      applyExpressionUpdate(newExpression, false, { notifyChange: true });
     }
-  }, [expression, onChange]);
+  }, [applyExpressionUpdate]);
 
   const handleEvaluate = useCallback(() => {
-    if (!hasOperator(expression)) {
+    const currentExpression = expressionRef.current;
+
+    if (!hasOperator(currentExpression)) {
       setShowKeyboard(false);
+      commitBoundedDraft();
       return;
     }
 
-    const result = safeEvaluate(expression);
+    const result = safeEvaluate(currentExpression);
     if (result !== null) {
       // Round to 2 decimal places for currency
       const rounded = Math.round(result * 100) / 100;
       const resultStr = rounded.toString();
-      setExpression(resultStr);
-      setIsExpressionMode(false);
-      onChange(resultStr);
+      applyExpressionUpdate(resultStr, false, { notifyChange: true });
       setShowKeyboard(false);
     }
-  }, [expression, onChange]);
+  }, [applyExpressionUpdate, commitBoundedDraft]);
 
   const handleEvaluateRef = useRef(handleEvaluate);
   handleEvaluateRef.current = handleEvaluate;
@@ -628,6 +672,38 @@ export function CalculatorInput({
     );
   }, []);
 
+  const armClickThroughGuard = useCallback(() => {
+    disarmClickThroughGuardRef.current?.();
+
+    if (clickGuardTimeoutRef.current != null) {
+      window.clearTimeout(clickGuardTimeoutRef.current);
+    }
+
+    disarmClickThroughGuardRef.current = armCalculatorClickThroughGuard(
+      CALCULATOR_CLICK_THROUGH_GUARD_MS,
+    );
+    setShowClickGuard(true);
+    clickGuardTimeoutRef.current = window.setTimeout(
+      () => {
+        setShowClickGuard(false);
+        disarmClickThroughGuardRef.current?.();
+        disarmClickThroughGuardRef.current = null;
+        clickGuardTimeoutRef.current = null;
+      },
+      CALCULATOR_CLICK_THROUGH_GUARD_MS,
+    );
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      disarmClickThroughGuardRef.current?.();
+
+      if (clickGuardTimeoutRef.current != null) {
+        window.clearTimeout(clickGuardTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleEnterAsEquals = useCallback(
     (event: KeyboardEvent | React.KeyboardEvent) => {
       event.preventDefault();
@@ -644,11 +720,11 @@ export function CalculatorInput({
 
   const handleButtonClick = useCallback(
     (btn: string) => {
+      const currentExpression = expressionRef.current;
+
       // Handle special buttons
       if (btn === "C") {
-        setExpression("");
-        setIsExpressionMode(false);
-        onChange("");
+        applyExpressionUpdate("", false, { notifyChange: true });
         return;
       }
 
@@ -659,56 +735,57 @@ export function CalculatorInput({
 
       if (btn === "=") {
         handleEvaluate();
+        armClickThroughGuard();
         return;
       }
 
       if (btn === "%") {
         // Convert current value to percentage (divide by 100)
-        const currentValue = safeEvaluate(expression);
+        const currentValue = safeEvaluate(currentExpression);
         if (currentValue !== null) {
           const percentValue = currentValue / 100;
           const resultStr = percentValue.toString();
-          setExpression(resultStr);
-          setIsExpressionMode(false);
-          onChange(resultStr);
+          applyExpressionUpdate(resultStr, false, { notifyChange: true });
         }
         return;
       }
 
       // Handle +/- toggle
       if (btn === "±") {
-        if (expression.startsWith("-")) {
-          const newExpression = expression.slice(1);
-          setExpression(newExpression);
-          if (!hasOperator(newExpression)) {
-            setIsExpressionMode(false);
-            onChange(newExpression);
-          }
+        if (currentExpression.startsWith("-")) {
+          const newExpression = currentExpression.slice(1);
+          applyExpressionUpdate(
+            newExpression,
+            hasOperator(newExpression),
+            { notifyChange: !hasOperator(newExpression) },
+          );
         } else {
-          const newExpression = "-" + expression;
-          setExpression(newExpression);
-          if (!hasOperator(newExpression)) {
-            setIsExpressionMode(false);
-            onChange(newExpression);
-          }
+          const newExpression = "-" + currentExpression;
+          applyExpressionUpdate(
+            newExpression,
+            hasOperator(newExpression),
+            { notifyChange: !hasOperator(newExpression) },
+          );
         }
         return;
       }
 
       // Map display operators to actual operators
       const actualBtn = OPERATOR_MAP[btn] || btn;
-      const newExpression = expression + actualBtn;
-      
+      const newExpression = currentExpression + actualBtn;
+
       if (hasOperator(newExpression)) {
-        setIsExpressionMode(true);
-        setExpression(newExpression);
+        applyExpressionUpdate(newExpression, true);
       } else {
-        setIsExpressionMode(false);
-        setExpression(newExpression);
-        onChange(newExpression);
+        applyExpressionUpdate(newExpression, false, { notifyChange: true });
       }
     },
-    [expression, onChange, handleBackspace, handleEvaluate]
+    [
+      applyExpressionUpdate,
+      armClickThroughGuard,
+      handleBackspace,
+      handleEvaluate,
+    ],
   );
 
   const handleKeyDown = useCallback(
@@ -806,7 +883,7 @@ export function CalculatorInput({
     showKeyboard,
   ]);
 
-  const handleFocus = useCallback(() => {
+  const openKeyboard = useCallback(() => {
     if (disabled) {
       return;
     }
@@ -822,13 +899,56 @@ export function CalculatorInput({
     requestAnimationFrame(collapseSelectionToEnd);
   }, [applyKeyboardPlacement, collapseSelectionToEnd, disabled]);
 
-  const handleCalculatorButtonPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
+  const handleFocus = useCallback(() => {
+    openKeyboard();
+  }, [openKeyboard]);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLInputElement>) => {
+      if (disabled) {
+        return;
+      }
+
+      // Mobile sheets can swallow click-before-focus; open keyboard on pointer down.
       e.stopPropagation();
-      inputRef.current?.focus({ preventScroll: true });
+      openKeyboard();
     },
-    [],
+    [disabled, openKeyboard],
+  );
+
+  const activateCalculatorButton = useCallback(
+    (btn: string) => {
+      handleButtonClick(btn);
+      requestAnimationFrame(collapseSelectionToEnd);
+    },
+    [collapseSelectionToEnd, handleButtonClick],
+  );
+
+  const handleCalculatorButtonPointerDown = useCallback(
+    (btn: string) => (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      skipNextCalculatorButtonClickRef.current = true;
+      inputRef.current?.focus({ preventScroll: true });
+      activateCalculatorButton(btn);
+    },
+    [activateCalculatorButton],
+  );
+
+  const handleCalculatorButtonClick = useCallback(
+    (btn: string) => () => {
+      if (skipNextCalculatorButtonClickRef.current) {
+        skipNextCalculatorButtonClickRef.current = false;
+        return;
+      }
+
+      activateCalculatorButton(btn);
+    },
+    [activateCalculatorButton],
   );
 
   const isOperatorButton = (btn: string) => ["+", "−", "×", "÷", "="].includes(btn);
@@ -935,8 +1055,8 @@ export function CalculatorInput({
               data-calculator-keyboard-button=""
               variant={isOperatorButton(btn) ? "secondary" : isActionButton(btn) ? "secondary" : "outline"}
               className={cn(
-                "touch-manipulation [-webkit-tap-highlight-color:transparent] font-semibold",
-                "transition-colors duration-100 ease-out",
+                "touch-manipulation select-none [-webkit-tap-highlight-color:transparent] font-semibold",
+                "transition-none active:scale-[0.97]",
                 "active:bg-primary active:text-primary-foreground active:border-primary",
                 isBottomSheetKeyboard
                   ? cn(MOBILE_CALC_BUTTON_ROW_CLASS, "text-lg")
@@ -950,12 +1070,8 @@ export function CalculatorInput({
                 // Plus/minus toggle - orange accent
                 btn === "±" && "bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400"
               )}
-              onPointerDown={handleCalculatorButtonPointerDown}
-              onMouseDown={handleCalculatorButtonPointerDown}
-              onClick={() => {
-                handleButtonClick(btn);
-                requestAnimationFrame(collapseSelectionToEnd);
-              }}
+              onPointerDown={handleCalculatorButtonPointerDown(btn)}
+              onClick={handleCalculatorButtonClick(btn)}
             >
               {btn}
             </Button>
@@ -982,6 +1098,7 @@ export function CalculatorInput({
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
+        onPointerDown={handlePointerDown}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
@@ -994,7 +1111,15 @@ export function CalculatorInput({
       {/* Calculator keyboard - rendered via portal to avoid clipping */}
       {mounted && showKeyboard && !disabled && createPortal(
         renderKeyboard(),
-        document.body
+        getNestedOverlayPortalRoot() ?? document.body,
+      )}
+      {mounted && showClickGuard && createPortal(
+        <div
+          data-calculator-click-guard
+          className="fixed inset-0 z-[10000] touch-none"
+          aria-hidden="true"
+        />,
+        getNestedOverlayPortalRoot() ?? document.body,
       )}
     </div>
   );

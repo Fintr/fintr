@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import {
   buildCategoryDetailHref,
@@ -7,6 +7,7 @@ import {
   findCategoryInTree,
   findRootCategory,
   gridPickerSubcategoryCountLabel,
+  openCreatedRootCategoryPage,
   subcategoryCountLabel,
 } from "./categoryManagement";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
@@ -76,5 +77,49 @@ describe("categoryManagement", () => {
     expect(gridPickerSubcategoryCountLabel(0)).toBeNull();
     expect(gridPickerSubcategoryCountLabel(1)).toBe("1 sub");
     expect(gridPickerSubcategoryCountLabel(2)).toBe("2 subs");
+  });
+
+  it("opens the created root category page and replaces the href after id remap", async () => {
+    const push = vi.fn();
+    const replace = vi.fn();
+    let resolveSync!: (value: { data: { id: string } }) => void;
+    const syncPromise = new Promise<{ data: { id: string } }>((resolve) => {
+      resolveSync = resolve;
+    });
+
+    openCreatedRootCategoryPage({
+      categoryType: CategoryTypeEnum.EXPENSE,
+      categoryId: "local:cat-1",
+      syncPromise,
+      push,
+      replace,
+    });
+
+    expect(push).toHaveBeenCalledWith(
+      "/dashboard/space_settings/categories/detail?categoryId=local%3Acat-1&kind=expense",
+    );
+
+    resolveSync({ data: { id: "server-cat" } });
+    await syncPromise;
+
+    expect(replace).toHaveBeenCalledWith(
+      "/dashboard/space_settings/categories/detail?categoryId=server-cat&kind=expense",
+    );
+  });
+
+  it("does not navigate when creating a subcategory", () => {
+    const push = vi.fn();
+    const replace = vi.fn();
+
+    openCreatedRootCategoryPage({
+      parentId: "parent-1",
+      categoryType: CategoryTypeEnum.EXPENSE,
+      categoryId: "local:sub-1",
+      push,
+      replace,
+    });
+
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 });

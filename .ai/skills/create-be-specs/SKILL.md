@@ -210,3 +210,4 @@ make specs           # all specs
 - `.ai/rules/specs/request_specs.mdc`
 - `.ai/rules/specs/model_specs.mdc`
 - `.ai/rules/specs/query_specs.mdc`
+- Backend operations still compute durable facts (balances, monthly buckets). Frontend screens after sync read IndexedDB, not live GET. See `docs/offline-mode/FRONTEND_SOURCE_OF_TRUTH.md`.

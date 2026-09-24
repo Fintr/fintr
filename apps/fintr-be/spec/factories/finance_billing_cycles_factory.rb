@@ -5,7 +5,6 @@ FactoryBot.define do
     association :space_subscription, factory: :space_subscription
     cycle_number { 1 }
     xendit_cycle_id { "cycle-#{SecureRandom.uuid}" }
-    tokens_allocated { 100 }
     status { "pending" }
     metadata { {} }
 

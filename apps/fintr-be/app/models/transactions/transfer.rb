@@ -56,6 +56,19 @@ module Transactions
       amount + transaction_cost
     end
 
+    # Label for the linked expense fee row (not the transfer itself).
+    # With note:  "Transfer fee for: <note>, amount: <transfer amount>"
+    # Without:    "Transfer fee, amount: <transfer amount>"
+    def fee_transaction_description
+      amount_label = fee_description_amount_label
+      note = description.to_s.strip
+      if note.present?
+        "Transfer fee for: #{note}, amount: #{amount_label}"
+      else
+        "Transfer fee, amount: #{amount_label}"
+      end
+    end
+
     def income
       Money.from_amount(0, amount.currency)
     end
@@ -95,6 +108,13 @@ module Transactions
     end
 
     private
+
+    def fee_description_amount_label
+      value = amount.amount
+      return value.to_i.to_s if value == value.to_i
+
+      value.to_s("F")
+    end
 
     def accounts_belong_to_same_space
       return if from_account&.space_id == to_account&.space_id

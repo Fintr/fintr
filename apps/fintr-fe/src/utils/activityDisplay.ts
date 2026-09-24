@@ -3,6 +3,7 @@ import {
   CombinedTransactionTypeEnum,
   IndexActivity,
 } from "@/types/transactionTypes";
+import { isTransactionCalculatedForDate } from "@/utils/transactionCalculated";
 
 /** Whether a row should use income-style (teal) coloring vs expense-style (red). */
 export const activityPresentsAsIncome = (
@@ -43,6 +44,29 @@ export const activityRowIsEditable = (
   activity: IndexActivity | { hasLoanPayment?: boolean; isLoanActivity?: boolean },
 ): boolean =>
   !activity.hasLoanPayment && !activity.isLoanActivity;
+
+/** Loan disbursements and payments always reflect applied balances (no pending state). */
+export const activityShowsCalculatedIndicator = (
+  activity: IndexActivity | {
+    calculated?: boolean;
+    isLoanActivity?: boolean;
+    date?: string;
+  },
+): boolean => {
+  if (activity.isLoanActivity) {
+    return true;
+  }
+
+  if (activity.calculated != null) {
+    return activity.calculated;
+  }
+
+  if (activity.date) {
+    return isTransactionCalculatedForDate(activity.date);
+  }
+
+  return false;
+};
 
 export const activityRecordId = (activity: IndexActivity): string =>
   activity.activitableId ?? activity.id;

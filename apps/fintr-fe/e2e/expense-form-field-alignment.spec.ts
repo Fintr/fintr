@@ -76,17 +76,19 @@ test.describe("Expense form field alignment", () => {
     const form = page.locator("form").filter({ has: page.locator("#scheduleType") }).first()
 
     await expectAlignedTops(dateButton, amountInput, "Date / Amount")
-    await expectAlignedTops(scheduleType, categoryPicker, "Schedule Type / Category")
 
     const formWidth = (await form.boundingBox())?.width ?? 0
     const noteWidth = (await description.boundingBox())?.width ?? 0
     expect(formWidth).toBeGreaterThan(0)
     expect(noteWidth).toBeGreaterThan(formWidth * 0.9)
 
+    await expect(page.locator("#scheduleType")).toBeVisible()
+    await expect(page.getByRole("radio", { name: "One-Time" })).toBeVisible()
+    await expect(page.getByRole("radio", { name: "Recurring" })).toBeVisible()
+
     for (const [locator, name] of [
       [dateButton, "Date"],
       [amountInput, "Amount"],
-      [scheduleType, "Schedule Type"],
       [categoryPicker, "Category"],
       [accountPicker, "Account"],
     ] as const) {

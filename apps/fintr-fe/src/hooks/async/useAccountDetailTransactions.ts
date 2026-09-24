@@ -1,7 +1,13 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useAuthApi } from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
+import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import {
+  buildAccountActivitiesLocalQueryKey,
+  loadCachedAccountDetailTransactionsPage,
+} from "@/services/transactions/account-activities-local";
 import { fetchAccountTransactionsPage } from "@/services/transactions/queries";
+import { parseCategoryPickerValue } from "@/types/categoryTreeTypes";
 
 export const ACCOUNT_DETAIL_TRANSACTIONS_KEY = "accountDetailTransactions" as const;
 
@@ -21,6 +27,24 @@ type UseAccountDetailTransactionsParams = {
   enabled?: boolean;
 };
 
+const buildLocalCacheKey = (
+  spaceCode: string,
+  accountId: string | undefined,
+  accountName: string,
+  params: Omit<UseAccountDetailTransactionsParams, "enabled" | "accountId">,
+): string[] => [
+  "accountDetailTransactionsLocal",
+  spaceCode,
+  accountId ?? "",
+  accountName,
+  params.startDate,
+  params.endDate,
+  params.categoryFilter,
+  params.searchQuery,
+  String(params.minAmount ?? ""),
+  String(params.maxAmount ?? ""),
+];
+
 export const useAccountDetailTransactions = ({
   accountId,
   accountName,
@@ -38,6 +62,40 @@ export const useAccountDetailTransactions = ({
 
   const [spaceCode] = useLocalStorage("spaceCode", "");
 
+  const localParams = {
+    startDate,
+    endDate,
+    categoryFilter,
+    searchQuery,
+    ...(minAmount !== undefined ? { minAmount } : {}),
+    ...(maxAmount !== undefined ? { maxAmount } : {}),
+  };
+
+  const localCacheQueryKey = buildLocalCacheKey(
+    spaceCode,
+    accountId,
+    accountName,
+    localParams,
+  );
+
+  const localCacheQuery = useQuery({
+    queryKey: localCacheQueryKey,
+    queryFn: async () => {
+      const firstPage = await loadCachedAccountDetailTransactionsPage(
+        spaceCode,
+        accountName,
+        { ...localParams, accountId, page: 1 },
+      );
+
+      return firstPage ?? null;
+    },
+    enabled: Boolean(spaceCode && accountName),
+    staleTime: Infinity,
+    networkMode: "always",
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
+
   return useInfiniteQuery({
     queryKey: [
       ACCOUNT_DETAIL_TRANSACTIONS_KEY,
@@ -51,8 +109,8 @@ export const useAccountDetailTransactions = ({
       maxAmount,
       searchQuery,
     ],
-    queryFn: ({ pageParam = 1 }) =>
-      fetchAccountTransactionsPage(api, {
+    queryFn: async ({ pageParam = 1 }) => {
+      const pageParams = {
         spaceCode,
         accountId,
         accountName,
@@ -63,19 +121,76 @@ export const useAccountDetailTransactions = ({
         page: pageParam,
         ...(minAmount !== undefined ? { minAmount } : {}),
         ...(maxAmount !== undefined ? { maxAmount } : {}),
-      }),
+      };
+
+      if (skipNetworkFetch) {
+        const cached = await loadCachedAccountDetailTransactionsPage(
+          spaceCode,
+          accountName,
+          {
+            accountId,
+            startDate,
+            endDate,
+            categoryFilter,
+            searchQuery,
+            page: pageParam,
+            ...(minAmount !== undefined ? { minAmount } : {}),
+            ...(maxAmount !== undefined ? { maxAmount } : {}),
+          },
+        );
+
+        if (cached != null) {
+          return cached;
+        }
+
+        throw new Error("No cached account transactions");
+      }
+
+      try {
+        return await fetchAccountTransactionsPage(api, pageParams);
+      } catch (error) {
+        const cached = await loadCachedAccountDetailTransactionsPage(
+          spaceCode,
+          accountName,
+          {
+            accountId,
+            startDate,
+            endDate,
+            categoryFilter,
+            searchQuery,
+            page: pageParam,
+            ...(minAmount !== undefined ? { minAmount } : {}),
+            ...(maxAmount !== undefined ? { maxAmount } : {}),
+          },
+        );
+
+        if (cached != null) {
+          return cached;
+        }
+
+        throw error;
+      }
+    },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
-    enabled: enabled && !!spaceCode && !!accountName,
+    enabled:
+      enabled &&
+      !!spaceCode &&
+      !!accountName &&
+      (!skipNetworkFetch || Boolean(localCacheQuery.data)),
     retry: false,
-    refetchOnMount: "always",
+    refetchOnMount: !skipNetworkFetch,
     refetchOnWindowFocus: false,
-    staleTime: 0,
+    staleTime: skipNetworkFetch ? Infinity : 0,
     gcTime: 300000,
+    placeholderData: localCacheQuery.data
+      ? { pages: [localCacheQuery.data], pageParams: [1] }
+      : undefined,
   });
 };
 
 type UseAccountAdjustmentHistoryParams = {
+  accountId?: string;
   accountName: string;
   startDate: string;
   endDate: string;
@@ -83,6 +198,7 @@ type UseAccountAdjustmentHistoryParams = {
 };
 
 export const useAccountAdjustmentHistory = ({
+  accountId,
   accountName,
   startDate,
   endDate,
@@ -94,6 +210,37 @@ export const useAccountAdjustmentHistory = ({
 
   const [spaceCode] = useLocalStorage("spaceCode", "");
 
+  const localCacheQuery = useQuery({
+    queryKey: [
+      "accountAdjustmentHistoryLocal",
+      spaceCode,
+      accountName,
+      startDate,
+      endDate,
+    ],
+    queryFn: async () => {
+      const firstPage = await loadCachedAccountDetailTransactionsPage(
+        spaceCode,
+        accountName,
+        {
+          accountId,
+          startDate,
+          endDate,
+          categoryFilter: "",
+          searchQuery: BALANCE_ADJUSTMENT_SEARCH,
+          page: 1,
+        },
+      );
+
+      return firstPage ?? null;
+    },
+    enabled: Boolean(spaceCode && accountName),
+    staleTime: Infinity,
+    networkMode: "always",
+  });
+
+  const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
+
   return useInfiniteQuery({
     queryKey: [
       ACCOUNT_ADJUSTMENT_HISTORY_KEY,
@@ -102,22 +249,67 @@ export const useAccountAdjustmentHistory = ({
       startDate,
       endDate,
     ],
-    queryFn: ({ pageParam = 1 }) =>
-      fetchAccountTransactionsPage(api, {
-        spaceCode,
-        accountName,
+    queryFn: async ({ pageParam = 1 }) => {
+      const localPageParams = {
+        accountId,
         startDate,
         endDate,
         categoryFilter: "",
         searchQuery: BALANCE_ADJUSTMENT_SEARCH,
         page: pageParam,
-      }),
+      };
+
+      if (skipNetworkFetch) {
+        const cached = await loadCachedAccountDetailTransactionsPage(
+          spaceCode,
+          accountName,
+          localPageParams,
+        );
+
+        if (cached != null) {
+          return cached;
+        }
+
+        throw new Error("No cached balance adjustments");
+      }
+
+      try {
+        return await fetchAccountTransactionsPage(api, {
+          spaceCode,
+          accountName,
+          startDate,
+          endDate,
+          categoryFilter: "",
+          searchQuery: BALANCE_ADJUSTMENT_SEARCH,
+          page: pageParam,
+        });
+      } catch (error) {
+        const cached = await loadCachedAccountDetailTransactionsPage(
+          spaceCode,
+          accountName,
+          localPageParams,
+        );
+
+        if (cached != null) {
+          return cached;
+        }
+
+        throw error;
+      }
+    },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
-    enabled: enabled && !!spaceCode && !!accountName,
+    enabled:
+      enabled &&
+      !!spaceCode &&
+      !!accountName &&
+      (!skipNetworkFetch || Boolean(localCacheQuery.data)),
     retry: false,
     refetchOnWindowFocus: false,
-    staleTime: 30000,
+    staleTime: skipNetworkFetch ? Infinity : 30_000,
     gcTime: 300000,
+    placeholderData: localCacheQuery.data
+      ? { pages: [localCacheQuery.data], pageParams: [1] }
+      : undefined,
   });
 };

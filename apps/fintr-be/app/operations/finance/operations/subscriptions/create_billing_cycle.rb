@@ -71,7 +71,6 @@ module Finance
           Success({
             cycle_number: cycle_number,
             span: span,
-            tokens_allocated: plan.token_limit, # This is the subscription tokens (FREE_TOKENS added separately)
             xendit_cycle_id: xendit_cycle_id,
             scheduled_timestamp: params[:scheduled_timestamp],
             metadata: params[:metadata] || {}
@@ -93,7 +92,6 @@ module Finance
           billing_cycle.assign_attributes(
             cycle_number: cycle_data[:cycle_number] || billing_cycle.cycle_number,
             span: cycle_data[:span],
-            tokens_allocated: cycle_data[:tokens_allocated],
             xendit_cycle_id: cycle_data[:xendit_cycle_id] || billing_cycle.xendit_cycle_id,
             metadata: cycle_data[:metadata],
             scheduled_timestamp: cycle_data[:scheduled_timestamp] || billing_cycle.scheduled_timestamp,

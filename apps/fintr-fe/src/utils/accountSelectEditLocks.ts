@@ -1,11 +1,11 @@
 /**
- * Pure helpers for edit-mode account selects: show all accounts but only allow
- * options whose ledger currency matches the original transaction / transfer leg.
+ * Account select helpers for edit mode. Currency locking is disabled so users can
+ * switch to accounts in other currencies (FX is handled by AmountWithRatePicker).
  */
 
-/** Shown when an account tile is disabled because of edit-mode currency locking. */
+/** Kept for call sites that still show a disabled hint; currently unused. */
 export const ACCOUNT_EDIT_LOCK_DISABLED_HINT =
-  "When editing, only accounts with the same currency as the original account can be selected.";
+  "When editing, accounts in any currency can be selected; amounts convert with the exchange rate.";
 
 export type AccountOptionForEditLock = {
   value: string;
@@ -19,35 +19,25 @@ export function optionLedgerCurrencyForEditLock(
   return option.currency ?? spaceCurrency;
 }
 
-/** Lock currency for income/expense edit, or one leg of a transfer edit. */
+/** Previously locked edit selects to the original ledger currency; now always unlocked. */
 export function editLockedAccountLedgerCurrency(
-  isEditMode: boolean,
-  initialAccountName: string | undefined,
-  accountOptions: AccountOptionForEditLock[],
-  spaceCurrency: string,
+  _isEditMode: boolean,
+  _initialAccountName: string | undefined,
+  _accountOptions: AccountOptionForEditLock[],
+  _spaceCurrency: string,
 ): string | undefined {
-  if (!isEditMode || !initialAccountName) {
-    return undefined;
-  }
-  const acc = accountOptions.find((a) => a.value === initialAccountName);
-  return optionLedgerCurrencyForEditLock(
-    acc ?? { value: initialAccountName },
-    spaceCurrency,
-  );
+  return undefined;
 }
 
 /**
  * Whether this account row should be non-selectable in edit mode.
- * Call sites still render every option; only this flag toggles Radix `disabled`.
+ * Currency no longer disables options; FX is handled on submit.
  */
 export function isAccountSelectOptionDisabledForEdit(
-  isEditMode: boolean,
-  lock: string | undefined,
-  option: AccountOptionForEditLock,
-  spaceCurrency: string,
+  _isEditMode: boolean,
+  _lock: string | undefined,
+  _option: AccountOptionForEditLock,
+  _spaceCurrency: string,
 ): boolean {
-  if (!isEditMode || lock === undefined || lock === "") {
-    return false;
-  }
-  return optionLedgerCurrencyForEditLock(option, spaceCurrency) !== lock;
+  return false;
 }

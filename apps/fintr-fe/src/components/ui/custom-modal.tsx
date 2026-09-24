@@ -2,6 +2,8 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMobileModalViewportHeight } from "@/hooks/useMobileModalViewportHeight";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
@@ -27,6 +29,20 @@ interface CustomModalProps {
    * an internal scroll region and a pinned footer (e.g. form action buttons).
    */
   pinBodyLayout?: boolean;
+  /**
+   * Touch action for the modal body scroll region. Use "none" when children
+   * need drag gestures (e.g. image cropper).
+   */
+  bodyTouchAction?: React.CSSProperties["touchAction"];
+  /**
+   * When false, skip history push/pop. Nested companions (crop dialogs)
+   * must not steal the parent modal's back-button entry.
+   */
+  manageHistory?: boolean;
+  /**
+   * Stack above an already-open CustomModal (file crop, pickers).
+   */
+  companion?: boolean;
 }
 
 const maxWidthClasses = {
@@ -57,6 +73,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   closeButtonDataTarget = "close-modal-button",
   minContentHeightOnKeyboard = "60vh",
   pinBodyLayout = false,
+  bodyTouchAction,
+  manageHistory: manageHistoryProp,
+  companion = false,
 }) => {
   const [mounted, setMounted] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -183,7 +202,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       return;
     }
 
-    const shouldManageHistory = !isMobileBrowser;
+    const shouldManageHistory = manageHistoryProp ?? !isMobileBrowser;
 
     const checkLightboxOpen = () => {
       const lightbox = document.querySelector(".lightbox-container");
@@ -315,11 +334,18 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     };
   // onClose is intentionally excluded from deps — we access it via onCloseRef
   // to prevent the scroll-lock effect from re-running on every parent render.
-  }, [isOpen, isMobileBrowser]);
+  }, [isOpen, isMobileBrowser, manageHistoryProp]);
 
   if (!isOpen || !mounted) return null;
 
+  const shouldIgnoreDismiss = () =>
+    Date.now() - modalOpenTimeRef.current < 500;
+
   const handleOverlayClick = (e: React.MouseEvent) => {
+    if (shouldIgnoreDismiss()) {
+      return;
+    }
+
     const target = e.target as HTMLElement;
     const lightbox = document.querySelector(".lightbox-container");
 
@@ -438,7 +464,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   const modalContent = (
     <div
       className={cn(
-        "fixed z-[100]",
+        companion ? "fixed z-[120]" : "fixed z-[100]",
         anchorOverlayToVisualViewport && isMobile
           ? "flex min-h-0 flex-col"
           : "flex",
@@ -463,6 +489,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       }
       onClick={handleOverlayClick}
       onPointerDown={handleOverlayClick}
+      {...(companion ? { "data-image-crop-dialog": "" } : {})}
     >
       {/* Android native only: Paint the 3-button nav background so the backdrop doesn't make it look white. */}
       {isAndroidNative && (
@@ -485,6 +512,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         )}
         style={backdropStyle}
         onClick={(e) => {
+          if (shouldIgnoreDismiss()) {
+            return;
+          }
+
           const target = e.target as HTMLElement;
           const lightbox = document.querySelector(".lightbox-container");
 
@@ -512,14 +543,20 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       <div
         data-modal-content
         className={cn(
-          "relative z-[101] bg-background ",
+          companion ? "relative z-[121] bg-background " : "relative z-[101] bg-background ",
           "w-full",
           isMobile 
             ? cn(
                 "min-h-0 rounded-none",
                 pinBodyLayout ? "h-full flex-1" : "flex-1",
               )
-            : cn("rounded-lg", maxWidthClasses[maxWidth], "max-h-[90vh]"),
+            : cn(
+                "rounded-lg",
+                maxWidthClasses[maxWidth],
+                "max-h-[90vh]",
+                // Let pinBodyLayout children shrink so their internal scroll region works.
+                pinBodyLayout && "min-h-0",
+              ),
           isMobile && !isAndroidNative && "pt-safe-top",
           "overflow-hidden flex flex-col",
           "transition-opacity duration-200",
@@ -531,8 +568,19 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         onPointerDown={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="px-6 pt-6 pb-4 flex items-center justify-between flex-shrink-0">
-            <h2 className="text-lg font-semibold text-primary">{title}</h2>
+          <div className="flex flex-shrink-0 items-center justify-between px-6 pb-2 pt-6">
+            <h2 className="min-w-0 flex-1 truncate text-lg font-semibold text-primary">{title}</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => onCloseRef.current()}
+              aria-label="Close"
+              data-tutorial-target={closeButtonDataTarget}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         )}
         <div
@@ -540,12 +588,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           className={cn(
             "flex-1 min-h-0",
             pinBodyLayout
-              ? "flex h-full flex-col overflow-hidden"
+              ? "flex flex-col overflow-hidden"
               : "overflow-y-auto",
           )}
           style={{
             WebkitOverflowScrolling: pinBodyLayout ? undefined : "touch",
-            touchAction: pinBodyLayout ? undefined : "pan-y",
+            touchAction: bodyTouchAction ?? (pinBodyLayout ? undefined : "pan-y"),
             minHeight: useKeyboardSizedMobileFrame
               ? `max(200px, calc(100% - ${title ? '80px' : '0px'}))`
               : undefined,

@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe Finance::Operations::Subscriptions::CreateBillingCycle, type: :operation do
   let(:operation) { described_class.new }
   let(:space) { create(:personal_space) }
-  let(:subscription_plan) { create(:subscription_plan, interval: "month", token_limit: 100) }
+  let(:subscription_plan) { create(:subscription_plan, interval: "month") }
   let(:space_subscription) do
     create(
       :space_subscription,

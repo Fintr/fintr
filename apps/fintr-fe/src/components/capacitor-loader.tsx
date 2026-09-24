@@ -5,6 +5,7 @@ import { initCapacitorBridgeIfNeeded } from '@/lib/capacitor-bridge-init';
 import { initCapacitorKeyboardInsetBridge } from '@/lib/capacitor-keyboard-inset';
 import { syncNativeAppearanceFromStorage } from '@/lib/native-appearance';
 import { initializeSafeAreas } from '@/lib/navigation-info';
+import { initializeOnDeviceLlm } from '@/lib/on-device-llm';
 
 export default function CapacitorLoader() {
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function CapacitorLoader() {
       }
 
       void syncNativeAppearanceFromStorage();
+      void initializeOnDeviceLlm();
     }
 
     if (isAndroidNative) {

@@ -1,0 +1,48 @@
+[
+  {
+    "name": "minimal valid expense",
+    "payload": {
+      "user_id": "user-1",
+      "space_id": "space-1",
+      "amount": 50,
+      "date": "2026-08-08",
+      "transaction_type": "expense",
+      "category_name": "Food",
+      "account_name": "Cash",
+      "schedule_type": "one_time",
+      "description": ""
+    },
+    "expect_valid": true
+  },
+  {
+    "name": "recurring without interval",
+    "payload": {
+      "user_id": "user-1",
+      "space_id": "space-1",
+      "amount": 50,
+      "date": "2026-08-08",
+      "transaction_type": "expense",
+      "category_name": "Food",
+      "account_name": "Cash",
+      "schedule_type": "repeat"
+    },
+    "expect_valid": false,
+    "expected_error_keys": ["repeat_interval"]
+  },
+  {
+    "name": "fx without original currency",
+    "payload": {
+      "user_id": "user-1",
+      "space_id": "space-1",
+      "amount": 50,
+      "date": "2026-08-08",
+      "transaction_type": "expense",
+      "category_name": "Food",
+      "account_name": "Cash",
+      "schedule_type": "one_time",
+      "exchange_rate": 56.5
+    },
+    "expect_valid": false,
+    "expected_error_keys": ["original_currency"]
+  }
+]

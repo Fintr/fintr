@@ -106,7 +106,11 @@ jobs:
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           OPENAI_API_KEY: ${{ vars.OPENAI_API_KEY }}
           OPENROUTER_API_KEY: ${{ vars.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ vars.GEMINI_API_KEY }}
           AI_VISION_PROVIDER: ${{ vars.AI_VISION_PROVIDER }}
+          LLM_DEFAULT_MODEL: ${{ vars.LLM_DEFAULT_MODEL }}
+          LLM_AGENT_MODEL: ${{ vars.LLM_AGENT_MODEL }}
+          LLM_AGENT_PROVIDER: ${{ vars.LLM_AGENT_PROVIDER }}
           AI_VISION_MODEL: ${{ vars.AI_VISION_MODEL }}
           AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ vars.AWS_SECRET_ACCESS_KEY }}
@@ -120,6 +124,10 @@ jobs:
           XENDIT_API_KEY: ${{ vars.XENDIT_API_KEY }}
           XENDIT_WEBHOOK_TOKEN: ${{ vars.XENDIT_WEBHOOK_TOKEN }}
           BREVO_API_KEY: ${{ vars.BREVO_API_KEY }}
+          REVENUECAT_API_SECRET: ${{ vars.REVENUECAT_API_SECRET }}
+          REVENUECAT_PROJECT_ID: ${{ vars.REVENUECAT_PROJECT_ID }}
+          REVENUECAT_PRO_ENTITLEMENT_ID: ${{ vars.REVENUECAT_PRO_ENTITLEMENT_ID }}
+          REVENUECAT_WEBHOOK_AUTHORIZATION: ${{ vars.REVENUECAT_WEBHOOK_AUTHORIZATION }}
         run: |
           printf '%s\n' "$RAILS_MASTER_KEY" > config/master.key
           chmod 600 config/master.key
@@ -148,7 +156,11 @@ jobs:
           write_env SENTRY_DSN "$SENTRY_DSN"
           write_env OPENAI_API_KEY "$OPENAI_API_KEY"
           write_env OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
+          write_env GEMINI_API_KEY "$GEMINI_API_KEY"
           write_env AI_VISION_PROVIDER "$AI_VISION_PROVIDER"
+          write_env LLM_DEFAULT_MODEL "$LLM_DEFAULT_MODEL"
+          write_env LLM_AGENT_MODEL "$LLM_AGENT_MODEL"
+          write_env LLM_AGENT_PROVIDER "$LLM_AGENT_PROVIDER"
           write_env AI_VISION_MODEL "$AI_VISION_MODEL"
           write_env AWS_ACCESS_KEY_ID "$AWS_ACCESS_KEY_ID"
           write_env AWS_SECRET_ACCESS_KEY "$AWS_SECRET_ACCESS_KEY"
@@ -162,6 +174,10 @@ jobs:
           write_env XENDIT_API_KEY "$XENDIT_API_KEY"
           write_env XENDIT_WEBHOOK_TOKEN "$XENDIT_WEBHOOK_TOKEN"
           write_env BREVO_API_KEY "$BREVO_API_KEY"
+          write_env REVENUECAT_API_SECRET "$REVENUECAT_API_SECRET"
+          write_env REVENUECAT_PROJECT_ID "$REVENUECAT_PROJECT_ID"
+          write_env REVENUECAT_PRO_ENTITLEMENT_ID "$REVENUECAT_PRO_ENTITLEMENT_ID"
+          write_env REVENUECAT_WEBHOOK_AUTHORIZATION "$REVENUECAT_WEBHOOK_AUTHORIZATION"
 
       - name: Deploy backend
         env:

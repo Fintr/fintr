@@ -78,10 +78,19 @@ describe("normalizeCategoryTreeNodes", () => {
 
   it("passes through arrays", () => {
     const result = normalizeCategoryTreeNodes([
-      { id: "p1", name: "Food", categoryType: "expense", children: [] },
+      {
+        id: "p1",
+        name: "Food",
+        categoryType: "expense",
+        icon: "shopping-cart",
+        color: "#43A047",
+        children: [],
+      },
     ]);
 
     expect(result).toHaveLength(1);
+    expect(result[0].icon).toBe("shopping-cart");
+    expect(result[0].color).toBe("#43A047");
   });
 
   it("detects category tree options with empty children arrays", () => {

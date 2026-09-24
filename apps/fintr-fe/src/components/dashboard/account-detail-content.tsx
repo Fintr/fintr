@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
 import {
   SquarePen,
   Trash2,
@@ -18,8 +19,7 @@ import {
   filterActiveBadgeClassName,
   filterTriggerIconButtonClassName,
 } from "@/components/ui/filter-sheet";
-import { cn, formatCurrency, getNumberColor } from "@/lib/utils";
-import { AnimatedCurrency } from "@/components/ui/animated-currency";
+import { cn, formatCurrency } from "@/lib/utils";
 import DayDivider from "@/components/ui/day-divider";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import {
@@ -42,7 +42,12 @@ import {
   useAccountDetailActivities,
   ACCOUNT_DETAIL_ACTIVITIES_KEY,
 } from "@/hooks/async/useAccountDetailActivities";
+import { ACCOUNT_BALANCE_TIMELINE_KEY } from "@/hooks/async/useAccountBalanceTimeline";
 import { activityRecordId } from "@/utils/activityDisplay";
+import {
+  transactionRowTitle,
+  transactionSecondaryLine,
+} from "@/utils/transactionDescription";
 import { useDashboardData } from "@/hooks/async/useDashboardData";
 import AccountEditSheet from "@/components/dashboard/account-edit-sheet";
 import AccountDeleteDialog from "@/components/dashboard/account-delete-dialog";
@@ -59,15 +64,40 @@ import { ListView } from "@/components/dashboard/tabs/transactions/list-view";
 import { TransactionTotalsDisplay } from "@/components/dashboard/tabs/transactions/transaction-totals";
 import EditTransactionDialog from "@/components/dashboard/forms/EditTransactionDialog";
 import ScopeModal, { DeleteScope, Scope } from "@/components/dashboard/forms/ScopeModal";
+import { deleteTransactionLocalFirst } from "@/services/transactions/delete-local-first";
+import { collectDeleteScopeContextRows } from "@/services/transactions/local-cache";
+import { transactionAllowsSeriesDeleteScope } from "@/services/transactions/resolve-delete-scope";
 import { deleteTransaction } from "@/services/transactions/mutation";
-import { deleteTransfer } from "@/services/transactions/transfers/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { getCurrentRate } from "@/services/exchangeRates/queries";
 import { getPresetDateRange } from "@/utils/dateFilterPresets";
+import { usePresetDateRangeOptions } from "@/hooks/usePresetDateRangeOptions";
 import { toast } from "sonner";
+import { buildLoanDetailHref, transactionViewHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
+
+const AccountBalanceChart = dynamic(
+  () =>
+    import("@/components/dashboard/account-balance-chart").then(
+      (mod) => mod.AccountBalanceChart,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="flex h-[220px] items-center justify-center text-muted-foreground"
+        aria-busy="true"
+        aria-label="Loading balance chart"
+      >
+        <LoadingSpinner size="small" />
+        <span className="ml-2 text-sm">Loading chart…</span>
+      </div>
+    ),
+  },
+);
 
 type AccountDetailContentProps = {
   accountId: string;
@@ -185,7 +215,18 @@ const TransactionSection = ({
               textClassName="bg-card"
             />
             <div className="space-y-2">
-              {byDate[date].map((transaction) => (
+              {byDate[date].map((transaction) => {
+                const rowTitle = transactionRowTitle({
+                  description: transaction.description,
+                  fallback: transaction.categoryName ?? "",
+                });
+                const secondaryLine = transactionSecondaryLine({
+                  description: transaction.description,
+                  entityName: transaction.entityName,
+                  categoryName: transaction.categoryName,
+                });
+
+                return (
                 <div
                   key={transaction.id}
                   className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/30 min-w-0"
@@ -205,9 +246,9 @@ const TransactionSection = ({
                     <div className="min-w-0 flex-1">
                       <p
                         className="text-sm font-medium truncate"
-                        title={transaction.description}
+                        title={rowTitle}
                       >
-                        {transaction.description}
+                        {rowTitle}
                       </p>
                       {transaction.type ===
                       CombinedTransactionTypeEnum.TRANSFER ? (
@@ -222,14 +263,14 @@ const TransactionSection = ({
                               transaction.toAccountName ??
                               transaction.categoryName)}
                         </p>
-                      ) : (
+                      ) : secondaryLine ? (
                         <p
                           className="text-xs text-muted-foreground truncate"
-                          title={transaction.categoryName}
+                          title={secondaryLine}
                         >
-                          {transaction.categoryName}
+                          {secondaryLine}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -270,7 +311,8 @@ const TransactionSection = ({
                     </p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
@@ -294,11 +336,11 @@ const TransactionSection = ({
 const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   accountId,
 }) => {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { api } = useAuthApi();
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
+  const presetOptions = usePresetDateRangeOptions();
   const [spaceCode] = useLocalStorage("spaceCode", "");
 
   const deleteSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -357,6 +399,55 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
 
   const accountName = account?.name ?? "";
 
+  const allTimeRange = useMemo(
+    () => getPresetDateRange("all_time", new Date(), presetOptions),
+    [presetOptions],
+  );
+
+  useEffect(() => {
+    const anchorDate =
+      presetOptions.earliestTransactionDate ?? presetOptions.spaceCreatedAt;
+
+    if (!anchorDate) {
+      return;
+    }
+
+    setAppliedFilters((previous) => {
+      if (
+        previous.queryStartDate === allTimeRange.startDate
+        && previous.queryEndDate === allTimeRange.endDate
+      ) {
+        return previous;
+      }
+
+      const legacyAllTimeStart = "2000-01-01";
+      const fallbackAllTime = getPresetDateRange("all_time");
+      const spaceCreatedAllTime = getPresetDateRange("all_time", new Date(), {
+        spaceCreatedAt: presetOptions.spaceCreatedAt,
+      });
+      const isDefaultAllTimeRange =
+        previous.queryStartDate === legacyAllTimeStart
+        || previous.queryStartDate === fallbackAllTime.startDate
+        || previous.queryStartDate === spaceCreatedAllTime.startDate
+        || previous.queryStartDate === allTimeRange.startDate;
+
+      if (!isDefaultAllTimeRange) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        queryStartDate: allTimeRange.startDate,
+        queryEndDate: allTimeRange.endDate,
+      };
+    });
+  }, [
+    allTimeRange.endDate,
+    allTimeRange.startDate,
+    presetOptions.earliestTransactionDate,
+    presetOptions.spaceCreatedAt,
+  ]);
+
   useEffect(() => {
     setAppliedFilters((previous) => {
       const nextSearchQuery = debouncedSearch.trim();
@@ -377,7 +468,6 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   };
 
   const hasActiveFilters = useMemo(() => {
-    const allTimeRange = getPresetDateRange("all_time");
     const isDefaultDateRange =
       appliedFilters.queryStartDate === allTimeRange.startDate
       && appliedFilters.queryEndDate === allTimeRange.endDate;
@@ -390,15 +480,17 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       || appliedFilters.searchQuery !== ""
       || hasAppliedAccountFilters(appliedFilters.appliedAccounts)
     );
-  }, [appliedFilters]);
+  }, [allTimeRange.endDate, allTimeRange.startDate, appliedFilters]);
 
   const minAmount = parseOptionalAmount(appliedFilters.appliedMinAmount);
   const maxAmount = parseOptionalAmount(appliedFilters.appliedMaxAmount);
 
-  const queryEnabled = Boolean(account);
+  const queryEnabled =
+    Boolean(account) && presetOptions.isAllTimeAnchorReady;
 
   const mainQuery = useAccountDetailActivities({
     accountId: account?.id ?? "",
+    accountName,
     startDate: appliedFilters.queryStartDate,
     endDate: appliedFilters.queryEndDate,
     categoryFilters: appliedFilters.appliedCategories,
@@ -409,6 +501,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   });
 
   const adjustmentQuery = useAccountAdjustmentHistory({
+    accountId: account?.id,
     accountName,
     startDate: appliedFilters.queryStartDate,
     endDate: appliedFilters.queryEndDate,
@@ -448,44 +541,90 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       id: string;
       deleteScope: DeleteScope;
       transactionType?: string;
+      listRow?: IndexTransaction | null;
     }) => {
       let result;
-      if (deleteData.transactionType === ActivitiesTypeEnum.TRANSFER) {
-        result = await deleteTransfer(api, {
-          id: deleteData.id,
-          deleteScope: deleteData.deleteScope,
+      const isOptimisticLocalFirstDelete =
+        deleteData.transactionType === ActivitiesTypeEnum.TRANSFER ||
+        deleteData.transactionType === ActivitiesTypeEnum.INCOME ||
+        deleteData.transactionType === ActivitiesTypeEnum.EXPENSE;
+      const isTransferDelete =
+        deleteData.transactionType === ActivitiesTypeEnum.TRANSFER;
+
+      if (isOptimisticLocalFirstDelete) {
+        result = await deleteTransactionLocalFirst(
+          api,
+          {
+            spaceId: spaceCode,
+            transactionId: deleteData.id,
+            deleteScope: deleteData.deleteScope as DeleteScopeEnum,
+            listRow: deleteData.listRow,
+          },
+          { queryClient, waitForSync: false },
+        );
+        toast.success(
+          isTransferDelete
+            ? "Transfer deleted successfully"
+            : "Transaction deleted successfully",
+        );
+        void Promise.resolve(result.syncPromise).then((synced) => {
+          if (synced.pendingSync) {
+            toast.message(
+              isTransferDelete
+                ? "Transfer deleted on this device. Will sync when online."
+                : "Transaction deleted on this device. Will sync when online.",
+            );
+          }
         });
       } else {
         result = await deleteTransaction(api, {
           id: deleteData.id,
           deleteScope: deleteData.deleteScope,
         });
+        toast.success("Transaction deleted successfully");
       }
 
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      queryClient.invalidateQueries({
-        queryKey: ["dashboard", spaceCode],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["accounts"],
-        refetchType: "active",
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["insights"],
-        refetchType: "active",
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
-        refetchType: "active",
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY],
-        refetchType: "active",
-        exact: false,
-      });
+      const refreshSecondaryCaches = () => {
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", spaceCode],
+          exact: false,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["accounts"],
+          refetchType: "active",
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["insights"],
+          refetchType: "active",
+          exact: false,
+        });
+        queryClient.invalidateQueries({
+          queryKey: [ACCOUNT_DETAIL_ACTIVITIES_KEY],
+          refetchType: "active",
+          exact: false,
+        });
+        queryClient.invalidateQueries({
+          queryKey: [ACCOUNT_ADJUSTMENT_HISTORY_KEY],
+          refetchType: "active",
+          exact: false,
+        });
+        queryClient.invalidateQueries({
+          queryKey: [ACCOUNT_BALANCE_TIMELINE_KEY],
+          refetchType: "active",
+          exact: false,
+        });
+      };
+
+      if (isOptimisticLocalFirstDelete) {
+        void Promise.resolve(result.syncPromise)
+          .then(() => {
+            refreshSecondaryCaches();
+          })
+          .catch(() => undefined);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        refreshSecondaryCaches();
+      }
 
       return result;
     },
@@ -505,21 +644,18 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   const handleEditRow = (row: IndexTransaction | IndexActivity) => {
     const activity = row as IndexActivity;
     if (activity.isLoanActivity && activity.loanId) {
-      router.push(`/dashboard/loans/detail?loanId=${activity.loanId}`);
+      pushDashboardDetail(router, buildLoanDetailHref(activity.loanId));
       return;
     }
-    if (activity.hasLoanPayment) {
-      toast.error(
-        "This transaction is linked to a loan payment and cannot be edited. Edit the loan payment instead.",
-      );
-      return;
-    }
-    setSelectedTransaction({
-      ...activity,
-      id: activityRecordId(activity),
-      type: activity.type as unknown as CombinedTransactionTypeEnum,
-    });
-    setEditDialogOpen(true);
+
+    pushDashboardDetail(
+      router,
+      transactionViewHref({
+        id: activityRecordId(activity),
+        isLoanActivity: activity.isLoanActivity,
+        loanId: activity.loanId,
+      }),
+    );
   };
 
   const handleEditClose = () => {
@@ -527,8 +663,12 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
     setSelectedTransaction(null);
   };
 
-  const handleEditSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+  const handleEditSuccess = (options?: {
+    skipTransactionsInvalidate?: boolean;
+  }) => {
+    if (!options?.skipTransactionsInvalidate) {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    }
     queryClient.invalidateQueries({
       queryKey: ["dashboard", spaceCode],
       exact: false,
@@ -552,11 +692,19 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       refetchType: "active",
       exact: false,
     });
+    queryClient.invalidateQueries({
+      queryKey: [ACCOUNT_BALANCE_TIMELINE_KEY],
+      refetchType: "active",
+      exact: false,
+    });
     mainQuery.refetch();
     adjustmentQuery.refetch();
   };
 
-  const handleDeleteRow = (id: string) => {
+  const handleDeleteRow = async (id: string) => {
+    const allListRows = (mainQuery.data?.pages ?? []).flatMap(
+      (page) => (page.activities ?? []) as IndexTransaction[],
+    );
     let activity: IndexActivity | null = null;
     if (mainQuery.data?.pages) {
       for (const page of mainQuery.data.pages) {
@@ -580,27 +728,51 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
       return;
     }
 
-    setTransactionToDelete(activity);
+    const { target: resolvedActivity } = await collectDeleteScopeContextRows({
+      spaceId: spaceCode,
+      queryClient,
+      listRows: allListRows,
+      targetId: id,
+    });
+
+    if (!resolvedActivity) {
+      return;
+    }
+
+    setTransactionToDelete(
+      {
+        ...resolvedActivity,
+        type: (activity?.type ?? resolvedActivity.type) as ActivitiesTypeEnum,
+      } as IndexActivity,
+    );
+    setSelectedDeleteScope(DeleteScopeEnum.THIS_ONLY);
     setDeleteScopeModalOpen(true);
   };
 
   const handleDeleteConfirm = (scope: Scope) => {
     if (transactionToDelete) {
+      const listRow: IndexTransaction = {
+        ...transactionToDelete,
+        id: activityRecordId(transactionToDelete),
+        type: transactionToDelete.type as unknown as CombinedTransactionTypeEnum,
+      };
+      setDeleteScopeModalOpen(false);
       deleteMutation.mutate(
         {
-          id: activityRecordId(transactionToDelete),
+          id: listRow.id,
           deleteScope: scope as DeleteScope,
           transactionType: transactionToDelete.type,
+          listRow,
         },
         {
           onSuccess: () => {
-            setDeleteScopeModalOpen(false);
             deleteSuccessTimeoutRef.current = setTimeout(() => {
               setTransactionToDelete(null);
             }, 300);
           },
           onError: (error) => {
             console.error("Error deleting transaction:", error);
+            toast.error("Failed to delete transaction");
           },
         },
       );
@@ -736,7 +908,57 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-2 pb-24 md:pb-8 space-y-6">
+    <div className="pb-24 md:pb-8">
+      <header className="px-4 pb-3 pt-1 sm:px-6">
+        <h1
+          className="text-2xl font-extrabold tracking-tight text-primary md:text-[1.75rem] truncate"
+        >
+          {account?.name}
+        </h1>
+        {account?.accountCategory ? (
+          <p className="mt-0.5 text-sm font-medium text-muted-foreground capitalize">
+            {account.accountCategory.replace(/_/g, " ")}
+          </p>
+        ) : null}
+      </header>
+
+      <section
+        className="w-full px-4 py-4 sm:px-6"
+        aria-label="Account overview"
+      >
+        <AccountBalanceChart
+          accountId={account?.id ?? ""}
+          displayAmount={balanceInSpaceCurrency}
+          displayCurrency={spaceCurrency}
+          displayAmountLoading={needsBalanceConversion && balanceRateLoading}
+          enabled={queryEnabled && !!account?.id}
+        />
+
+        <div className="mt-4 flex items-center gap-2 md:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="rounded-lg border-muted-foreground/25 bg-background/60 text-foreground hover:bg-muted/60"
+            onClick={() => setEditOpen(true)}
+            aria-label="Edit account"
+          >
+            <SquarePen className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="rounded-lg border-red-800/35 bg-background/60 text-red-800 hover:bg-red-800/10 dark:text-red-400 dark:border-red-800/50 dark:hover:bg-red-800/20"
+            onClick={() => setDeleteOpen(true)}
+            aria-label="Delete account"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+          </Button>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-3xl space-y-6 px-2 pt-6">
       <Link
         href="/dashboard/space_settings/accounts"
         className="hidden md:inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
@@ -744,62 +966,6 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
         Accounts
       </Link>
-
-      <div className="text-left">
-        <h1 className="text-2xl font-bold text-primary truncate">
-          {account?.name}
-        </h1>
-        <p className="text-sm text-muted-foreground capitalize">
-          {account?.accountCategory?.replace(/_/g, " ")}
-        </p>
-      </div>
-
-      <div className="px-4 py-3 text-center">
-        <div className="text-sm font-normal text-muted-foreground">
-          Total Balance
-        </div>
-        {needsBalanceConversion && balanceRateLoading ? (
-          <span
-            className={cn(
-              "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl text-muted-foreground",
-            )}
-          >
-            …
-          </span>
-        ) : (
-          <AnimatedCurrency
-            amount={balanceInSpaceCurrency}
-            currency={spaceCurrency}
-            className={cn(
-              "mt-1 block text-2xl font-semibold tracking-tight md:text-3xl",
-              getNumberColor(balanceInSpaceCurrency),
-            )}
-          />
-        )}
-      </div>
-
-      <div className="flex items-center justify-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="rounded-lg border-muted-foreground/25 text-foreground hover:bg-muted/60"
-          onClick={() => setEditOpen(true)}
-          aria-label="Edit account"
-        >
-          <SquarePen className="h-4 w-4" aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="rounded-lg border-red-800/35 text-red-800 hover:bg-red-800/10 dark:text-red-400 dark:border-red-800/50 dark:hover:bg-red-800/20"
-          onClick={() => setDeleteOpen(true)}
-          aria-label="Delete account"
-        >
-          <Trash2 className="h-4 w-4" aria-hidden />
-        </Button>
-      </div>
 
       <TransactionFiltersSheet
         open={filtersOpen}
@@ -860,7 +1026,11 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
 
         <ListView
           variant="activities"
-          isPending={accountsLoading || (queryEnabled && mainQuery.isFetching)}
+          isPending={
+            accountsLoading ||
+            !queryEnabled ||
+            (queryEnabled && mainQuery.isFetching)
+          }
           isError={mainQuery.isError}
           error={mainQuery.error as Error | null}
           isSuccess={mainQuery.isSuccess}
@@ -890,6 +1060,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         hasNextPage={adjustmentQuery.hasNextPage}
         suppressEmptyState
       />
+      </div>
 
       <AccountEditSheet
         account={account}
@@ -915,7 +1086,9 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         selectedScope={selectedDeleteScope}
         onScopeChange={handleDeleteScopeChange}
         operationType="delete"
-        inSeries={transactionToDelete?.inSeries ?? true}
+        inSeries={transactionAllowsSeriesDeleteScope(
+          transactionToDelete as IndexTransaction | null,
+        )}
         transactionType={transactionToDelete?.type}
       />
 
@@ -923,7 +1096,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
         account={account}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        onDeleted={() => router.push("/dashboard/space_settings/accounts")}
+        onDeleted={() => navigateDashboardClient("/dashboard/space_settings/accounts")}
       />
     </div>
   );

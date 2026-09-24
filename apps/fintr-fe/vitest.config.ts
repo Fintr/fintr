@@ -4,6 +4,14 @@ import tsconfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
+  resolve: {
+    alias: {
+      "@fintr/domain": new URL(
+        "../../packages/fintr-domain/src/index.ts",
+        import.meta.url,
+      ).pathname,
+    },
+  },
   test: {
     environment: "jsdom",
     globals: true,

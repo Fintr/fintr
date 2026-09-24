@@ -59,6 +59,25 @@ RSpec.describe Transactions::Operations::Transfers::PersistCurrencyConversion do
           expect(unwrap_result(result)).to eq(transfer)
           expect(upsert_op).not_to have_received(:call)
         end
+
+        it "destroys an existing currency_conversion when needs_conversion is false" do
+          ExchangeRates::CurrencyConversion.create!(
+            convertible: transfer,
+            space:,
+            original_amount_cents: 10000,
+            original_currency: "USD",
+            converted_amount_cents: 550000,
+            converted_currency: "PHP",
+            exchange_rate: 55.0,
+            source: "manual",
+            rate_timestamp: Time.current
+          )
+
+          result = operation.call(transfer:, conversion_data:)
+
+          expect(result).to be_success
+          expect(transfer.reload.currency_conversion).to be_nil
+        end
       end
 
       context "when needs_conversion is true" do

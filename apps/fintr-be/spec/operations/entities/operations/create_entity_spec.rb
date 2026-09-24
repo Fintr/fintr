@@ -44,6 +44,30 @@ RSpec.describe Entities::Operations::CreateEntity do
       end
     end
 
+    context 'when a client id is provided' do
+      let(:client_id) { SecureRandom.uuid }
+      let(:params_with_id) { valid_params.merge(id: client_id) }
+
+      it 'returns a successful result' do
+        result = operation.call(params_with_id)
+        expect(result).to be_success
+      end
+
+      it 'persists the client-provided id' do
+        result = operation.call(params_with_id)
+        expect(result.value!.id).to eq(client_id)
+      end
+    end
+
+    context 'when an invalid client id is provided' do
+      let(:params_with_invalid_id) { valid_params.merge(id: "local:offline-entity") }
+
+      it 'returns a failure result' do
+        result = operation.call(params_with_invalid_id)
+        expect(result).to be_failure
+      end
+    end
+
     context 'when validation fails' do
       let(:invalid_params) do
         {
@@ -79,6 +103,45 @@ RSpec.describe Entities::Operations::CreateEntity do
       it 'returns model validation errors' do
         result = operation.call(valid_params)
         expect(result.failure).to have_key(:errors)
+      end
+    end
+
+    context 'when a photo is provided' do
+      let(:photo) { fixture_file_upload('test.jpg', 'image/jpeg') }
+      let(:params_with_photo) { valid_params.merge(photo:) }
+
+      it 'returns a successful result' do
+        result = operation.call(params_with_photo)
+        expect(result).to be_success
+      end
+
+      it 'attaches the photo to the entity' do
+        entity = operation.call(params_with_photo).value!
+        expect(entity.photo).to be_attached
+      end
+    end
+
+    context 'when photo attach raises a storage error' do
+      let(:photo) { fixture_file_upload('test.jpg', 'image/jpeg') }
+      let(:params_with_photo) { valid_params.merge(photo:) }
+
+      before do
+        allow(Utils::ActiveStorage).to receive(:attach_file)
+          .and_raise(StandardError, "The AWS Access Key Id you provided does not exist")
+      end
+
+      it 'returns a failure instead of raising' do
+        result = operation.call(params_with_photo)
+        expect(result).to be_failure
+        expect(result.failure).to eq(
+          photo: "The AWS Access Key Id you provided does not exist"
+        )
+      end
+
+      it 'does not persist the entity' do
+        expect {
+          operation.call(params_with_photo)
+        }.not_to change(Entities::Entity, :count)
       end
     end
   end
@@ -214,13 +277,18 @@ RSpec.describe Entities::Operations::CreateEntity do
       it 'returns entity_type validation error' do
         result = operation.send(:validate, params: params_with_invalid_entity_type)
         expect(result.failure).to have_key(:entity_type)
-        expect(result.failure[:entity_type]).to include("must be one of: loan")
+        expect(result.failure[:entity_type]).to include("must be one of: loan, transaction")
       end
     end
 
     context 'when entity_type is valid' do
       it 'accepts loan as a valid entity type' do
         result = operation.send(:validate, params: valid_params)
+        expect(result).to be_success
+      end
+
+      it 'accepts transaction as a valid entity type' do
+        result = operation.send(:validate, params: valid_params.merge(entity_type: "transaction"))
         expect(result).to be_success
       end
     end

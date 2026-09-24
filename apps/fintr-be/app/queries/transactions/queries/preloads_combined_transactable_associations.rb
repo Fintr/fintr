@@ -22,6 +22,7 @@ module Transactions
             :subcategory,
             :account,
             :entity,
+            :tags,
             { loan: :entity },
             { files_attachments: :blob }
           ]

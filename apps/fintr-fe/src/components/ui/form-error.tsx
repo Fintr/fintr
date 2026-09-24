@@ -1,4 +1,9 @@
-import React from 'react';
+import React from "react";
+import { cn } from "@/lib/utils";
+import {
+  formFieldErrorSurfaceClassName,
+  formFieldErrorTextClassName,
+} from "@/components/ui/form-control-surface";
 
 interface FormErrorProps {
   message?: string;
@@ -12,22 +17,23 @@ interface FormErrorProps {
  * @param children - Alternative to message, can provide formatted content
  * @param className - Additional classes to apply to the container
  */
-const FormError: React.FC<FormErrorProps> = ({ message, children, className = '' }) => {
+const FormError: React.FC<FormErrorProps> = ({
+  message,
+  children,
+  className,
+}) => {
   const errorMessage = children || message;
-  
+
   if (!errorMessage) return null;
-  
-  const containerClasses = className.includes('text-red-900') 
-    ? className.replace('text-red-900', '').trim() 
-    : className;
-  
+
   return (
-    <div className={`flex items-center mt-1.5 mb-1 ${containerClasses} bg-red-100 rounded-md p-2`}>
+    <div className={cn(formFieldErrorSurfaceClassName, className)}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
-        className="h-4 w-4 mr-1 flex-shrink-0"
+        className={cn("mr-1 h-4 w-4 shrink-0", formFieldErrorTextClassName)}
+        aria-hidden
       >
         <path
           fillRule="evenodd"
@@ -35,10 +41,9 @@ const FormError: React.FC<FormErrorProps> = ({ message, children, className = ''
           clipRule="evenodd"
         />
       </svg>
-      <p className={`text-xs font-medium ${className.includes('text-red-900') ? 'text-red-900' : 'text-red-800'}`}>{errorMessage}</p>
+      <p className={formFieldErrorTextClassName}>{errorMessage}</p>
     </div>
   );
 };
 
-export { FormError, type FormErrorProps }; 
- 
+export { FormError, type FormErrorProps };

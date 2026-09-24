@@ -25,8 +25,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import { formatCurrency, numberFormatting } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
-import { useAtomValue } from "jotai";
-import { expenseCategoryOptionsAtom } from "@/atoms/dashboardAtoms";
+import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { AxiosInstance } from "axios";
 import GridPicker from "@/components/dashboard/forms/GridPicker";
 import { filterCategoryOptionsWithoutBudgets } from "@/services/budgets/queries";
@@ -73,7 +72,7 @@ export function NewBudgetDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [allocationMessage, setAllocationMessage] = useState<string | null>(null);
 
-  const expenseCategoryOptions = useAtomValue(expenseCategoryOptionsAtom);
+  const { expenseCategoryOptions } = useTransactionCategories();
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
 

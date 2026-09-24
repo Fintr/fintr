@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ActivitiesPage,
@@ -9,7 +9,7 @@ import {
   TransactionsPage,
 } from "@/types/transactionTypes";
 import { formatCurrency, truncateText } from "@/lib/utils";
-import { FileText, Calendar, Tag, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Image, Landmark } from "lucide-react";
+import { Image, Repeat } from "lucide-react";
 import { InfiniteData } from "@tanstack/react-query";
 import {
   Popover,
@@ -19,8 +19,14 @@ import {
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { fetchTransactionById } from "@/services/transactions/queries";
-import { fetchTransferById } from "@/services/transactions/transfers/queries";
+import {
+  TRANSACTION_DAY_DATA_ATTR,
+  useAnchorTransactionsListToToday,
+} from "@/hooks/useAnchorTransactionsListToToday";
+import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
+import { enrichLedgerTransactionsForDisplay } from "@/services/transactions/resolve-delete-scope";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { usePreferLocalTransactionReads } from "@/hooks/useOfflineReadMode";
 import { toast } from "sonner";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn } from "@/lib/utils";
@@ -31,6 +37,7 @@ import {
 import {
   formatTransactionDayDividerDate,
   formatTransactionRowDate,
+  getLocalIsoDateKey,
   getTransactionDayGroupKey,
 } from "@/utils/dateUtils";
 import {
@@ -39,7 +46,23 @@ import {
   activityPresentsAsTransfer,
   activityRecordId,
   activityRowIsEditable,
+  activityShowsCalculatedIndicator,
 } from "@/utils/activityDisplay";
+import {
+  loanPaymentContactLine,
+  transactionEntityLabel,
+  transactionRowTitle,
+} from "@/utils/transactionDescription";
+import { TransactionRowTypeIcon } from "@/components/dashboard/tabs/transactions/transaction-row-type-icon";
+import { TagChip } from "@/components/ui/tag-chip";
+import { buildLoanDetailHref } from "@/utils/detailHrefs";
+import { pushDashboardDetail } from "@/utils/detailSearchParam";
+import {
+  isRecurringRow,
+  repeatIntervalLabel,
+  resolveRowRepeatInterval,
+  filterRowsToSeriesRepresentatives,
+} from "@/utils/recurringSchedule";
 
 interface ListViewProps {
   variant?: "transactions" | "activities";
@@ -55,6 +78,14 @@ interface ListViewProps {
   loadMoreRef: React.RefObject<HTMLDivElement>;
   /** When true, row amounts use booked (ledger) currency from the API instead of space-normalized. */
   showBookedCurrencies?: boolean;
+  /** Land on today after reload (future days stay above). */
+  anchorToToday?: boolean;
+  queryStartDate?: string;
+  queryEndDate?: string;
+  fetchNextPage?: () => void;
+  /** When true, collapse recurring/installment occurrences to one row per series. */
+  collapseToRecurringRules?: boolean;
+  anchorResetKey?: string;
 }
 
 function flattenRows(
@@ -92,49 +123,94 @@ export function ListView({
   onRowDelete,
   loadMoreRef,
   showBookedCurrencies = false,
+  anchorToToday = false,
+  queryStartDate = "",
+  queryEndDate = "",
+  fetchNextPage,
+  collapseToRecurringRules = false,
+  anchorResetKey = "",
 }: ListViewProps) {
   const router = useRouter();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<Array<{ url: string; filename?: string; contentType?: string; byteSize?: number }>>([]);
+
+  const dayKeysNewestFirst = useMemo(() => {
+    if (!data?.pages?.length) return [] as string[];
+
+    const keys: string[] = [];
+    let lastKey: string | null = null;
+    for (const row of flattenRows(data, variant)) {
+      const dayKey = getLocalIsoDateKey(row.date);
+      if (dayKey !== lastKey) {
+        keys.push(dayKey);
+        lastKey = dayKey;
+      }
+    }
+    return keys;
+  }, [data, variant]);
+
+  useAnchorTransactionsListToToday({
+    enabled: anchorToToday && Boolean(isSuccess || data?.pages?.length),
+    startDate: queryStartDate,
+    endDate: queryEndDate,
+    dayKeysNewestFirst,
+    hasNextPage: Boolean(hasNextPage),
+    isFetchingNextPage,
+    fetchNextPage,
+    resetKey: anchorResetKey,
+  });
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const lightboxRevokeRef = useRef<(() => void) | null>(null);
   const [hoveredCalculatedId, setHoveredCalculatedId] = useState<string | null>(null);
   const { api } = useAuthApi();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
+  const preferLocal = usePreferLocalTransactionReads(spaceCode);
   
   // Get space context for currency
   const { currentSpace } = useSpaceContext(api);
   const spaceCurrency = currentSpace?.currency ?? "PHP";
+  const hasLoadedPages = Boolean(data?.pages?.length);
+
+  const handleCloseLightbox = () => {
+    lightboxRevokeRef.current?.();
+    lightboxRevokeRef.current = null;
+    setLightboxOpen(false);
+  };
 
   const handleImageClick = async (row: IndexTransaction | IndexActivity) => {
-    if (!api) return;
+    if (!preferLocal && !api) return;
 
     try {
-      let transactionData;
-
       const recordId =
         variant === "activities" && "activitableId" in row
           ? (row.activitableId ?? row.id)
           : row.id;
 
-      if (row.type === CombinedTransactionTypeEnum.TRANSFER) {
-        transactionData = await fetchTransferById(api, recordId);
-      } else {
-        transactionData = await fetchTransactionById(api, recordId);
-      }
+      lightboxRevokeRef.current?.();
+      lightboxRevokeRef.current = null;
 
-      if (transactionData?.files && Array.isArray(transactionData.files) && transactionData.files.length > 0) {
-        const images = transactionData.files.map((file: any) => ({
-          url: file.url,
-          filename: file.filename,
-          contentType: file.contentType,
-          byteSize: file.byteSize,
-        }));
-        
-        setLightboxImages(images);
+      const result = await resolveAttachmentsForTransaction({
+        api,
+        spaceId: spaceCode,
+        transactionId: recordId,
+        type: row.type as CombinedTransactionTypeEnum,
+        listRow: row as IndexTransaction,
+        preferLocal,
+      });
+
+      if (result.images.length > 0) {
+        lightboxRevokeRef.current = result.revoke;
+        setLightboxImages(result.images);
         setLightboxIndex(0);
         setLightboxOpen(true);
-      } else {
-        toast.error("No image found for this transaction.");
+        return;
       }
+
+      toast.error(
+        preferLocal
+          ? "Image not available offline."
+          : "No image found for this transaction.",
+      );
     } catch (error) {
       console.error("Error fetching transaction image:", error);
       toast.error("Failed to load transaction image.");
@@ -143,15 +219,22 @@ export function ListView({
 
   return (
     <div className="space-y-3 rounded-lg overflow-hidden">
-      {isPending && (
+      {isPending && !hasLoadedPages && (
         <div className="text-center py-4">
           <LoadingSpinner size="medium" />
         </div>
       )}
-      {isError && error && (
-        <div className="text-red-900 text-center py-4">Error: {error.message}</div>
+      {isError && !hasLoadedPages && (
+        <div className="text-red-900 text-center py-4">
+          Error: {error?.message ?? "Failed to load transactions"}
+        </div>
       )}
-      {isSuccess && data && (
+      {!isPending && !isError && !hasLoadedPages && (
+        <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg bg-muted/20">
+          No activity for this account in the selected range.
+        </p>
+      )}
+      {hasLoadedPages && data && (
         <>
           {(() => {
             let lastDisplayedDate: string | null = null;
@@ -161,6 +244,10 @@ export function ListView({
             const uniqueRows = allRows.filter((row, index, array) =>
               array.findIndex((r) => r.id === row.id) === index,
             );
+            const enrichedRows = enrichLedgerTransactionsForDisplay(uniqueRows);
+            const displayRows = collapseToRecurringRules
+              ? filterRowsToSeriesRepresentatives(enrichedRows)
+              : enrichedRows;
 
             if (uniqueRows.length === 0) {
               return (
@@ -170,7 +257,6 @@ export function ListView({
               );
             }
 
-            // Daily net (income - expense) in space-normalized amounts for a consistent subtotal bar.
             const dailyTotals: Record<string, number> = {};
             const dailyCurrencies: Record<string, Set<string>> = {};
             uniqueRows.forEach((row) => {
@@ -190,9 +276,13 @@ export function ListView({
               }
             });
 
-            return uniqueRows.map((row: IndexTransaction | IndexActivity, idx: number) => {
+            const renderTransactionRow = (
+              row: IndexTransaction | IndexActivity,
+              idx: number,
+            ) => {
               const transactionDate = new Date(row.date);
               const currentDate = getTransactionDayGroupKey(transactionDate);
+              const currentIsoDay = getLocalIsoDateKey(row.date);
               let showDivider = false;
 
               if (currentDate !== lastDisplayedDate) {
@@ -213,6 +303,7 @@ export function ListView({
                   spaceCurrency,
                   showBookedCurrencies,
                 );
+              const amountToShow = rowAmount;
 
               const subcategoryName = row.subcategoryName?.trim();
               const hasSubcategory = Boolean(subcategoryName);
@@ -220,6 +311,33 @@ export function ListView({
                 activityCategoryLine(row as IndexActivity);
               const presentsAsIncome = activityPresentsAsIncome(row);
               const presentsAsTransfer = activityPresentsAsTransfer(row);
+              const isLoanPayment =
+                row.type === CombinedTransactionTypeEnum.LOAN_PAYMENT;
+              const hasDescription = Boolean(row.description?.trim());
+              const rowTitle = isLoanPayment
+                ? categoryLine || "Loan payment"
+                : transactionRowTitle({
+                    description: row.description,
+                    fallback: categoryLine,
+                  });
+              const merchantLine = transactionEntityLabel(row.entityName);
+              const loanContactLine = isLoanPayment
+                ? loanPaymentContactLine(row)
+                : "";
+              const showMerchantCategoryRow = isLoanPayment
+                ? Boolean(loanContactLine)
+                : Boolean(merchantLine);
+              const showSubcategoryOnOwnRow =
+                hasSubcategory && hasDescription && !isLoanPayment;
+              const showCategoryOnDateRow =
+                !isLoanPayment &&
+                Boolean(categoryLine) &&
+                !hasSubcategory &&
+                !(showMerchantCategoryRow && hasDescription);
+              const repeatInterval = resolveRowRepeatInterval(row);
+              const recurringLabel =
+                repeatIntervalLabel(repeatInterval) || "Recurring";
+              const showRecurringIndicator = isRecurringRow(row);
 
               const accountLine =
                 row.fromAccountName && row.toAccountName
@@ -227,11 +345,12 @@ export function ListView({
                   : row.fromAccountName || row.toAccountName || "";
 
               return (
-                <React.Fragment key={row.id}>
+                <React.Fragment key={`${row.id}-${idx}`}>
                   {showDivider && (
                     <div
                       key={`divider-${currentDate}-${idx}`}
-                      className="flex items-center my-5"
+                      className="flex items-center my-5 scroll-mt-3"
+                      {...{ [TRANSACTION_DAY_DATA_ATTR]: currentIsoDay }}
                     >
                       <div className="border-t border-gray-300 dark:border-border" style={{width: '2rem'}} />
                       <span className="text-xs font-semibold text-primary bg-background px-3">
@@ -247,11 +366,10 @@ export function ListView({
                       <div className="border-t border-gray-300 dark:border-border" style={{width: '2rem'}} />
                     </div>
                   )}
-                  <div 
+                  <div
                     className={cn(
-                      "transaction-item relative flex justify-between p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer dark:bg-card dark:hover:bg-accent/50",
-                      "items-stretch",
-                      hasSubcategory
+                      "transaction-item relative flex items-center gap-3 p-3 bg-white rounded hover:bg-gray-100 transition-colors cursor-pointer dark:bg-card dark:hover:bg-accent/50",
+                      showSubcategoryOnOwnRow
                         ? "min-h-[78px] md:min-h-[60px]"
                         : "min-h-[60px]",
                     )}
@@ -261,23 +379,19 @@ export function ListView({
                         row.isLoanActivity &&
                         row.loanId
                       ) {
-                        router.push(
-                          `/dashboard/loans/detail?loanId=${row.loanId}`,
+                        pushDashboardDetail(
+                          router,
+                          buildLoanDetailHref(row.loanId),
                         );
                         return;
                       }
 
-                      if (
-                        variant === "activities"
-                          ? activityRowIsEditable(row as IndexActivity)
-                          : activityRowIsEditable(row as IndexActivity)
-                      ) {
+                      if (activityRowIsEditable(row as IndexActivity)) {
                         onRowEdit(row);
                       }
                     }}
                   >
-                    {/* Calculated indicator - triangle in upper right corner */}
-                    {row.calculated && (
+                    {activityShowsCalculatedIndicator(row) && (
                       <Popover
                         open={hoveredCalculatedId === row.id}
                         onOpenChange={(open) => {
@@ -308,10 +422,9 @@ export function ListView({
                         </PopoverContent>
                       </Popover>
                     )}
-                    {/* Color indicator */}
                     <div
                       className={cn(
-                        "w-1 shrink-0 self-center rounded mr-3 h-[90%] min-h-12",
+                        "w-1 shrink-0 self-center rounded h-[90%] min-h-12",
                         presentsAsIncome
                           ? "bg-teal-600"
                           : presentsAsTransfer
@@ -319,16 +432,15 @@ export function ListView({
                             : "bg-red-900",
                       )}
                     />
-                    
-                    {/* Main content */}
+
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3 md:gap-4 min-w-0">
                         <div className="flex min-w-0 flex-1 items-start gap-1 md:gap-2">
                           <h4
                             className="line-clamp-2 min-w-0 flex-1 break-words font-medium text-sm text-primary dark:text-primary-dark-mode"
-                            title={row.description}
+                            title={rowTitle}
                           >
-                            {row.description}
+                            {rowTitle}
                           </h4>
                           {row.hasImage && (
                             <button
@@ -344,56 +456,72 @@ export function ListView({
                             </button>
                           )}
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
+                        {showRecurringIndicator && (
+                          <span
+                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center self-center rounded text-primary dark:text-primary-dark-mode"
+                            title={recurringLabel}
+                            aria-label={`Repeats ${recurringLabel}`}
+                          >
+                            <Repeat className="h-3 w-3" aria-hidden />
+                          </span>
+                        )}
+                        <div className="flex shrink-0 items-center gap-1.5">
                           <div
-                                  className={`font-semibold text-sm ${
+                            className={`font-semibold text-sm ${
                               presentsAsIncome
                                 ? "text-teal-600 dark:text-teal-500"
-                                      : presentsAsTransfer
-                                ? "text-blue-900 dark:text-blue-400"
-                                : "text-red-900 dark:text-red-700"
+                                : presentsAsTransfer
+                                  ? "text-blue-900 dark:text-blue-400"
+                                  : "text-red-900 dark:text-red-700"
                             }`}
                           >
-                              {formatIndexTransactionListAmount(
-                                rowAmount,
-                                rowCurrencyCode,
-                                showBookedCurrencies,
-                              )}
+                            {formatIndexTransactionListAmount(
+                              amountToShow,
+                              rowCurrencyCode,
+                              showBookedCurrencies,
+                            )}
                           </div>
-                          <span
-                                  className={`px-1 md:px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 gap-1 ${
-                              presentsAsIncome
-                                      ? "bg-teal-100/50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-500"
-                                      : presentsAsTransfer
-                                      ? "bg-blue-100/50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-400"
-                                      : "bg-red-100/50 text-red-900 dark:bg-red-950/40 dark:text-red-700"
-                            }`}
-                          >
-                                  {presentsAsIncome && <ArrowUpRight className="h-3 w-3 inline" />}
-                                  {!presentsAsIncome && !presentsAsTransfer && <ArrowDownLeft className="h-3 w-3 inline" />}
-                                  {presentsAsTransfer && <ArrowLeftRight className="h-3 w-3 inline" />}
-                                  {(row.type === ActivitiesTypeEnum.LOAN_DISBURSEMENT ||
-                                    row.type === ActivitiesTypeEnum.LOAN_PAYMENT ||
-                                    row.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT ||
-                                    row.type === CombinedTransactionTypeEnum.LOAN_PAYMENT) && (
-                                    <Landmark className="h-3 w-3 inline" />
-                                  )}
-                            <span className="hidden md:inline">
-                              {row.type === ActivitiesTypeEnum.LOAN_DISBURSEMENT ||
-                              row.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT
-                                ? "loan"
-                                : row.type === ActivitiesTypeEnum.LOAN_PAYMENT ||
-                                    row.type === CombinedTransactionTypeEnum.LOAN_PAYMENT
-                                  ? "payment"
-                                  : row.type}
-                            </span>
-                          </span>
+                          <TransactionRowTypeIcon row={row} size="sm" />
                         </div>
                       </div>
-                      
-                      {hasSubcategory && (
+
+                      {showMerchantCategoryRow && (
+                        <div className="mt-0.5 flex min-w-0 items-center text-xs text-gray-600 dark:text-muted-foreground">
+                          {isLoanPayment ? (
+                            <span className="min-w-0 truncate" title={loanContactLine}>
+                              {loanContactLine}
+                            </span>
+                          ) : hasDescription ? (
+                            <>
+                              <span
+                                className="min-w-0 truncate"
+                                title={merchantLine}
+                              >
+                                {merchantLine}
+                              </span>
+                              {categoryLine && !hasSubcategory && (
+                                <span
+                                  className="ml-2 min-w-0 truncate md:ml-4"
+                                  title={categoryLine}
+                                >
+                                  {categoryLine}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span
+                              className="min-w-0 truncate"
+                              title={merchantLine}
+                            >
+                              {merchantLine}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {showSubcategoryOnOwnRow && (
                         <p
-                          className="md:hidden mt-1 text-xs text-gray-600 truncate dark:text-muted-foreground"
+                          className="mt-0.5 truncate text-xs text-gray-600 dark:text-muted-foreground"
                           title={categoryLine}
                         >
                           {categoryLine}
@@ -405,13 +533,15 @@ export function ListView({
                           <span className="flex-shrink-0 whitespace-nowrap">
                             {formatTransactionRowDate(row.date)}
                           </span>
-                          <span
-                            className="hidden md:block truncate ml-4"
-                            title={categoryLine}
-                          >
-                            {categoryLine}
-                          </span>
-                          {!hasSubcategory && (
+                          {showCategoryOnDateRow && (
+                            <span
+                              className="hidden md:block truncate ml-4"
+                              title={categoryLine}
+                            >
+                              {categoryLine}
+                            </span>
+                          )}
+                          {showCategoryOnDateRow && (
                             <span
                               className="md:hidden truncate ml-2 min-w-0"
                               title={categoryLine}
@@ -437,20 +567,36 @@ export function ListView({
                           )}
                         </div>
                       </div>
+
+                      {row.tags && row.tags.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {row.tags.slice(0, 3).map((tag) => (
+                            <TagChip key={tag.id} tag={tag} />
+                          ))}
+                          {row.tags.length > 3 && (
+                            <span className="text-[11px] text-muted-foreground">
+                              +{row.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </React.Fragment>
               );
-            });
+            };
+
+            return displayRows.map((row, idx) => renderTransactionRow(row, idx));
           })()}
-          <div ref={loadMoreRef} style={{ height: "10px" }} />
+          {hasNextPage && (
+            <div
+              ref={loadMoreRef}
+              aria-hidden
+              className="h-8 w-full"
+            />
+          )}
         </>
       )}
-      {isSuccess && (!data || rowCount(data, variant) === 0) && (
-          <div className="text-center py-8 text-gray-500">
-            {variant === "activities" ? "No activity found" : "No transactions found"}
-          </div>
-        )}
       {isFetchingNextPage && (
         <div className="text-center py-2 text-sm">
           <LoadingSpinner size="small" />
@@ -469,7 +615,7 @@ export function ListView({
         images={lightboxImages}
         isOpen={lightboxOpen}
         initialIndex={lightboxIndex}
-        onClose={() => setLightboxOpen(false)}
+        onClose={handleCloseLightbox}
       />
     </div>
   );

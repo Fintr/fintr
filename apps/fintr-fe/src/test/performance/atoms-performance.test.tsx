@@ -6,8 +6,6 @@ import {
   dashboardDataAtom,
   categoryOptionsAtom,
   accountOptionsAtom,
-  expenseCategoryOptionsAtom,
-  incomeCategoryOptionsAtom,
   isAdminAtom
 } from '@/atoms/dashboardAtoms';
 import {

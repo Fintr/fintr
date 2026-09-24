@@ -7,7 +7,6 @@ module Finance
     field :name
     field :slug
     field :description
-    field :token_limit, name: :tokenLimit
     field :price_cents, name: :priceCents
     field :price_currency, name: :priceCurrency
     field :interval

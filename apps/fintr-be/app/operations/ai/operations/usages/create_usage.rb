@@ -9,7 +9,6 @@ module Ai
           params do
             required(:user_id).value(:string)
             required(:space_id).value(:string)
-            optional(:tokens_used).maybe(:integer, gt?: 0)
             optional(:ai_type).maybe(:string)
           end
         end
@@ -27,7 +26,7 @@ module Ai
           user = find_user(params:)
           space = find_space(params:)
           can_use_ai = validate_can_use_ai(user:, space:, params:)
-          return Dry::Monads::Failure("Space token limit reached") unless can_use_ai
+          return Dry::Monads::Failure(can_use_ai) unless can_use_ai == true
 
           usage = create_usage(params:)
           result = block.call
@@ -49,19 +48,28 @@ module Ai
         end
 
         def validate_can_use_ai(user:, space:, params:)
-          return true if user.has_role?(:admin)
+          if params[:ai_type] == "ai_chat"
+            allowance = EnforceMonthlyChatLimit.new.call(user_id: user.id)
+            return true if allowance.success?
 
-          space.can_ai?
+            return allowance.failure[:message]
+          end
+
+          allowed = Finance::ProGate.require!(
+            user_id: user.id,
+            space_id: space.id,
+          ).success?
+          return true if allowed
+
+          "Fintr Pro is required for this feature."
         end
 
         def create_usage(params:)
-          usage = Ai::Usage.create(
+          Ai::Usage.create(
             user_id: params[:user_id],
             space_id: params[:space_id],
             ai_type: params[:ai_type] || "pure_ai_ocr",
-            tokens_used: params[:tokens_used] || 1,
           )
-          usage
         end
 
         def transform_result(result, usage:, time_start:)

@@ -46,6 +46,24 @@ module Utils
         format = "%B %d, %Y"
         "#{usage_period.begin.strftime(format)} - #{usage_period.end.strftime(format)}"
       end
+
+      # Repeat schedules materialize one month ahead; installments materialize
+      # through the final payment date (parent date + period - 1 months).
+      def future_series_end_date(record:, reference_date: Date.current)
+        if record.respond_to?(:installment?) && record.installment?
+          root = record
+          if record.respond_to?(:root_parent)
+            parent = record.root_parent
+            root = parent if parent
+          end
+          period = root.installment_period.to_i
+          return reference_date + 1.month if period <= 0
+
+          root.date.to_date + (period - 1).months
+        else
+          reference_date + 1.month
+        end
+      end
     end
   end
 end

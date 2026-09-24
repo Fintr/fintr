@@ -117,7 +117,7 @@ module Transactions
             fee_transaction.assign_attributes(
               amount: transfer.transaction_cost,
               date: transfer.date,
-              description: "Transfer fee for: #{transfer.description || 'Transfer'}"
+              description: transfer.fee_transaction_description
             )
             Transactions::Operations::Accounts::UpdateCalculateBalance.new.call(transaction: fee_transaction)
             fee_transaction.save!

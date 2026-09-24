@@ -36,6 +36,14 @@ module Loans
       field :adjusts_account_balance do |record|
         record.adjusts_account_balance
       end
+
+      field :has_currency_conversion do |record|
+        record.has_currency_conversion?
+      end
+
+      association :currency_conversion,
+        blueprint: CurrencyConversionSerializer,
+        if: ->(_field_name, loan_payment, _options) { loan_payment.currency_conversion.present? }
     end
   end
 end

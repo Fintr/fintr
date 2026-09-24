@@ -80,6 +80,10 @@ export interface ComboBoxProps {
    */
   showAllOnFocus?: boolean;
   /**
+   * Custom renderer when the list is open with no query and no options (e.g. first-time empty catalog).
+   */
+  renderEmptyList?: (openCreate: () => void) => React.ReactNode;
+  /**
    * Custom renderer for the "not found" state.
    * Receives the current search value and a function to select the value and close the popover.
    */
@@ -111,6 +115,7 @@ export const ComboBox = ({
   disabled = false,
   showAllOnFocus = true,
   renderNotFound,
+  renderEmptyList,
   getDisplayLabel,
   maxVisibleOptions,
 }: ComboBoxProps) => {
@@ -120,6 +125,7 @@ export const ComboBox = ({
   const [options, setOptions] = useState<ComboBoxItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const fetchRequestIdRef = useRef(0);
 
   // Initialize searchValue from value prop on mount
   useEffect(() => {
@@ -159,21 +165,38 @@ export const ComboBox = ({
   // For backend filtering
   useEffect(() => {
     if (filterType !== "backend" || !fetchOptions) return;
-    
+
+    let cancelled = false;
+    const requestId = ++fetchRequestIdRef.current;
+
+    const applyFetchResult = (result: ComboBoxItem[]) => {
+      if (cancelled || requestId !== fetchRequestIdRef.current) return;
+      setOptions(result);
+    };
+
+    const finishFetch = () => {
+      if (cancelled || requestId !== fetchRequestIdRef.current) return;
+      setLoading(false);
+    };
+
     if (showAllOnFocus && open && searchValue.length === 0) {
       setLoading(true);
-      fetchOptions('')
-        .then(result => setOptions(result))
-        .catch(error => {
+      fetchOptions("")
+        .then(applyFetchResult)
+        .catch((error) => {
           console.error("Error fetching initial options:", error);
-          setOptions([]);
+          applyFetchResult([]);
         })
-        .finally(() => setLoading(false));
-      return;
+        .finally(finishFetch);
+
+      return () => {
+        cancelled = true;
+      };
     }
-    
+
     if (searchValue.length < minSearchLength && !(showAllOnFocus && open)) {
       setOptions([]);
+      setLoading(false);
       return;
     }
 
@@ -181,16 +204,17 @@ export const ComboBox = ({
       setLoading(true);
       try {
         const result = await fetchOptions(searchValue);
-        setOptions(result);
+        applyFetchResult(result);
       } catch (error) {
         console.error("Error fetching options:", error);
-        setOptions([]);
+        applyFetchResult([]);
       } finally {
-        setLoading(false);
+        finishFetch();
       }
     }, debounceTime);
 
     return () => {
+      cancelled = true;
       clearTimeout(newTimer);
     };
   }, [searchValue, fetchOptions, filterType, minSearchLength, debounceTime, open, showAllOnFocus]);
@@ -210,6 +234,9 @@ export const ComboBox = ({
     maxVisibleOptions != null
       ? displayOptions.slice(0, maxVisibleOptions)
       : displayOptions;
+
+  const hasVisibleOptions = visibleOptions.length > 0;
+  const showLoadingPlaceholder = loading && !hasVisibleOptions;
 
   // Format items for display
   const formatItem = (item: ComboBoxItem): { display: string; value: string } => {
@@ -245,41 +272,56 @@ export const ComboBox = ({
         disabled={disabled}
         onClick={() => setOpen(true)}
       />
-      <Ariakit.ComboboxPopover 
-        gutter={8} 
-        sameWidth 
+      <Ariakit.ComboboxPopover
+        gutter={8}
+        sameWidth
+        portal
+        fixed
         className={cn(
-          "relative z-[100] max-h-96 min-w-[8rem] overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 py-1",
+          "z-[200] max-h-96 min-w-[8rem] overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 py-1",
           popoverClassName
         )}
       >
-        {loading ? (
-          <div className="p-2 text-center text-gray-300">Loading...</div>
-        ) : visibleOptions && visibleOptions.length > 0 ? (
-          visibleOptions.map((item) => {
-            const { display, value: itemValue } = formatItem(item);
-            return (
-              <Ariakit.ComboboxItem
-                key={itemValue}
-                value={itemValue}
-                className={cn(
-                  "relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                  itemClassName
-                )}
-                onSelect={() => {
-                  setOpen(false);
-                }}
-              >
-                <span className="w-full hover:bg-accent px-2 py-1 rounded-sm">
-                  {display}
-                </span>
-              </Ariakit.ComboboxItem>
-            );
-          })
+        {showLoadingPlaceholder ? (
+          <div className="p-3 text-center text-sm text-muted-foreground">
+            Loading…
+          </div>
+        ) : hasVisibleOptions ? (
+          <>
+            {loading ? (
+              <div className="border-b px-3 py-1.5 text-xs text-muted-foreground">
+                Searching…
+              </div>
+            ) : null}
+            {visibleOptions.map((item) => {
+              const { display, value: itemValue } = formatItem(item);
+              return (
+                <Ariakit.ComboboxItem
+                  key={itemValue}
+                  value={itemValue}
+                  className={cn(
+                    "relative flex w-full cursor-default select-none items-center rounded-sm px-1 text-sm outline-none focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                    itemClassName
+                  )}
+                  onSelect={() => {
+                    setOpen(false);
+                  }}
+                >
+                  <span className="w-full hover:bg-accent px-2 py-1 rounded-sm">
+                    {display}
+                  </span>
+                </Ariakit.ComboboxItem>
+              );
+            })}
+          </>
         ) : ((searchValue.length >= minSearchLength && !(showAllOnFocus && open && searchValue.length === 0 && filterType === "frontend")) ||
           (showAllOnFocus && open && searchValue.length === 0)) &&
         !loading ? (
-          renderNotFound && searchValue.length > 0 ? (
+          showAllOnFocus && open && searchValue.length === 0 && visibleOptions.length === 0 && renderEmptyList ? (
+            renderEmptyList(() => {
+              setOpen(false);
+            })
+          ) : renderNotFound && searchValue.length > 0 ? (
             renderNotFound(searchValue, () => {
               if (onChange) {
                 onChange(searchValue);

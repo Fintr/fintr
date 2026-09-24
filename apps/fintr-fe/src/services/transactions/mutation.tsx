@@ -12,11 +12,13 @@ export interface CreateTransactionType {
   categoryId?: string;
   subcategoryId?: string;
   accountName: string;
+  accountId?: string;
   date: string;
   scheduleType: ScheduleTypeEnum;
   // Optional fields that depend on scheduleType
   repeatInterval?: string;
   installmentPeriod?: number;
+  installmentTotal?: number;
   // File data
   file?: File;
   // Receipt draft ID for linking receipt processing to transaction creation
@@ -26,6 +28,16 @@ export interface CreateTransactionType {
   original_currency?: string;
   exchange_rate?: number;
   exchange_rate_source?: "auto" | "manual" | "recent";
+  /** Client UUID for idempotent creates (offline outbox / retries). */
+  clientMutationId?: string;
+  /** Optional counterparty (merchant, payee, payer, etc.). */
+  entityName?: string;
+  entityId?: string;
+  /** Raw merchant text from receipt OCR for learning merchant aliases. */
+  receiptMerchantDetected?: string;
+  tagIds?: string[];
+  /** Resolved tag objects for optimistic list rows (client-only). */
+  tags?: import("@/types/transactionTagTypes").TransactionTag[];
 }
 
 // Type for updating a transaction
@@ -33,6 +45,8 @@ export interface UpdateTransactionType extends CreateTransactionType {
   id: string;
   updateScope?: UpdateScopeEnum;
   removeFile?: boolean;
+  installmentRevisionAnchor?: "total" | "monthly" | "explicit";
+  seriesParentDate?: string;
 }
 
 // Type for deleting a transaction

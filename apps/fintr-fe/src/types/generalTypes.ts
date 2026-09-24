@@ -6,4 +6,6 @@ export interface OptionType {
 /** Account option from dashboard; includes currency for exchange-rate flows */
 export interface AccountOptionWithCurrency extends OptionType {
   currency?: string;
+  accountCategory?: string;
+  balance?: string | number;
 }

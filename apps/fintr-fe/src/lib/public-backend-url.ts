@@ -77,3 +77,31 @@ export const getPublicBackendUrl = (): string | undefined => {
 
   return raw;
 };
+
+/**
+ * Base URL for ActionCable WebSockets. Must hit Rails directly — Next.js
+ * rewrites only proxy `/api/v1/*` and do not upgrade `/cable` WebSockets.
+ * Still remaps emulator/device localhost like {@link getPublicBackendUrl}.
+ */
+export const getActionCableBackendUrl = (): string => {
+  const raw =
+    process.env.NEXT_PUBLIC_BE_URL?.replace(/\/$/, "") ||
+    "http://localhost:3001";
+
+  if (typeof window === "undefined") {
+    return raw;
+  }
+
+  if (isAndroidNativeFintrApp()) {
+    return remapLocalhostHostname(raw, "10.0.2.2") ?? raw;
+  }
+
+  if (hasFintrNativeAppUserAgent()) {
+    const pageHost = window.location.hostname;
+    if (!LOCAL_HOSTNAMES.has(pageHost)) {
+      return remapLocalhostHostname(raw, pageHost) ?? raw;
+    }
+  }
+
+  return raw;
+};

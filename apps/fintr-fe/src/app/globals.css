@@ -241,9 +241,64 @@ body > .profiler-results {
     @apply py-10 md:py-12;
   }
 
+  .insight-rail-peek {
+    scrollbar-width: thin;
+  }
+
+  .insight-rail-peek::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .insight-rail-peek::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-primary) 35%, transparent);
+  }
+
+  .insight-metric-carousel {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .insight-metric-carousel::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    .insight-rail-peek {
+      mask-image: linear-gradient(
+        to right,
+        black 0%,
+        black calc(100% - 2.5rem),
+        transparent 100%
+      );
+    }
+  }
+
   .pt-safe-top {
     /* Default: use native safe-area for iOS and mobile browsers with minimum fallback */
     padding-top: max(env(safe-area-inset-top, 0px), 0px);
+  }
+
+  /* Home hero: primary chrome through status bar + overscroll (mobile only). */
+  @media (max-width: 767px) {
+    html.fintr-home-screen {
+      overscroll-behavior-y: none;
+      background-color: var(--primary);
+    }
+
+    html.fintr-home-screen body {
+      background-color: var(--primary);
+    }
+
+    /* Insights ledger header: primary overscroll, content on background. */
+    html.fintr-insights-screen {
+      overscroll-behavior-y: none;
+      background-color: var(--primary);
+    }
+
+    html.fintr-insights-screen body {
+      background-color: var(--background);
+    }
   }
 
   .pb-safe-bottom {
@@ -264,9 +319,10 @@ body > .profiler-results {
     );
   }
 
-  /* Spacer below fixed mobile header so content doesn't sit under it */
+  /* Spacer below fixed mobile header so content doesn't sit under it.
+     Matches MOBILE_STICKY_HEADER_BODY_HEIGHT_PX (py-2 + h-8 row + 1px rule). */
   .mobile-header-spacer {
-    height: 40px;
+    height: 49px;
   }
 
   /* Android-only safe-area adjustments (3-button nav devices). */
@@ -386,4 +442,31 @@ body > .profiler-results {
 
 [data-sonner-toast] > * {
   transition-duration: 180ms !important;
+}
+
+/* Joyride's floater is positioned with a CSS transform, which drops taps on
+   iOS. The visible card is portaled outside this tree. */
+#react-joyride-portal,
+#react-joyride-portal * {
+  pointer-events: none !important;
+}
+
+#react-joyride-portal .react-joyride__overlay,
+#react-joyride-portal .__floater {
+  display: none !important;
+}
+
+/*
+ * Eruda mounts a viewport-sized host above the app in Capacitor development.
+ * Even with its panel closed, WKWebView can hit-test that host before the
+ * portaled tour controls. Keep devtools out of the hit path during the tour.
+ */
+body[data-tutorial-active="true"] #eruda,
+body[data-tutorial-active="true"] .eruda-container,
+body[data-tutorial-active="true"] .eruda-entry-btn {
+  pointer-events: none !important;
+}
+
+body[data-tutorial-active="true"] .eruda-entry-btn {
+  display: none !important;
 }

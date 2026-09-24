@@ -11,6 +11,7 @@ module Transactions
             required(:date_start).value(:date)
             required(:date_end).value(:date)
             optional(:balance_state).value(:string)
+            optional(:suppress_actor_toast).value(:bool)
           end
 
           rule(:transfer_id) do
@@ -34,23 +35,30 @@ module Transactions
         def call(params:)
           params            = step validate(params:)
           transfer          = step find_transfer(params:)
-          return Success(transfer) unless transfer.repeat?
+          return Success([]) unless transfer.repeat?
 
           params            = step add_default_values(params:)
           dates             = step fetch_dates(params:, transfer:)
           last_transfer     = step fetch_last_transfer(params:, transfer:)
           transfer_data     = step bulk_duplicate_transfers(params:, parent_transfer: transfer, last_transfer:, dates:)
-          _                 = step create_bulk_fee_transactions(
+          fee_transactions  = step create_bulk_fee_transactions(
                                     parent_transfer: transfer,
-                                    dates:,
+                                    dates: transfer_data[:dates],
                                     balance_state: params[:balance_state]
                                   )
           _                 = step update_account_balances(
                                     parent_transfer: transfer,
                                     transfer_records: transfer_data[:transfer_records],
-                                    dates:,
+                                    dates: transfer_data[:dates],
                                     balance_state: params[:balance_state]
                                   )
+          step broadcast_created_children(
+                 created_transfers: transfer_data[:transfer_records],
+                 fee_transactions:,
+                 parent_transfer: transfer,
+                 params:,
+               )
+          transfer_data[:transfer_records]
         end
 
         private
@@ -69,6 +77,7 @@ module Transactions
 
         def add_default_values(params:)
           params[:balance_state] ||= "pending"
+          params[:suppress_actor_toast] = false if params[:suppress_actor_toast].nil?
           Success(params)
         end
 
@@ -115,6 +124,8 @@ module Transactions
             validate_uniqueness: true
           )
 
+          # Prefer imported records (IDs filled by activerecord-import).
+          # Re-querying by date is unreliable across Asia/Manila vs UTC storage.
           if transfer_records.any? && parent_transfer.files.attached?
             transfer_records.each do |record|
               Utils::ActiveStorage.attach_same_blobs_from(
@@ -127,10 +138,21 @@ module Transactions
           Success({ transfer_records: transfer_records, dates: dates })
         end
 
-        def create_bulk_fee_transactions(parent_transfer:, dates:, balance_state:)
-          return Success() if parent_transfer.transaction_cost.zero?
+        def broadcast_created_children(created_transfers:, fee_transactions:, parent_transfer:, params:)
+          records = Array(created_transfers) + Array(fee_transactions)
+          Transactions::Broadcasts::TransactionChange.created_many(
+            transactions: records,
+            actor: parent_transfer.user,
+            suppress_actor_toast: params[:suppress_actor_toast],
+          )
 
-          # Create fee transactions in bulk
+          Success(created_transfers)
+        end
+
+        def create_bulk_fee_transactions(parent_transfer:, dates:, balance_state:)
+          return Success([]) if parent_transfer.transaction_cost.zero?
+
+          # Create fee transactions in bulk (returns fee Expense records)
           CreateBulkTransferFeeTransactions.new.call(
             parent_transfer_id: parent_transfer.id,
             dates: dates,

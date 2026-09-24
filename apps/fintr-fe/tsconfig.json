@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@fintr/domain": [
+        "../../packages/fintr-domain/src/index.ts"
       ]
     }
   },

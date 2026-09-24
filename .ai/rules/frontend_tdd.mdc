@@ -1,0 +1,28 @@
+---
+description: Frontend production changes in apps/fintr-fe require a test run before editing and a test run after, so unintended behavior drift is caught.
+globs: apps/fintr-fe/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend: tests first, then change, then tests again
+
+When editing `apps/fintr-fe` production TypeScript/React, follow skill `frontend-tdd`. Do not skip tests to move faster.
+
+## Iron law
+
+No frontend production edit without a test run **before** and a test run **after**.
+
+## Loop
+
+1. **Tests first** — Find colocated `*.test.ts(x)` and tests that import the module. Run them with `cd apps/fintr-fe && pnpm test:ci <paths>` (`vitest run`, not watch-mode `pnpm test`). Read the output. If the behavior has no test, write one before changing production code.
+2. **Make the changes** — Smallest production edit.
+3. **Update tests** — Only for intentional behavior. Do not weaken or delete assertions to go green.
+4. **Tests again** — Re-run the same files plus new tests. Unrelated failures are unintended changes: fix the code.
+
+New behavior and bugfixes: write the failing assertion first and watch it fail for the right reason (not a typo).
+
+## Do not
+
+- Edit production code before a baseline run in this session
+- Claim done from a previous run, "should pass," or skipped tests
+- Treat GSD "skip TDD for UI" or any "skip unit tests" note as permission to skip this loop for `apps/fintr-fe`

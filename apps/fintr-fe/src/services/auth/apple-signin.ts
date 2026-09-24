@@ -81,23 +81,3 @@ export function verifyState(receivedState: string): boolean {
   return true;
 }
 
-/**
- * Get the original redirect path before OAuth flow
- * Never returns auth pages - always redirects to dashboard after successful auth
- */
-export function getOriginalRedirectPath(): string {
-  if (typeof window === 'undefined') return '/dashboard';
-  
-  const path = sessionStorage.getItem('auth0_redirect_origin');
-  sessionStorage.removeItem('auth0_redirect_origin');
-  
-  // If the stored path is an auth page, redirect to dashboard instead
-  // This prevents the brief flash of login page after successful authentication
-  const authPages = ['/login', '/auth', '/auth-callback', '/consent'];
-  if (path && !authPages.includes(path)) {
-    return path;
-  }
-  
-  return '/dashboard';
-}
-

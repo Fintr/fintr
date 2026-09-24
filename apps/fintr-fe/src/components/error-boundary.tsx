@@ -2,6 +2,7 @@
 
 import React, { type ReactNode } from "react";
 import {
+  canRecoverOfflineChunkNavigation,
   isChunkLoadError,
   recoverFromChunkLoadError,
 } from "@/utils/chunkLoadError";
@@ -73,9 +74,17 @@ export class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
+      const isOffline =
+        typeof navigator !== "undefined" && navigator.onLine === false;
+      const isChunkError = isChunkLoadError(this.state.error);
+
+      if (isChunkError && (isOffline || canRecoverOfflineChunkNavigation())) {
+        return null;
+      }
+
       const errorDetails = this.getErrorDetails();
       const isDev = process.env.NODE_ENV === "development";
-      const isStaleChunkError = isChunkLoadError(this.state.error);
+      const isStaleChunkError = isChunkError;
 
       return (
         <div

@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe Finance::Operations::Subscriptions::CreateBillingCycle, type: :operation do
   let(:operation) { described_class.new }
   let(:space) { create(:personal_space) }
-  let(:subscription_plan) { create(:subscription_plan, interval: "month", token_limit: 100) }
+  let(:subscription_plan) { create(:subscription_plan, interval: "month") }
   let(:space_subscription) do
     create(
       :space_subscription,
@@ -183,13 +183,6 @@ RSpec.describe Finance::Operations::Subscriptions::CreateBillingCycle, type: :op
         expect(billing_cycle.ends_at).to eq((started_at.beginning_of_day + 1.month - 1.day).end_of_day)
       end
 
-      it "sets tokens_allocated from subscription plan token_limit" do
-        result = operation.call(valid_params)
-
-        expect(result).to be_success
-        billing_cycle = result.value!
-        expect(billing_cycle.tokens_allocated).to eq(subscription_plan.token_limit)
-      end
     end
 
     context "when extracting cycle_number" do
@@ -265,7 +258,7 @@ RSpec.describe Finance::Operations::Subscriptions::CreateBillingCycle, type: :op
       end
 
       context "with yearly interval" do
-        let(:yearly_subscription_plan) { create(:subscription_plan, interval: "year", token_limit: 500) }
+        let(:yearly_subscription_plan) { create(:subscription_plan, interval: "year") }
         let(:yearly_space_subscription) do
           create(
             :space_subscription,
@@ -355,14 +348,6 @@ RSpec.describe Finance::Operations::Subscriptions::CreateBillingCycle, type: :op
         billing_cycle = result.value!
         expect(billing_cycle.span).to be_a(Range)
         expect(billing_cycle.started_at).to eq(started_at.beginning_of_day)
-      end
-
-      it "updates tokens_allocated of existing billing cycle" do
-        result = operation.call(valid_params)
-
-        expect(result).to be_success
-        billing_cycle = result.value!
-        expect(billing_cycle.tokens_allocated).to eq(subscription_plan.token_limit)
       end
 
       it "updates metadata of existing billing cycle" do
@@ -465,7 +450,6 @@ RSpec.describe Finance::Operations::Subscriptions::CreateBillingCycle, type: :op
           .and_return(Dry::Monads::Success({
             cycle_number: cycle_number,
             span: (started_at.beginning_of_day..(started_at.beginning_of_day + 1.month - 1.day).end_of_day),
-            tokens_allocated: subscription_plan.token_limit,
             xendit_cycle_id: xendit_cycle_id,
             scheduled_timestamp: scheduled_timestamp,
             metadata: metadata

@@ -9,7 +9,8 @@ module Ai
 
     enum :ai_type, {
       pure_ai_ocr: "pure_ai_ocr",
-      ai_chat: "ai_chat"
+      ai_chat: "ai_chat",
+      tag_style_image: "tag_style_image",
     }
     enum :status, {
       pending: "pending",
@@ -19,7 +20,6 @@ module Ai
 
     validates :ai_type, presence: true
     validates :status, presence: true
-    validates :tokens_used, presence: true, numericality: { greater_than: 0 }
     validates :time_seconds, presence: true, numericality: { greater_than_or_equal_to: 0 }
 
     scope :pending, -> { where(status: :pending) }

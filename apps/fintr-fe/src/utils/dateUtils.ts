@@ -48,11 +48,45 @@ export const getCurrentMonthDates = () => {
   const month = now.getMonth() + 1;
   return {
     firstDay: getFirstDayOfMonth(year, month),
-    lastDay: getLastDayOfMonth(year, month),
+    lastDay: getLocalIsoDateKey(now),
   };
 };
 
+/**
+ * Caps an end date at today so transaction queries never include future days.
+ */
+export function clampEndDateToToday(
+  startDate: string,
+  endDate: string,
+  referenceDate: Date = new Date(),
+): string {
+  const todayKey = getLocalIsoDateKey(referenceDate);
+  const clampedEndDate = endDate > todayKey ? todayKey : endDate;
+
+  return clampedEndDate < startDate ? startDate : clampedEndDate;
+}
+
 const TRANSACTION_DATE_LOCALE = "en-US";
+
+/**
+ * Local calendar day as YYYY-MM-DD.
+ * Prefer the leading date segment for API date-only / ISO datetime strings so
+ * UTC midnight does not shift the day in Asia/Manila.
+ */
+export function getLocalIsoDateKey(dateInput: Date | string = new Date()): string {
+  if (typeof dateInput === "string") {
+    const dateOnly = dateInput.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+      return dateOnly;
+    }
+  }
+
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 /** Stable day bucket for grouping transactions (no weekday). */
 export function getTransactionDayGroupKey(dateInput: Date | string): string {

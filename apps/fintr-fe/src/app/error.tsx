@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import * as Sentry from "@sentry/nextjs";
 import {
+  canRecoverOfflineChunkNavigation,
   isChunkLoadError,
   recoverFromChunkLoadError,
 } from "@/utils/chunkLoadError";
@@ -14,21 +15,25 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [isRecoveringFromStaleBuild, setIsRecoveringFromStaleBuild] =
+  const [isRecoveringFromChunkError, setIsRecoveringFromChunkError] =
     useState(false);
-  const isStaleChunkError = isChunkLoadError(error);
+  const isOffline =
+    typeof navigator !== "undefined" && navigator.onLine === false;
+  const isChunkError = isChunkLoadError(error);
+  const isStaleChunkError = isChunkError && !isOffline;
+  const willRecoverOffline = isChunkError && canRecoverOfflineChunkNavigation();
 
   useEffect(() => {
-    if (!isStaleChunkError) {
+    if (!isChunkError) {
       return;
     }
 
-    setIsRecoveringFromStaleBuild(true);
-    recoverFromChunkLoadError(error);
-  }, [error, isStaleChunkError]);
+    const didRecover = recoverFromChunkLoadError(error);
+    setIsRecoveringFromChunkError(didRecover);
+  }, [error, isChunkError]);
 
   useEffect(() => {
-    if (isStaleChunkError) {
+    if (isChunkError) {
       return;
     }
 
@@ -39,9 +44,13 @@ export default function Error({
         component: "Error",
       },
     });
-  }, [error, isStaleChunkError]);
+  }, [error, isChunkError]);
 
-  if (isRecoveringFromStaleBuild) {
+  if (isRecoveringFromChunkError || willRecoverOffline) {
+    if (isOffline) {
+      return null;
+    }
+
     return (
       <div
         style={{
@@ -63,6 +72,10 @@ export default function Error({
         </p>
       </div>
     );
+  }
+
+  if (isChunkError && isOffline) {
+    return null;
   }
 
   return (

@@ -26,6 +26,14 @@ module Transactions
         record.transaction_cost_currency
       end
 
+      field :from_account_id do |record|
+        record.from_account_id
+      end
+
+      field :to_account_id do |record|
+        record.to_account_id
+      end
+
       field :to_account_name do |record|
         record.to_account.name
       end

@@ -1,6 +1,7 @@
 import { CategoryTreeOption } from "@/types/categoryTreeTypes";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { OptionType } from "@/types/generalTypes";
+import { resolveCategoryAppearance } from "@/utils/categoryAppearance";
 
 /**
  * API category trees should be arrays, but Blueprinter or legacy payloads may
@@ -57,11 +58,20 @@ const normalizeCategoryNode = (
       )
     : [];
 
+  const appearance = resolveCategoryAppearance({
+    name: String(node.name ?? node.label ?? ""),
+    categoryType: String(node.categoryType ?? node.category_type ?? "expense"),
+    icon: (node.icon as string | null | undefined) ?? null,
+    color: (node.color as string | null | undefined) ?? null,
+  });
+
   return {
     id: String(node.id ?? ""),
     name: String(node.name ?? node.label ?? ""),
     categoryType: (node.categoryType ?? node.category_type ?? "expense") as TransactionCategory["categoryType"],
     parentId: (node.parentId ?? node.parent_id ?? null) as string | null,
+    icon: appearance.icon,
+    color: appearance.color,
     children,
   };
 };
@@ -81,12 +91,16 @@ export const mapApiCategoryTree = (
     value: node.id,
     name: node.name,
     parentId: node.parentId ?? null,
+    icon: node.icon,
+    color: node.color,
     children: (node.children ?? []).map((child) => ({
       id: child.id,
       label: child.name,
       value: child.id,
       name: child.name,
       parentId: child.parentId ?? node.id,
+      icon: child.icon,
+      color: child.color,
     })),
   }));
 };

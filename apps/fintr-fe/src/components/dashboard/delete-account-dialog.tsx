@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -74,13 +75,18 @@ const DeleteAccountDialog: React.FC<DeleteAccountDialogProps> = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Delete Account</DialogTitle>
+          <DialogTitle className="text-primary dark:text-primary-dark-mode">
+            Delete Account
+          </DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete the account{" "}
+            <span className="font-semibold text-primary dark:text-primary-dark-mode">
+              &quot;{account.name}&quot;
+            </span>
+            ?
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="text-sm text-gray-600">
-            Are you sure you want to delete the account{" "}
-            <span className="font-semibold text-gray-900">"{account.name}"</span>?
-          </div>
 
           {errorMessage && (
             <div className="text-sm text-red-900 bg-red-100/50 p-3 rounded-md border border-red-300">

@@ -304,7 +304,8 @@ test.describe("Edit transaction exchange rate", () => {
     await expect(page.getByText("₱100.00").first()).toBeVisible({ timeout: 10_000 })
 
     await page.getByText("GBP coffee expense").click()
-    await expect(page.getByRole("heading", { name: "Edit Expense" })).toBeVisible({
+    await page.getByRole("button", { name: "Edit" }).click()
+    await expect(page.getByRole("heading", { name: /GBP 100/ })).toBeVisible({
       timeout: 10_000,
     })
     await expect(page.locator("#amount")).toHaveValue("100")
@@ -313,7 +314,7 @@ test.describe("Edit transaction exchange rate", () => {
     await expect(page.getByText(/8,?000/)).toBeVisible()
 
     await page.getByRole("button", { name: "Update Expense" }).click()
-    await expect(page.getByRole("heading", { name: "Edit Expense" })).toBeHidden({
+    await expect(page.getByRole("heading", { name: /GBP 100/ })).toBeHidden({
       timeout: 10_000,
     })
 

@@ -11,7 +11,8 @@ module InsightsEndpoint
       :category_id,
       :subcategory_id,
       :start_date,
-      :end_date
+      :end_date,
+      tag_ids: [],
     )
   end
 

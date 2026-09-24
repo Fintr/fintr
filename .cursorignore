@@ -1,0 +1,34 @@
+# Generated trees Cursor should not index or watch.
+# Without this, Fintr work pulled 15GB of .next plus iOS/Android build
+# artifacts into file watchers and took the machine down.
+
+**/node_modules/
+**/.next/
+**/out/
+**/dist/
+**/coverage/
+**/.turbo/
+**/.vitest/
+**/playwright-report/
+**/test-results/
+browser-outputs/
+
+apps/fintr-fe/ios/App/Pods/
+apps/fintr-fe/ios/App/build/
+apps/fintr-fe/android/.gradle/
+apps/fintr-fe/android/app/build/
+apps/fintr-fe/android/build/
+apps/fintr-fe/android/.idea/
+
+apps/fintr-be/log/
+apps/fintr-be/tmp/
+apps/fintr-be/dumps/
+apps/fintr-be/storage/
+
+graphify-out/cache/
+graphify-out/graph.json
+graphify-out/graph.html
+graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+
+.worktrees/
+**/*.sst

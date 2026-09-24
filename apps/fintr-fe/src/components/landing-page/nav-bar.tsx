@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppStoreBadge } from "@/components/landing-page/app-store-badge";
 
@@ -84,7 +85,7 @@ export default function Navbar() {
             </Link>
             {isAuthenticated ? (
               <Link
-                href="/dashboard"
+                href={DEFAULT_AUTHENTICATED_PATH}
                 className="bg-[#0A2540] text-white px-4 sm:px-5 py-2 rounded-lg font-semibold text-[13px] sm:text-[14px] transition-opacity hover:opacity-90 inline-flex items-center justify-center no-underline"
               >
                 Dashboard

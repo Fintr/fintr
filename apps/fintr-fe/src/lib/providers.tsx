@@ -15,6 +15,7 @@ import SessionExpirationModal from "@/components/session-expiration-modal";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ThemeProvider } from "@/components/theme-provider";
 import { NativeThemeSync } from "@/components/native-theme-sync";
+import { RevenueCatBootstrap } from "@/components/settings/revenuecat-bootstrap";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(() => new QueryClient({
@@ -44,6 +45,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                   <E2eTestHooks />
                   <ToasterWithSettings />
                   <AuthWrapper>
+                    <RevenueCatBootstrap />
                     {children}
                   </AuthWrapper>
                 </ToastSettingsProvider>

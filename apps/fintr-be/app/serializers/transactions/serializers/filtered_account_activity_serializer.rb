@@ -15,6 +15,37 @@ module Transactions
              :entity_name,
              :loan_type
 
+      field :entity_id do |record|
+        transactable = record.activitable
+        next transactable.entity_id if transactable.respond_to?(:entity_id)
+        next transactable.loan.entity_id if transactable.respond_to?(:loan) && transactable.loan.present?
+
+        nil
+      end
+
+      field :account_id do |record|
+        transactable = record.activitable
+        next transactable.account_id if transactable.respond_to?(:account_id)
+
+        nil
+      end
+
+      field :from_account_id do |record|
+        transactable = record.activitable
+        next transactable.from_account_id if transactable.respond_to?(:from_account_id)
+        next transactable.account_id if record.activity_kind == "expense"
+
+        nil
+      end
+
+      field :to_account_id do |record|
+        transactable = record.activitable
+        next transactable.to_account_id if transactable.respond_to?(:to_account_id)
+        next transactable.account_id if record.activity_kind == "income"
+
+        nil
+      end
+
       field :activitable_id do |record|
         record.activitable_id
       end
@@ -97,7 +128,12 @@ module Transactions
       end
 
       field :calculated do |record|
-        record.activitable.respond_to?(:balance_state) && record.activitable.balance_state == "calculated"
+        if %w[loan_disbursement loan_payment].include?(record.activity_kind)
+          true
+        else
+          record.activitable.respond_to?(:balance_state) &&
+            record.activitable.balance_state == "calculated"
+        end
       end
 
       field :subcategory_name do |record|

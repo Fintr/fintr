@@ -9,10 +9,15 @@ module Transactions
              :description,
              :balance,
              :schedule_type,
+             :parent_id,
              :repeat_interval,
              :repeat_count,
              :installment_period,
              :installment_count
+
+      field :installment_total do |record|
+        Utils::InstallmentPlan.series_installment_total_amount(transaction: record)
+      end
 
       # Booked leg (ledger): same as +record.amount+ / +amount_currency+ for edit forms and
       # foreign-account rows where the user expects the account ISO.
@@ -57,8 +62,20 @@ module Transactions
       end
 
 
+      field :account_id do |record|
+        record.account_id
+      end
+
       field :account_name do |record|
         record.account.name
+      end
+
+      field :entity_id do |record|
+        record.entity_id
+      end
+
+      field :entity_name do |record|
+        record.entity_name
       end
 
       field :type do |record|
@@ -73,6 +90,24 @@ module Transactions
 
       field :has_currency_conversion do |record|
         record.has_currency_conversion?
+      end
+
+      field :booked_amount do |record|
+        toggle = record.try(:booked_display_for_list_toggle)
+        if toggle
+          toggle[:amount]
+        else
+          record.amount.amount
+        end
+      end
+
+      field :booked_amount_currency do |record|
+        toggle = record.try(:booked_display_for_list_toggle)
+        if toggle
+          toggle[:currency]
+        else
+          record.amount_currency
+        end
       end
 
       # For edit form: when a conversion exists, expose original amount and currency so the form shows them (e.g. PLN, not space currency).
@@ -100,6 +135,10 @@ module Transactions
             created_at: file.created_at
           }
         end
+      end
+
+      field :tags do |record|
+        Transactions::Serializers::TagSerializer.render_as_hash(record.tags)
       end
     end
   end

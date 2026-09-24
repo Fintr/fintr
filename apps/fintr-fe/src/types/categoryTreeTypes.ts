@@ -4,6 +4,8 @@ export interface CategoryTreeOption {
   value: string;
   name: string;
   parentId: string | null;
+  icon?: string;
+  color?: string;
   children?: CategoryTreeOption[];
 }
 
@@ -15,8 +17,24 @@ export interface CategoryAssignment {
 const CATEGORY_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export const isCategoryPickerId = (value: string): boolean =>
-  CATEGORY_ID_PATTERN.test(value.trim());
+const LOCAL_CATEGORY_ID_PATTERN = /^local:[^:]+$/;
+const LOCAL_CATEGORY_COMPOSITE_PATTERN = /^(local:[^:]+):(.+)$/;
+
+export const isLocalCategoryPickerId = (value: string): boolean => {
+  const trimmed = value.trim();
+  return (
+    LOCAL_CATEGORY_ID_PATTERN.test(trimmed)
+    || LOCAL_CATEGORY_COMPOSITE_PATTERN.test(trimmed)
+  );
+};
+
+export const isCategoryPickerId = (value: string): boolean => {
+  const trimmed = value.trim();
+  return (
+    CATEGORY_ID_PATTERN.test(trimmed)
+    || isLocalCategoryPickerId(trimmed)
+  );
+};
 
 export const formatCategoryPickerValue = (
   assignment: CategoryAssignment,
@@ -35,19 +53,55 @@ export const parseCategoryPickerValue = (
     return null;
   }
 
-  const [categoryId, subcategoryId] = value.split(":");
+  const trimmed = value.trim();
 
-  if (!categoryId || !isCategoryPickerId(categoryId)) {
+  if (LOCAL_CATEGORY_ID_PATTERN.test(trimmed)) {
+    return {
+      categoryId: trimmed,
+      subcategoryId: null,
+    };
+  }
+
+  const localComposite = trimmed.match(LOCAL_CATEGORY_COMPOSITE_PATTERN);
+  if (localComposite) {
+    const subcategoryId = localComposite[2];
+    if (
+      LOCAL_CATEGORY_ID_PATTERN.test(subcategoryId)
+      || CATEGORY_ID_PATTERN.test(subcategoryId)
+    ) {
+      return {
+        categoryId: localComposite[1],
+        subcategoryId,
+      };
+    }
+  }
+
+  const colonIndex = trimmed.indexOf(":");
+  if (colonIndex === -1) {
+    if (CATEGORY_ID_PATTERN.test(trimmed)) {
+      return {
+        categoryId: trimmed,
+        subcategoryId: null,
+      };
+    }
+
     return null;
   }
 
-  if (subcategoryId && !isCategoryPickerId(subcategoryId)) {
+  const categoryId = trimmed.slice(0, colonIndex);
+  const subcategoryId = trimmed.slice(colonIndex + 1);
+
+  if (!CATEGORY_ID_PATTERN.test(categoryId)) {
+    return null;
+  }
+
+  if (!subcategoryId || !CATEGORY_ID_PATTERN.test(subcategoryId)) {
     return null;
   }
 
   return {
     categoryId,
-    subcategoryId: subcategoryId || null,
+    subcategoryId,
   };
 };
 
@@ -56,12 +110,19 @@ export type CategoryTriggerDisplay = {
   secondary: string | null;
 };
 
-export const normalizeCategoryMatchKey = (value: string): string =>
-  value
+export const normalizeCategoryMatchKey = (
+  value: string | null | undefined,
+): string => {
+  if (value == null) {
+    return "";
+  }
+
+  return value
     .replace(/\\/g, "")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+};
 
 export const categoryPickerValueFromName = (
   categoryName: string,
@@ -95,6 +156,128 @@ export const categoryPickerValueFromName = (
   }
 
   return categoryName.trim();
+};
+
+export const findCategoryTreeOptionForTransaction = (
+  input: {
+    categoryName: string;
+    subcategoryName?: string | null;
+  },
+  expenseOptions: CategoryTreeOption[],
+  incomeOptions: CategoryTreeOption[],
+): CategoryTreeOption | null => {
+  const findInTree = (options: CategoryTreeOption[]): CategoryTreeOption | null => {
+    const categoryKey = normalizeCategoryMatchKey(input.categoryName);
+    const subcategoryKey = input.subcategoryName?.trim()
+      ? normalizeCategoryMatchKey(input.subcategoryName)
+      : null;
+
+    for (const parent of options) {
+      if (subcategoryKey) {
+        for (const child of parent.children ?? []) {
+          if (
+            normalizeCategoryMatchKey(child.name) === subcategoryKey
+            || normalizeCategoryMatchKey(child.label) === subcategoryKey
+          ) {
+            return child;
+          }
+        }
+      }
+
+      for (const child of parent.children ?? []) {
+        if (
+          normalizeCategoryMatchKey(child.name) === categoryKey
+          || normalizeCategoryMatchKey(child.label) === categoryKey
+        ) {
+          return child;
+        }
+      }
+
+      if (
+        normalizeCategoryMatchKey(parent.name) === categoryKey
+        || normalizeCategoryMatchKey(parent.label) === categoryKey
+      ) {
+        return parent;
+      }
+    }
+
+    return null;
+  };
+
+  return findInTree(expenseOptions) ?? findInTree(incomeOptions);
+};
+
+export const resolveTransactionCategoryAssignment = (
+  input: {
+    categoryId?: string | null;
+    subcategoryId?: string | null;
+    categoryName?: string;
+    subcategoryName?: string | null;
+  },
+  expenseOptions: CategoryTreeOption[],
+  incomeOptions: CategoryTreeOption[],
+): CategoryAssignment | null => {
+  const categoryId = input.categoryId?.trim();
+  const subcategoryId = input.subcategoryId?.trim() || null;
+  const trees = [expenseOptions, incomeOptions];
+
+  if (categoryId) {
+    for (const options of trees) {
+      for (const parent of options) {
+        if (parent.id === categoryId) {
+          return {
+            categoryId,
+            subcategoryId,
+          };
+        }
+
+        for (const child of parent.children ?? []) {
+          if (child.id === categoryId) {
+            return {
+              categoryId: parent.id,
+              subcategoryId: child.id,
+            };
+          }
+        }
+      }
+    }
+
+    return {
+      categoryId,
+      subcategoryId,
+    };
+  }
+
+  const categoryName = input.categoryName?.trim();
+
+  if (!categoryName) {
+    return null;
+  }
+
+  const matched = findCategoryTreeOptionForTransaction(
+    {
+      categoryName,
+      subcategoryName: input.subcategoryName,
+    },
+    expenseOptions,
+    incomeOptions,
+  );
+
+  if (!matched) {
+    return null;
+  }
+
+  if (matched.parentId) {
+    return {
+      categoryId: matched.parentId,
+      subcategoryId: matched.id,
+    };
+  }
+
+  return {
+    categoryId: matched.id,
+    subcategoryId: null,
+  };
 };
 
 /** Maps a display name from insights/API to a transactions filter value (id or name). */
@@ -154,6 +337,47 @@ export const categoryPickerValueFromReceiptOrTransaction = (
   }
 
   return "";
+};
+
+export const getCategoryAppearanceForPickerValue = (
+  value: string,
+  options: CategoryTreeOption[],
+): { icon?: string; color?: string } | null => {
+  const assignment = parseCategoryPickerValue(value);
+
+  if (!assignment) {
+    const resolved = categoryPickerValueFromName(value, options);
+
+    if (resolved && isCategoryPickerId(resolved)) {
+      return getCategoryAppearanceForPickerValue(resolved, options);
+    }
+
+    return null;
+  }
+
+  const parent = options.find((option) => option.id === assignment.categoryId);
+
+  if (!parent) {
+    return null;
+  }
+
+  if (assignment.subcategoryId) {
+    const subcategory = parent.children?.find(
+      (child) => child.id === assignment.subcategoryId,
+    );
+
+    if (subcategory) {
+      return {
+        icon: subcategory.icon,
+        color: subcategory.color,
+      };
+    }
+  }
+
+  return {
+    icon: parent.icon,
+    color: parent.color,
+  };
 };
 
 export const getCategoryTriggerDisplay = (
@@ -227,7 +451,8 @@ export const getCategoryNameForApi = (
 
 export const buildTransactionCategoryFields = (
   pickerValue: string,
-  options: CategoryTreeOption[],
+  expenseOptions: CategoryTreeOption[],
+  incomeOptions: CategoryTreeOption[] = [],
 ): {
   categoryName: string;
   categoryId?: string;
@@ -241,8 +466,36 @@ export const buildTransactionCategoryFields = (
     };
   }
 
+  const parent =
+    expenseOptions.find((option) => option.id === assignment.categoryId)
+    ?? incomeOptions.find((option) => option.id === assignment.categoryId);
+
+  if (!parent) {
+    return {
+      categoryId: assignment.categoryId,
+      ...(assignment.subcategoryId
+        ? { subcategoryId: assignment.subcategoryId }
+        : {}),
+      categoryName: "",
+    };
+  }
+
+  if (assignment.subcategoryId) {
+    const subcategory = parent.children?.find(
+      (child) => child.id === assignment.subcategoryId,
+    );
+
+    if (subcategory) {
+      return {
+        categoryName: subcategory.name || subcategory.label,
+        categoryId: assignment.categoryId,
+        subcategoryId: assignment.subcategoryId,
+      };
+    }
+  }
+
   return {
-    categoryName: getCategoryNameForApi(pickerValue, options),
+    categoryName: parent.name || parent.label,
     categoryId: assignment.categoryId,
     ...(assignment.subcategoryId
       ? { subcategoryId: assignment.subcategoryId }
@@ -256,7 +509,7 @@ export const getCategoryDisplayLabel = (
 ): string => {
   const assignment = parseCategoryPickerValue(value);
   if (!assignment) {
-    return "";
+    return getCategoryTriggerDisplay(value, options).primary || value.trim();
   }
 
   const parent = options.find((option) => option.id === assignment.categoryId);

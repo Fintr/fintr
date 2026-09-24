@@ -61,6 +61,7 @@ module Api
 
         def create_params
           params.permit(
+            :id,
             :principal_amount,
             :interest_rate,
             :date,
@@ -71,7 +72,8 @@ module Api
             :description,
             :adjusts_account_balance,
             :file,
-            :file_id
+            :file_id,
+            :client_mutation_id
           )
         end
 
@@ -79,7 +81,8 @@ module Api
           params.permit(
             :id,
             :entity_name,
-            :description
+            :description,
+            :status
           )
         end
       end

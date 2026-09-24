@@ -12,7 +12,6 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
       user_id: user.id,
       space_id: space.id,
       ai_type: "pure_ai_ocr",
-      tokens_used: 3
     }
   end
 
@@ -28,34 +27,7 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
       expect(result).to eq(params_without_ai_type)
     end
 
-    it "succeeds without tokens_used parameter" do
-      params_without_tokens_used = params.except(:tokens_used)
-      result = operation.validate(params: params_without_tokens_used)
-      expect(result).to eq(params_without_tokens_used)
-    end
-
-    it "fails with invalid tokens_used type" do
-      params_with_invalid_tokens_used = params.merge(tokens_used: "invalid")
-      result = operation.validate(params: params_with_invalid_tokens_used)
-      expect(result).to be_a(Hash)
-      expect(result).to have_key(:tokens_used)
-    end
-
-    it "fails with negative tokens_used" do
-      params_with_negative_tokens_used = params.merge(tokens_used: -1)
-      result = operation.validate(params: params_with_negative_tokens_used)
-      expect(result).to be_a(Hash)
-      expect(result).to have_key(:tokens_used)
-    end
-
-    it "fails with zero tokens_used" do
-      params_with_zero_tokens_used = params.merge(tokens_used: 0)
-      result = operation.validate(params: params_with_zero_tokens_used)
-      expect(result).to be_a(Hash)
-      expect(result).to have_key(:tokens_used)
-    end
-
-          it "fails without a user_id" do
+    it "fails without a user_id" do
         params_without_user_id = params.except(:user_id)
         result = operation.validate(params: params_without_user_id)
         expect(result).to be_a(Hash)
@@ -85,6 +57,17 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
   end
 
   describe "#call" do
+    let!(:subscription_plan) { create(:subscription_plan, slug: "pro-#{SecureRandom.hex(4)}") }
+    let!(:space_subscription) do
+      create(
+        :space_subscription,
+        space:,
+        subscription_plan:,
+        status: :active,
+        subscription_type: :paid,
+      )
+    end
+
     context "when the block succeeds" do
       let(:block_result) { Dry::Monads::Result::Success.new({ data: "success" }) }
       let(:time_start) { Time.current }
@@ -105,7 +88,6 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
         expect(usage.space_id).to eq(space.id)
         expect(usage.ai_type).to eq("pure_ai_ocr")
         expect(usage.status).to eq("success")
-        expect(usage.tokens_used).to eq(3)
         expect(usage.time_seconds).to be >= 0
         expect(usage.result).to eq({})
       end
@@ -145,7 +127,6 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
         expect(usage.space_id).to eq(space.id)
         expect(usage.ai_type).to eq("pure_ai_ocr")
         expect(usage.status).to eq("failure")
-        expect(usage.tokens_used).to eq(3)
         expect(usage.time_seconds).to be >= 0
         expect(usage.result).to eq({ "error" => "block failed" })
       end
@@ -193,7 +174,6 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
         expect(usage.space_id).to eq(space.id)
         expect(usage.ai_type).to eq("pure_ai_ocr")
         expect(usage.status).to eq("failure")
-        expect(usage.tokens_used).to eq(3)
         expect(usage.time_seconds).to be >= 0
         expect(usage.result).to include("Something went wrong")
       end
@@ -237,27 +217,54 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
       end
     end
 
-    context "when tokens_used is not provided" do
-      let(:params_without_tokens_used) { params.except(:tokens_used) }
+    context "when the account only has the trial" do
       let(:block_result) { Dry::Monads::Result::Success.new({ data: "success" }) }
 
-      it "uses default tokens_used value" do
-        operation.call(params_without_tokens_used) { block_result }
-        usage = Ai::Usage.last
+      before { space_subscription.destroy! }
 
-        expect(usage.tokens_used).to eq(1)
+      it "creates a usage record" do
+        result = operation.call(params) { block_result }
+
+        expect(result).to be_success
+        expect(Ai::Usage.last.user_id).to eq(user.id)
       end
     end
 
-    context "when custom tokens_used is provided" do
-      let(:params_with_custom_tokens_used) { params.merge(tokens_used: 5) }
+    context "when the trial has ended and the space has no Pro subscription" do
       let(:block_result) { Dry::Monads::Result::Success.new({ data: "success" }) }
 
-      it "uses the provided tokens_used value" do
-        operation.call(params_with_custom_tokens_used) { block_result }
-        usage = Ai::Usage.last
+      before do
+        user.update!(trial_ends_at: 1.day.ago)
+        space_subscription.destroy!
+      end
 
-        expect(usage.tokens_used).to eq(5)
+      it "returns a Pro requirement failure" do
+        result = operation.call(params) { block_result }
+
+        expect(result).to be_failure
+        expect(result.failure).to eq("Fintr Pro is required for this feature.")
+      end
+
+      it "allows an AI chat request without Pro" do
+        result = operation.call(params.merge(ai_type: "ai_chat")) { block_result }
+
+        expect(result).to be_success
+      end
+
+      it "rejects an AI chat request after 30 chats this month" do
+        create_list(
+          :ai_usage,
+          30,
+          :ai_chat,
+          user: user,
+          space: space,
+          created_at: Time.current,
+        )
+
+        result = operation.call(params.merge(ai_type: "ai_chat")) { block_result }
+
+        expect(result).to be_failure
+        expect(result.failure).to eq("You have used all 30 AI chats for this month.")
       end
     end
   end
@@ -272,7 +279,6 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
         expect(usage.space_id).to eq(space.id)
         expect(usage.ai_type).to eq("pure_ai_ocr")
         expect(usage.status).to eq("pending")
-        expect(usage.tokens_used).to eq(3)
         expect(usage.time_seconds).to eq(0.0)
         expect(usage.result).to eq({})
       end
@@ -284,12 +290,6 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
         expect(usage.ai_type).to eq("pure_ai_ocr")
       end
 
-      it "uses default tokens_used when not provided" do
-        params_without_tokens_used = params.except(:tokens_used)
-        usage = operation.send(:create_usage, params: params_without_tokens_used)
-
-        expect(usage.tokens_used).to eq(1)
-      end
     end
 
     describe "#transform_result" do

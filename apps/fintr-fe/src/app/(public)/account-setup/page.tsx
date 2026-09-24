@@ -31,6 +31,7 @@ import {
   CreditCardIcon,
 } from "lucide-react";
 import { numberFormatting } from "@/lib/utils";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 
 const STEPS = [
   {
@@ -140,7 +141,7 @@ const AccountSetupFlow = () => {
   const handleSubmit = () => {
 
     // Redirect to dashboard
-    router.push("/dashboard");
+    router.push(DEFAULT_AUTHENTICATED_PATH);
   };
 
   const updateFormData = (field: string, value: string) => {

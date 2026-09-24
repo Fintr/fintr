@@ -6,7 +6,7 @@ RSpec.describe Finance::BillingCycleSerializer do
   subject(:serialized_hash) { described_class.render_as_hash(billing_cycle) }
 
   let(:space) { create(:space) }
-  let(:subscription_plan) { create(:subscription_plan, slug: "basic", token_limit: 50, price_cents: 14_900, interval: "month") }
+  let(:subscription_plan) { create(:subscription_plan, slug: "basic", price_cents: 14_900, interval: "month") }
   let(:space_subscription) do
     create(
       :space_subscription,
@@ -21,7 +21,6 @@ RSpec.describe Finance::BillingCycleSerializer do
       :paid,
       space_subscription: space_subscription,
       cycle_number: 1,
-      tokens_allocated: 100,
       xendit_cycle_id: "recy_123",
       span: (Time.zone.now.beginning_of_month..Time.zone.now.end_of_month.end_of_day),
       action_url: "https://example.com/action",
@@ -62,10 +61,6 @@ RSpec.describe Finance::BillingCycleSerializer do
     expect(serialized_hash[:scheduledTimestamp]).to eq(billing_cycle.scheduled_timestamp.iso8601)
   end
 
-  it "includes tokensAllocated with correct name transformation" do
-    expect(serialized_hash[:tokensAllocated]).to eq(100)
-  end
-
   it "includes xenditCycleId with correct name transformation" do
     expect(serialized_hash[:xenditCycleId]).to eq("recy_123")
   end
@@ -80,7 +75,6 @@ RSpec.describe Finance::BillingCycleSerializer do
       :endsAt,
       :paidAt,
       :scheduledTimestamp,
-      :tokensAllocated,
       :xenditCycleId
     ]
     expect(serialized_hash.keys).to match_array(expected_keys)

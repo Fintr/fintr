@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Folder, Users, Settings, Upload, Download, Pencil, Plus, CreditCard, X, Loader2, AlertCircle, Copy, Check, Zap, Play, RefreshCw } from "lucide-react";
+import { Folder, Users, Settings, Upload, Download, Pencil, Plus, CreditCard, X, Loader2, AlertCircle, Copy, Check, Zap, Play, RefreshCw, Contact, Tags } from "lucide-react";
 import CategoryToggle, { CategoryToggleType } from "../category-toggle";
 import CategoryListCard from "../category-list-card";
 import CategoryList from "../category-list";
@@ -43,10 +43,18 @@ import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { getActionCableClient, ActionCableMessage } from "@/lib/actionCable";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { SubscribeProButton } from "@/components/settings/subscribe-pro-button";
+import {
+  ManageStoreSubscriptionButton,
+  storeBillingLabel,
+} from "@/components/settings/manage-store-subscription-button";
 import { getColor, shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import { shouldShowSimulatePaymentButton } from "@/lib/capacitor";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
 import { toast } from "sonner";
+import { commitDashboardClientNavigation } from "@/lib/dashboard-nav-routes";
+import { navigateDashboardClient } from "@/utils/detailSearchParam";
+import { openCreatedRootCategoryPage } from "@/utils/categoryManagement";
 import {
   Dialog,
   DialogContent,
@@ -58,19 +66,22 @@ import {
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import EditButton from "@/components/ui/edit-button";
+import { EntitiesPageContent } from "@/components/dashboard/entities/entities-page-content";
+import { TagsPageContent } from "@/components/dashboard/tags-page-content";
 
 // Define CategoryItem interface to match CategoryListCard expectations
 interface CategoryItem {
   id: string;
   name: string;
+  icon?: string;
   color?: string;
   amount?: number;
   budget?: number;
-  [key: string]: any; // For any additional properties
+  [key: string]: any;
 }
 
 interface SpaceSettingsTabProps {
-  initialTab?: "categories" | "accounts" | "import" | "subscriptions";
+  initialTab?: "categories" | "accounts" | "entities" | "tags" | "import" | "subscriptions";
   hideTabs?: boolean;
 }
 
@@ -117,6 +128,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     (sub) => sub.status === "active" || sub.status === "pending" || sub.status === "requires_action"
   );
   const shouldShowCreateButton = !hasActivePendingOrRequiresAction;
+
+  useEffect(() => {
+    void refetchSubscription();
+  }, [refetchSubscription]);
 
   // Set up Action Cable subscription for real-time updates
   useEffect(() => {
@@ -455,12 +470,27 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     name: string,
     categoryType: CategoryTypeEnum,
     parentId?: string | null,
+    appearance?: {
+      icon: string;
+      color: string;
+    },
   ) => {
     try {
-      await createCategoryMutation.mutateAsync({
+      const result = await createCategoryMutation.mutateAsync({
         name,
         categoryType,
         parentId: parentId ?? null,
+        icon: appearance?.icon,
+        color: appearance?.color,
+      });
+      openCreatedRootCategoryPage({
+        parentId,
+        categoryType,
+        categoryId: result.data.id,
+        syncPromise: result.syncPromise,
+        push: (href) => navigateDashboardClient(href),
+        replace: (href) =>
+          commitDashboardClientNavigation(href, { replace: true }),
       });
     } catch (error) {
       console.error("Failed to create category:", error);
@@ -478,15 +508,22 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     // Implement add investment category functionality
   };
 
-  const handleUpdateCategory = async (categoryId: string, newName: string) => {
+  const handleUpdateCategory = async (
+    categoryId: string,
+    updateData: {
+      name: string;
+      icon: string;
+      color: string;
+    },
+  ) => {
     try {
       await updateCategoryMutation.mutateAsync({
         categoryId,
-        updateData: { name: newName }
+        updateData,
       });
     } catch (error) {
       console.error("Failed to update category:", error);
-      throw error; // Re-throw so the dialog can handle the error
+      throw error;
     }
   };
 
@@ -587,6 +624,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
         return "Categories";
       case "accounts":
         return "Accounts";
+      case "entities":
+        return "Entities";
+      case "tags":
+        return "Tags";
       case "import":
         return "Import";
       case "subscriptions":
@@ -602,6 +643,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
         return "Manage your categories for expenses, income, goals, investments, and accounts";
       case "accounts":
         return "Manage your financial accounts, track balances, and organize your money";
+      case "entities":
+        return "Manage merchants and loan contacts for faster transaction and loan entry";
+      case "tags":
+        return "Create colored tags for trips, projects, and other cross-category labels";
       case "import":
         return "Import your transaction data from Excel files or view your import history";
       case "subscriptions":
@@ -620,14 +665,14 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
           {getHeaderDescription()}
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-2 sm:px-8">
+      <CardContent className={hideTabs ? "px-0" : "px-2 sm:px-8"}>
         {/* Main Navigation Buttons */}
         {!hideTabs && (
           <Tabs
             value={activeMainTab}
             onValueChange={(value) =>
               setActiveMainTab(
-                value as "categories" | "accounts" | "import" | "subscriptions",
+                value as "categories" | "accounts" | "entities" | "tags" | "import" | "subscriptions",
               )
             }
             className="mb-6"
@@ -640,6 +685,14 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
               <TabsTrigger value="accounts" className="gap-2">
                 <Users className="h-4 w-4" />
                 Accounts
+              </TabsTrigger>
+              <TabsTrigger value="entities" className="gap-2">
+                <Contact className="h-4 w-4" />
+                Entities
+              </TabsTrigger>
+              <TabsTrigger value="tags" className="gap-2">
+                <Tags className="h-4 w-4" />
+                Tags
               </TabsTrigger>
               <TabsTrigger value="import" className="gap-2">
                 <Download className="h-4 w-4" />
@@ -780,6 +833,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
             </div>
           </div>
         )}
+
+        {activeMainTab === "entities" && <EntitiesPageContent />}
+
+        {activeMainTab === "tags" && <TagsPageContent />}
 
         {/* Import & Export Tab Content */}
         {activeMainTab === "import" && (
@@ -1071,12 +1128,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Link href="/dashboard/subscriptions/create">
-                        <Button>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Subscribe
-                        </Button>
-                      </Link>
+                      <SubscribeProButton>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Subscribe
+                      </SubscribeProButton>
                     </CardContent>
                   </Card>
                 )}
@@ -1091,6 +1146,16 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                         <div>
                           <h4 className="text-lg font-semibold">{activeSubscription.subscriptionPlan.name}</h4>
                           <p className="text-gray-600">{activeSubscription.subscriptionPlan.description}</p>
+                          {activeSubscription.provider === "revenuecat" && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              Billed through the {storeBillingLabel(activeSubscription.store)}.
+                            </p>
+                          )}
+                          {activeSubscription.provider === "grant" && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              Included for 1 year. It does not renew. Subscribe yourself to keep Fintr Pro after it ends.
+                            </p>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -1104,8 +1169,8 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Token Limit</p>
-                            <p className="text-lg font-semibold">{activeSubscription.subscriptionPlan.tokenLimit}</p>
+                            <p className="text-sm text-gray-500">Access</p>
+                            <p className="text-lg font-semibold">Fintr Pro</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Status</p>
@@ -1119,19 +1184,18 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                         {activeSubscription.billingCycles && activeSubscription.billingCycles.length > 0 && (
                           <div className="pt-4 border-t">
                             <h4 className="text-sm font-semibold mb-3">Billing Cycles</h4>
-                            <div className="border rounded-lg overflow-hidden">
+                            <div className="overflow-hidden rounded-lg border border-border bg-background">
                               <div className="max-h-[180px] overflow-y-auto">
-                                <Table>
-                                <TableHeader className="bg-gray-50">
-                                  <TableRow className="hover:bg-gray-50">
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Cycle</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Status</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Start Date</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">End Date</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Tokens Allocated</TableHead>
+                                <Table className="bg-background text-foreground">
+                                <TableHeader className="bg-muted">
+                                  <TableRow className="hover:bg-muted/70">
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Cycle</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Status</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Start Date</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">End Date</TableHead>
                                     {activeSubscription.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) && (
-                                      <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Action</TableHead>
+                                      <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Action</TableHead>
                                     )}
                                   </TableRow>
                                 </TableHeader>
@@ -1139,13 +1203,13 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                   {activeSubscription.billingCycles
                                     ?.sort((a, b) => (b.cycleNumber || 0) - (a.cycleNumber || 0))
                                     .map((cycle) => (
-                                    <TableRow key={cycle.id} className="hover:bg-gray-50">
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                    <TableRow key={cycle.id} className="hover:bg-muted/70">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         <div className="flex items-center gap-2">
                                           <span>{cycle.cycleNumber}</span>
                                           <button
                                             onClick={() => handleCopyCycleId(cycle.id)}
-                                            className="text-gray-500 hover:text-gray-700 transition-colors"
+                                            className="text-muted-foreground transition-colors hover:text-foreground"
                                             title={copiedCycleId === cycle.id ? "Copied!" : "Copy billing cycle ID"}
                                           >
                                             {copiedCycleId === cycle.id ? (
@@ -1158,24 +1222,21 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                       </TableCell>
                                       <TableCell className="text-xs whitespace-nowrap px-3 py-2">
                                         <span className={`px-2 py-1 rounded capitalize ${
-                                          cycle.status === "paid" ? "bg-green-100 text-green-800" :
-                                          cycle.status === "failed" ? "bg-red-100 text-red-800" :
-                                          "bg-yellow-100 text-yellow-800"
+                                          cycle.status === "paid" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400" :
+                                          cycle.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                                          "bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300"
                                         }`}>
                                           {cycle.status}
                                         </span>
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.scheduledTimestamp ? new Date(cycle.scheduledTimestamp).toLocaleDateString() : "-"}
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.startedAt ? new Date(cycle.startedAt).toLocaleDateString() : "-"}
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.endsAt ? new Date(cycle.endsAt).toLocaleDateString() : "-"}
-                                      </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
-                                        {cycle.tokensAllocated ? cycle.tokensAllocated.toLocaleString() : "-"}
                                       </TableCell>
                                       {activeSubscription.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) && (
                                         <TableCell className="text-xs whitespace-nowrap px-3 py-2">
@@ -1194,7 +1255,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                                 Pay
                                               </Button>
                                             ) : (
-                                              <span className="text-gray-400">-</span>
+                                              <span className="text-muted-foreground">-</span>
                                             )}
                                             {isDevOrStaging && cycle.xenditCycleId && (
                                               <Button
@@ -1260,6 +1321,12 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                               )}
                             </Button>
                           )}
+                          {activeSubscription.provider === "revenuecat" ? (
+                            <ManageStoreSubscriptionButton
+                              managementUrl={activeSubscription.managementUrl}
+                              onFinished={refetchSubscription}
+                            />
+                          ) : activeSubscription.provider === "grant" ? null : (
                           <Button
                             variant="destructive"
                             onClick={() => setShowCancelDialog(activeSubscription.id)}
@@ -1277,6 +1344,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                               </>
                             )}
                           </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -1309,8 +1377,8 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Token Limit</p>
-                            <p className="text-lg font-semibold">{sub.subscriptionPlan.tokenLimit}</p>
+                            <p className="text-sm text-gray-500">Access</p>
+                            <p className="text-lg font-semibold">Fintr Pro</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Status</p>
@@ -1324,19 +1392,18 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                         {sub.billingCycles && sub.billingCycles.length > 0 && (
                           <div className="pt-4 border-t">
                             <h4 className="text-sm font-semibold mb-3">Billing Cycles</h4>
-                            <div className="border rounded-lg overflow-hidden">
+                            <div className="overflow-hidden rounded-lg border border-border bg-background">
                               <div className="max-h-[180px] overflow-y-auto">
-                                <Table>
-                                <TableHeader className="bg-gray-50">
-                                  <TableRow className="hover:bg-gray-50">
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Cycle</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Status</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Start Date</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">End Date</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Tokens Allocated</TableHead>
+                                <Table className="bg-background text-foreground">
+                                <TableHeader className="bg-muted">
+                                  <TableRow className="hover:bg-muted/70">
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Cycle</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Status</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Start Date</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">End Date</TableHead>
                                     {sub.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) && (
-                                      <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Action</TableHead>
+                                      <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Action</TableHead>
                                     )}
                                   </TableRow>
                                 </TableHeader>
@@ -1344,13 +1411,13 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                   {sub.billingCycles
                                     ?.sort((a, b) => (b.cycleNumber || 0) - (a.cycleNumber || 0))
                                     .map((cycle) => (
-                                    <TableRow key={cycle.id} className="hover:bg-gray-50">
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                    <TableRow key={cycle.id} className="hover:bg-muted/70">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         <div className="flex items-center gap-2">
                                           <span>{cycle.cycleNumber}</span>
                                           <button
                                             onClick={() => handleCopyCycleId(cycle.id)}
-                                            className="text-gray-500 hover:text-gray-700 transition-colors"
+                                            className="text-muted-foreground transition-colors hover:text-foreground"
                                             title={copiedCycleId === cycle.id ? "Copied!" : "Copy billing cycle ID"}
                                           >
                                             {copiedCycleId === cycle.id ? (
@@ -1363,24 +1430,21 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                       </TableCell>
                                       <TableCell className="text-xs whitespace-nowrap px-3 py-2">
                                         <span className={`px-2 py-1 rounded capitalize ${
-                                          cycle.status === "paid" ? "bg-green-100 text-green-800" :
-                                          cycle.status === "failed" ? "bg-red-100 text-red-800" :
-                                          "bg-yellow-100 text-yellow-800"
+                                          cycle.status === "paid" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400" :
+                                          cycle.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                                          "bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300"
                                         }`}>
                                           {cycle.status}
                                         </span>
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.scheduledTimestamp ? new Date(cycle.scheduledTimestamp).toLocaleDateString() : "-"}
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.startedAt ? new Date(cycle.startedAt).toLocaleDateString() : "-"}
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.endsAt ? new Date(cycle.endsAt).toLocaleDateString() : "-"}
-                                      </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
-                                        {cycle.tokensAllocated ? cycle.tokensAllocated.toLocaleString() : "-"}
                                       </TableCell>
                                       {sub.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) && (
                                         <TableCell className="text-xs whitespace-nowrap px-3 py-2">
@@ -1399,7 +1463,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                                 Pay
                                               </Button>
                                             ) : (
-                                              <span className="text-gray-400">-</span>
+                                              <span className="text-muted-foreground">-</span>
                                             )}
                                             {isDevOrStaging && cycle.xenditCycleId && (
                                               <Button
@@ -1521,8 +1585,8 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Token Limit</p>
-                            <p className="text-lg font-semibold">{sub.subscriptionPlan.tokenLimit}</p>
+                            <p className="text-sm text-gray-500">Access</p>
+                            <p className="text-lg font-semibold">Fintr Pro</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Status</p>
@@ -1536,19 +1600,18 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                         {sub.billingCycles && sub.billingCycles.length > 0 && (
                           <div className="pt-4 border-t">
                             <h4 className="text-sm font-semibold mb-3">Billing Cycles</h4>
-                            <div className="border rounded-lg overflow-hidden">
+                            <div className="overflow-hidden rounded-lg border border-border bg-background">
                               <div className="max-h-[180px] overflow-y-auto">
-                                <Table>
-                                <TableHeader className="bg-gray-50">
-                                  <TableRow className="hover:bg-gray-50">
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Cycle</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Status</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Start Date</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">End Date</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Tokens Allocated</TableHead>
+                                <Table className="bg-background text-foreground">
+                                <TableHeader className="bg-muted">
+                                  <TableRow className="hover:bg-muted/70">
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Cycle</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Status</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Start Date</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">End Date</TableHead>
                                     {sub.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) && (
-                                      <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Action</TableHead>
+                                      <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Action</TableHead>
                                     )}
                                   </TableRow>
                                 </TableHeader>
@@ -1556,13 +1619,13 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                   {sub.billingCycles
                                     ?.sort((a, b) => (b.cycleNumber || 0) - (a.cycleNumber || 0))
                                     .map((cycle) => (
-                                    <TableRow key={cycle.id} className="hover:bg-gray-50">
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                    <TableRow key={cycle.id} className="hover:bg-muted/70">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         <div className="flex items-center gap-2">
                                           <span>{cycle.cycleNumber}</span>
                                           <button
                                             onClick={() => handleCopyCycleId(cycle.id)}
-                                            className="text-gray-500 hover:text-gray-700 transition-colors"
+                                            className="text-muted-foreground transition-colors hover:text-foreground"
                                             title={copiedCycleId === cycle.id ? "Copied!" : "Copy billing cycle ID"}
                                           >
                                             {copiedCycleId === cycle.id ? (
@@ -1575,24 +1638,21 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                       </TableCell>
                                       <TableCell className="text-xs whitespace-nowrap px-3 py-2">
                                         <span className={`px-2 py-1 rounded capitalize ${
-                                          cycle.status === "paid" ? "bg-green-100 text-green-800" :
-                                          cycle.status === "failed" ? "bg-red-100 text-red-800" :
-                                          "bg-yellow-100 text-yellow-800"
+                                          cycle.status === "paid" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400" :
+                                          cycle.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                                          "bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300"
                                         }`}>
                                           {cycle.status}
                                         </span>
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.scheduledTimestamp ? new Date(cycle.scheduledTimestamp).toLocaleDateString() : "-"}
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.startedAt ? new Date(cycle.startedAt).toLocaleDateString() : "-"}
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.endsAt ? new Date(cycle.endsAt).toLocaleDateString() : "-"}
-                                      </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
-                                        {cycle.tokensAllocated ? cycle.tokensAllocated.toLocaleString() : "-"}
                                       </TableCell>
                                       {sub.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) && (
                                         <TableCell className="text-xs whitespace-nowrap px-3 py-2">
@@ -1611,7 +1671,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                                 Pay
                                               </Button>
                                             ) : (
-                                              <span className="text-gray-400">-</span>
+                                              <span className="text-muted-foreground">-</span>
                                             )}
                                             {isDevOrStaging && cycle.xenditCycleId && (
                                               <Button
@@ -1687,8 +1747,8 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Token Limit</p>
-                            <p className="text-lg font-semibold">{sub.subscriptionPlan.tokenLimit}</p>
+                            <p className="text-sm text-gray-500">Access</p>
+                            <p className="text-lg font-semibold">Fintr Pro</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Status</p>
@@ -1714,19 +1774,18 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                         {sub.billingCycles && sub.billingCycles.length > 0 && (
                           <div className="pt-4 border-t">
                             <h4 className="text-sm font-semibold mb-3">Billing Cycles</h4>
-                            <div className="border rounded-lg overflow-hidden">
+                            <div className="overflow-hidden rounded-lg border border-border bg-background">
                               <div className="max-h-[180px] overflow-y-auto">
-                                <Table>
-                                <TableHeader className="bg-gray-50">
-                                  <TableRow className="hover:bg-gray-50">
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Cycle</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Status</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Start Date</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">End Date</TableHead>
-                                    <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Tokens Allocated</TableHead>
+                                <Table className="bg-background text-foreground">
+                                <TableHeader className="bg-muted">
+                                  <TableRow className="hover:bg-muted/70">
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Cycle</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Status</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Scheduled Payment</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Start Date</TableHead>
+                                    <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">End Date</TableHead>
                                     {sub.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) && (
-                                      <TableHead className="text-xs font-medium text-gray-600 whitespace-nowrap px-3 py-2">Action</TableHead>
+                                      <TableHead className="h-auto text-xs font-medium text-muted-foreground whitespace-nowrap px-3 py-2">Action</TableHead>
                                     )}
                                   </TableRow>
                                 </TableHeader>
@@ -1734,13 +1793,13 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                   {sub.billingCycles
                                     ?.sort((a, b) => (b.cycleNumber || 0) - (a.cycleNumber || 0))
                                     .map((cycle) => (
-                                    <TableRow key={cycle.id} className="hover:bg-gray-50">
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                    <TableRow key={cycle.id} className="hover:bg-muted/70">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         <div className="flex items-center gap-2">
                                           <span>{cycle.cycleNumber}</span>
                                           <button
                                             onClick={() => handleCopyCycleId(cycle.id)}
-                                            className="text-gray-500 hover:text-gray-700 transition-colors"
+                                            className="text-muted-foreground transition-colors hover:text-foreground"
                                             title={copiedCycleId === cycle.id ? "Copied!" : "Copy billing cycle ID"}
                                           >
                                             {copiedCycleId === cycle.id ? (
@@ -1753,24 +1812,21 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                       </TableCell>
                                       <TableCell className="text-xs whitespace-nowrap px-3 py-2">
                                         <span className={`px-2 py-1 rounded capitalize ${
-                                          cycle.status === "paid" ? "bg-green-100 text-green-800" :
-                                          cycle.status === "failed" ? "bg-red-100 text-red-800" :
-                                          "bg-yellow-100 text-yellow-800"
+                                          cycle.status === "paid" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400" :
+                                          cycle.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                                          "bg-yellow-100 text-yellow-800 dark:bg-amber-950/40 dark:text-amber-300"
                                         }`}>
                                           {cycle.status}
                                         </span>
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.scheduledTimestamp ? new Date(cycle.scheduledTimestamp).toLocaleDateString() : "-"}
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.startedAt ? new Date(cycle.startedAt).toLocaleDateString() : "-"}
                                       </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
+                                      <TableCell className="text-xs text-foreground whitespace-nowrap px-3 py-2">
                                         {cycle.endsAt ? new Date(cycle.endsAt).toLocaleDateString() : "-"}
-                                      </TableCell>
-                                      <TableCell className="text-xs text-gray-700 whitespace-nowrap px-3 py-2">
-                                        {cycle.tokensAllocated ? cycle.tokensAllocated.toLocaleString() : "-"}
                                       </TableCell>
                                       {sub.billingCycles?.some((c) => c.status === "failed" && c.actionUrl) && (
                                         <TableCell className="text-xs whitespace-nowrap px-3 py-2">
@@ -1789,7 +1845,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                                                 Pay
                                               </Button>
                                             ) : (
-                                              <span className="text-gray-400">-</span>
+                                              <span className="text-muted-foreground">-</span>
                                             )}
                                             {isDevOrStaging && cycle.xenditCycleId && (
                                               <Button
@@ -1846,12 +1902,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link href="/dashboard/subscriptions/create">
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Subscribe
-                    </Button>
-                  </Link>
+                  <SubscribeProButton>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Subscribe
+                  </SubscribeProButton>
                 </CardContent>
               </Card>
             )}
@@ -2007,7 +2061,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                             <p className="text-sm font-medium">
                               {formatCurrency(plan.priceCents / 100, plan.priceCurrency)} / {plan.interval}
                             </p>
-                            <p className="text-xs text-gray-500">{plan.tokenLimit} tokens included</p>
+                            <p className="text-xs text-gray-500">Fintr Pro</p>
                           </div>
                         </div>
                         {selectedPlanId === plan.id && (

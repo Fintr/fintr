@@ -47,6 +47,35 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         expect(updated_transaction.category).to eq(new_category)
       end
 
+      it "broadcasts transaction_updated on the space transactions channel" do
+        expect do
+          described_class.new.call(
+            id: transaction.id,
+            user_id: user.id,
+            space_id: space.id,
+            amount: 150.00,
+            date: transaction.date.to_date,
+            transaction_type: "expense",
+            category_name: new_category.name,
+            account_name: account.name,
+            description: "Updated description",
+            schedule_type: "one_time",
+          )
+        end.to have_broadcasted_to(
+          "transactions:#{space.id}",
+        ).with(
+          hash_including(
+            type: "transaction_updated",
+            spaceId: space.id.to_s,
+            transaction: hash_including(
+              id: transaction.id,
+              description: "Updated description",
+              type: "expense",
+            ),
+          ),
+        )
+      end
+
       context 'when changing from a subcategory to a parent category only' do
         let!(:parent_category) { create(:category, :expense, space:, name: 'Travel') }
         let!(:subcategory) do
@@ -185,7 +214,7 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
         expect(result.value!.account_id).to eq(other_php_account.id)
       end
 
-      it "rejects switching to an account with a different currency" do
+      it "allows switching to an account with a different currency when conversion is provided" do
         result = described_class.new.call(
           id: transaction.id,
           user_id: user.id,
@@ -196,11 +225,89 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
           category_name: category.name,
           account_name: eur_account.name,
           description: "Test",
-          schedule_type: "one_time"
+          schedule_type: "one_time",
+          original_currency: "PHP",
+          exchange_rate: 0.016,
+          exchange_rate_source: "manual"
         )
 
-        expect(result).to be_failure
-        expect(result.failure).to include(account_name: "currency cannot be changed")
+        expect(result).to be_success
+        expect(result.value!.account_id).to eq(eur_account.id)
+        expect(result.value!.amount_currency).to eq("EUR")
+        expect(result.value!.amount.amount).to eq(1.6)
+        expect(result.value!.currency_conversion).to be_present
+        expect(result.value!.currency_conversion.original_currency).to eq("PHP")
+        expect(result.value!.currency_conversion.converted_currency).to eq("EUR")
+      end
+
+      it "overwrites an existing currency_conversion on update" do
+        ExchangeRates::CurrencyConversion.create!(
+          convertible: transaction,
+          space:,
+          original_amount_cents: 5000,
+          original_currency: "USD",
+          converted_amount_cents: 10000,
+          converted_currency: "PHP",
+          exchange_rate: 2.0,
+          source: "manual",
+          rate_timestamp: Time.current
+        )
+
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 10.0,
+          date: transaction.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          description: "Test",
+          schedule_type: "one_time",
+          original_currency: "USD",
+          exchange_rate: 55.0,
+          exchange_rate_source: "manual"
+        )
+
+        expect(result).to be_success
+        conversion = result.value!.currency_conversion
+        expect(conversion.original_currency).to eq("USD")
+        expect(conversion.converted_currency).to eq("PHP")
+        expect(conversion.original_amount.amount).to eq(10.0)
+        expect(conversion.converted_amount.amount).to eq(550.0)
+      end
+
+      it "clears currency_conversion when update books in account currency without FX" do
+        ExchangeRates::CurrencyConversion.create!(
+          convertible: transaction,
+          space:,
+          original_amount_cents: 5000,
+          original_currency: "USD",
+          converted_amount_cents: 10000,
+          converted_currency: "PHP",
+          exchange_rate: 2.0,
+          source: "manual",
+          rate_timestamp: Time.current
+        )
+
+        result = described_class.new.call(
+          id: transaction.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 100.00,
+          date: transaction.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          description: "Test",
+          schedule_type: "one_time",
+          original_currency: "PHP",
+          exchange_rate: 1.0,
+          exchange_rate_source: "manual"
+        )
+
+        expect(result).to be_success
+        expect(result.value!.currency_conversion).to be_nil
       end
     end
 
@@ -349,6 +456,369 @@ RSpec.describe Transactions::Operations::UpdateTransaction, type: :operation do
 
         expect(result).to be_failure
         expect(result.failure).to include(update_scope: ["must be one of: this_only, this_and_future, all_in_series"])
+      end
+    end
+
+    context "with this_only installment amount change" do
+      let(:parent_date) { Date.new(2026, 1, 1) }
+      let!(:account) do
+        create(
+          :account,
+          space:,
+          balance: Money.from_amount(1_000_000, "PHP"),
+        )
+      end
+      let!(:parent) do
+        create(
+          :expense_transaction,
+          :installment,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 10_000,
+          installment_total_cents: 24_000_000,
+          installment_period: 24,
+          installment_count: 1,
+          date: parent_date,
+          description: "INSTALL5",
+          balance: Money.from_amount(0, "PHP"),
+          balance_state: :pending,
+        )
+      end
+      let!(:varied_child) do
+        create(
+          :expense_transaction,
+          :installment,
+          user:,
+          space:,
+          account:,
+          category:,
+          parent:,
+          amount: 10_000,
+          installment_total_cents: 24_000_000,
+          installment_period: 24,
+          date: Date.new(2027, 11, 1),
+          description: "INSTALL5",
+          balance: Money.from_amount(0, "PHP"),
+          balance_state: :pending,
+        )
+      end
+
+      it "raises the plan total by the extra this-payment amount" do
+        result = described_class.new.call(
+          id: varied_child.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 20_000,
+          date: varied_child.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          schedule_type: "installment",
+          installment_period: 24,
+          update_scope: "this_only",
+          installment_total: 240_000,
+        )
+
+        expect(result).to be_success
+        expect(parent.reload.installment_total.amount).to eq(250_000)
+        expect(varied_child.reload.amount.amount).to eq(20_000)
+        expect(varied_child.installment_total.amount).to eq(250_000)
+      end
+
+      it "writes the new plan total onto every installment in the series" do
+        sibling = create(
+          :expense_transaction,
+          :installment,
+          user:,
+          space:,
+          account:,
+          category:,
+          parent:,
+          amount: 10_000,
+          installment_total_cents: 24_000_000,
+          installment_period: 24,
+          date: Date.new(2027, 12, 1),
+          description: "INSTALL5",
+          balance: Money.from_amount(0, "PHP"),
+          balance_state: :pending,
+        )
+
+        result = described_class.new.call(
+          id: varied_child.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 20_000,
+          date: varied_child.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          schedule_type: "installment",
+          installment_period: 24,
+          update_scope: "this_only",
+        )
+
+        expect(result).to be_success
+        expect(parent.reload.installment_total_cents).to eq(25_000_000)
+        expect(varied_child.reload.installment_total_cents).to eq(25_000_000)
+        expect(sibling.reload.installment_total_cents).to eq(25_000_000)
+      end
+    end
+
+    context "when revising this-and-future after a this-only FX bump" do
+      let(:parent_date) { Date.new(2026, 1, 1) }
+      let!(:parent) do
+        create(
+          :expense_transaction,
+          :installment,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 10_000,
+          installment_total_cents: 26_000_000,
+          installment_period: 24,
+          installment_count: 1,
+          date: parent_date,
+          description: "INSTALL8",
+          balance: Money.from_amount(0, "PHP"),
+          balance_state: :pending,
+        )
+      end
+      let!(:series) do
+        (1...24).map do |index|
+          date = parent_date + index.months
+          create(
+            :expense_transaction,
+            :installment,
+            user:,
+            space:,
+            account:,
+            category:,
+            parent:,
+            amount: date == Date.new(2027, 11, 1) ? 30_000 : 10_000,
+            installment_total_cents: 26_000_000,
+            installment_period: 24,
+            date:,
+            description: "INSTALL8",
+            balance: Money.from_amount(0, "PHP"),
+            balance_state: :pending,
+          )
+        end
+      end
+      let(:october) { series.find { |row| row.date.to_date == Date.new(2027, 10, 1) } }
+
+      it "splits 2700 GBP across the last 3 payments as 20000 PHP each" do
+        result = described_class.new.call(
+          id: october.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 200,
+          date: october.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          description: "INSTALL8",
+          schedule_type: "installment",
+          installment_period: 24,
+          installment_total: 2_700,
+          installment_revision_anchor: "explicit",
+          update_scope: "this_and_future",
+          original_currency: "GBP",
+          exchange_rate: 100,
+          exchange_rate_source: "manual",
+        )
+
+        expect(result).to be_success
+
+        remaining = parent.series_records.where(
+          date: [
+            Date.new(2027, 10, 1),
+            Date.new(2027, 11, 1),
+            Date.new(2027, 12, 1),
+          ],
+        ).order(:date)
+
+        expect(remaining.map { |row| row.amount.amount }).to eq(
+          [
+            BigDecimal("20000"),
+            BigDecimal("20000"),
+            BigDecimal("20000"),
+          ],
+        )
+        expect(
+          parent.series_records.find_by(date: Date.new(2027, 9, 1)).amount.amount,
+        ).to eq(10_000)
+      end
+
+      it "rewrites the 2nd-to-last payment when it is no longer under the series root" do
+        november = series.find { |row| row.date.to_date == Date.new(2027, 11, 1) }
+        november.update!(
+          parent: october,
+          amount: Money.from_amount(-69_100, "PHP"),
+        )
+
+        result = described_class.new.call(
+          id: october.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 200,
+          date: october.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          description: "INSTALL8",
+          schedule_type: "installment",
+          installment_period: 24,
+          installment_total: 2_700,
+          installment_revision_anchor: "explicit",
+          update_scope: "this_and_future",
+          original_currency: "GBP",
+          exchange_rate: 100,
+          exchange_rate_source: "manual",
+        )
+
+        expect(result).to be_success
+        rewritten = Transactions::Transaction.find_by(
+          date: Date.new(2027, 11, 1),
+          description: "INSTALL8",
+        )
+        expect(rewritten).to be_present
+        expect(rewritten.amount.amount).to eq(20_000)
+      end
+
+      it "rewrites a leftover last payment parented to the leftover 2nd-to-last payment" do
+        november = series.find { |row| row.date.to_date == Date.new(2027, 11, 1) }
+        december = series.find { |row| row.date.to_date == Date.new(2027, 12, 1) }
+        november.update!(
+          parent: october,
+          amount: Money.from_amount(-69_100, "PHP"),
+        )
+        december.update!(
+          parent: november,
+          amount: Money.from_amount(-69_100, "PHP"),
+        )
+
+        result = described_class.new.call(
+          id: october.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 200,
+          date: october.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          description: "INSTALL8",
+          schedule_type: "installment",
+          installment_period: 24,
+          installment_total: 2_700,
+          installment_revision_anchor: "explicit",
+          update_scope: "this_and_future",
+          original_currency: "GBP",
+          exchange_rate: 100,
+          exchange_rate_source: "manual",
+        )
+
+        expect(result).to be_success
+
+        rewritten = Transactions::Transaction.find_by(
+          date: Date.new(2027, 12, 1),
+          description: "INSTALL8",
+        )
+        expect(rewritten).to be_present
+        expect(rewritten.amount.amount).to eq(20_000)
+      end
+    end
+
+    context "when all-in-series revises leftover FX conversions" do
+      let(:parent_date) { Date.new(2026, 1, 1) }
+      let!(:parent) do
+        create(
+          :expense_transaction,
+          :installment,
+          user:,
+          space:,
+          account:,
+          category:,
+          amount: 12_500,
+          installment_total_cents: 30_000_000,
+          installment_period: 24,
+          installment_count: 1,
+          date: parent_date,
+          description: "INSTALL-FX-LEFTOVER",
+          balance: Money.from_amount(0, "PHP"),
+          balance_state: :pending,
+        )
+      end
+      let!(:series) do
+        (1...24).map do |index|
+          create(
+            :expense_transaction,
+            :installment,
+            user:,
+            space:,
+            account:,
+            category:,
+            parent:,
+            amount: 12_500,
+            installment_total_cents: 30_000_000,
+            installment_period: 24,
+            date: parent_date + index.months,
+            description: "INSTALL-FX-LEFTOVER",
+            balance: Money.from_amount(0, "PHP"),
+            balance_state: :pending,
+          )
+        end
+      end
+
+      before do
+        parent.series_records.find_each do |row|
+          ExchangeRates::CurrencyConversion.create!(
+            convertible: row,
+            space:,
+            original_amount_cents: 6_400,
+            original_currency: "GBP",
+            converted_amount_cents: 1_250_000,
+            converted_currency: "PHP",
+            exchange_rate: 195.313,
+            source: "manual",
+            rate_timestamp: Time.current,
+          )
+        end
+      end
+
+      it "rewrites every payment to 125 GBP at the submitted rate of 100" do
+        result = described_class.new.call(
+          id: parent.id,
+          user_id: user.id,
+          space_id: space.id,
+          amount: 3_000,
+          date: parent.date.to_date,
+          transaction_type: "expense",
+          category_name: category.name,
+          account_name: account.name,
+          description: "INSTALL-FX-LEFTOVER",
+          schedule_type: "installment",
+          installment_period: 24,
+          installment_total: 3_000,
+          installment_revision_anchor: "explicit",
+          update_scope: "all_in_series",
+          original_currency: "GBP",
+          exchange_rate: 100,
+          exchange_rate_source: "manual",
+        )
+
+        expect(result).to be_success
+
+        parent.series_records.reload.each do |row|
+          conversion = row.currency_conversion
+          expect(conversion).to be_present
+          expect(conversion.original_money.amount).to eq(125)
+          expect(conversion.converted_money.amount).to eq(12_500)
+          expect(conversion.exchange_rate_as_multiplier).to eq(100)
+          expect(row.amount.amount).to eq(12_500)
+        end
       end
     end
   end
