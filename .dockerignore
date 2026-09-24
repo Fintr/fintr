@@ -1,0 +1,35 @@
+# Frontend production image context is the monorepo root (see deploy.fe.yml).
+# Send only the app and @fintr/domain. The backend image uses apps/fintr-be as its context.
+
+*
+
+!apps
+!apps/fintr-fe
+!apps/fintr-fe/**
+
+!packages
+!packages/fintr-domain
+!packages/fintr-domain/**
+
+apps/fintr-fe/node_modules
+apps/fintr-fe/.pnpm-store
+apps/fintr-fe/.next
+apps/fintr-fe/build
+apps/fintr-fe/out
+apps/fintr-fe/.git
+apps/fintr-fe/.gitignore
+apps/fintr-fe/.env*
+apps/fintr-fe/npm-debug.log*
+apps/fintr-fe/pnpm-debug.log*
+apps/fintr-fe/**/*.md
+apps/fintr-fe/tests
+apps/fintr-fe/e2e
+apps/fintr-fe/.vitest
+apps/fintr-fe/coverage
+apps/fintr-fe/playwright-report
+apps/fintr-fe/android
+apps/fintr-fe/ios
+apps/fintr-fe/.capacitor
+
+packages/fintr-domain/node_modules
+packages/fintr-domain/.pnpm-store

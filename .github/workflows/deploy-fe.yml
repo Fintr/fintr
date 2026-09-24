@@ -10,6 +10,8 @@ on:
       - main
     paths:
       - "apps/fintr-fe/**"
+      - "packages/fintr-domain/**"
+      - ".dockerignore"
       - "apps/fintr-be/config/deploy.fe.yml"
       - "apps/fintr-be/config/kamal_ssh.production.config"
       - "apps/fintr-be/.kamal/secrets.fe"

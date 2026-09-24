@@ -1,8 +1,11 @@
 FROM node:20-alpine AS base
 
+# Context is the monorepo root. @fintr/domain is file:../../packages/fintr-domain,
+# which resolves to /packages/fintr-domain when this app is installed at /app.
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY apps/fintr-fe/package.json apps/fintr-fe/pnpm-lock.yaml ./
+COPY packages/fintr-domain /packages/fintr-domain
 RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
 FROM base AS builder
@@ -37,7 +40,8 @@ ENV NEXT_PUBLIC_REVENUECAT_GOOGLE_API_KEY=${NEXT_PUBLIC_REVENUECAT_GOOGLE_API_KE
 ENV SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
 RUN npm install -g pnpm
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /packages/fintr-domain /packages/fintr-domain
+COPY apps/fintr-fe/ .
 RUN pnpm build
 
 FROM base AS runner

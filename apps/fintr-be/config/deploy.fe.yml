@@ -13,6 +13,7 @@
     end
 
   fintr_fe_root = fintr_be_root.join("../fintr-fe")
+  fintr_repo_root = fintr_be_root.join("../..").expand_path
   fe_dotenv = fintr_fe_root.join(".env.production")
   be_dotenv = fintr_be_root.join(".env.production")
 
@@ -99,7 +100,7 @@ registry:
 builder:
   arch: amd64
   provenance: false
-  context: <%= fintr_fe_root.to_s %>
+  context: <%= fintr_repo_root.to_s %>
   dockerfile: <%= fintr_fe_root.join("Dockerfile").to_s %>
   args:
     NEXT_PUBLIC_APP_BASE_URL: "<%= ENV.fetch("NEXT_PUBLIC_APP_BASE_URL") %>"
