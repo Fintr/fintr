@@ -33,7 +33,19 @@ RUN apt-get update -qq && \
 
 # Install application gems
 COPY Gemfile Gemfile.lock ./
-RUN bundle install && \
+# digest-crc builds one native extension per CRC variant. An amd64 build on
+# Apple Silicon goes through Rosetta, which dies with SIGTRAP mid-compile
+# ("rosetta error: unexpectedly got a signal during sigreturn"). The gem
+# already falls back to pure Ruby when those extensions are absent.
+RUN printf '%s\n' \
+      '#!/bin/sh' \
+      'case "$PWD" in' \
+      '  *digest-crc*) exit 0 ;;' \
+      'esac' \
+      'exec /usr/local/bin/ruby -rrubygems -S rake "$@"' \
+      > /usr/local/bin/rake-or-skip-digest-crc && \
+    chmod +x /usr/local/bin/rake-or-skip-digest-crc && \
+    rake=/usr/local/bin/rake-or-skip-digest-crc bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 
