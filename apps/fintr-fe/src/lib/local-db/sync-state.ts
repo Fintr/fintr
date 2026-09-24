@@ -3,10 +3,7 @@ import {
   putLocalResponseSnapshot,
 } from "./response-cache";
 import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
-import {
-  countSpaceTransactions,
-  isSpaceTransactionIndexComplete,
-} from "./transactions";
+import { isSpaceTransactionIndexComplete } from "./transactions";
 
 export const OFFLINE_SYNC_VERSION = 12;
 
@@ -160,28 +157,7 @@ export const isOfflineSpaceCacheComplete = async (
     return false;
   }
 
-  if (!(await isSpaceTransactionIndexComplete(spaceCode))) {
-    return false;
-  }
-
-  const transactionCount = await countSpaceTransactions(spaceCode);
-  if (transactionCount > 0) {
-    return true;
-  }
-
-  const hasFinancialActivity = summaries.some((row) => {
-    const income = Number(row.totalIncome) || 0;
-    const expenses = Number(row.totalExpenses) || 0;
-
-    return income !== 0 || expenses !== 0;
-  });
-
-  if (!hasFinancialActivity) {
-    return true;
-  }
-
-  // Summaries imply activity but the transaction index is empty (partial wipe).
-  return false;
+  return isSpaceTransactionIndexComplete(spaceCode);
 };
 
 export const shouldRunFullOfflineSync = async (): Promise<boolean> => {

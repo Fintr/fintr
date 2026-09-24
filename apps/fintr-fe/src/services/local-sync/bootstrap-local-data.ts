@@ -836,9 +836,6 @@ const syncLocalDataFromBackendV1 = async (
       }
     }
 
-    if (isOfflineBootstrapDateRange(startDate, endDate)) {
-      await markSpaceTransactionIndexComplete(spaceCode);
-    }
   } catch (error) {
     result.errors.push("transactions");
     console.warn(
@@ -846,6 +843,18 @@ const syncLocalDataFromBackendV1 = async (
       spaceCode,
       error,
     );
+  } finally {
+    if (isOfflineBootstrapDateRange(startDate, endDate)) {
+      try {
+        await markSpaceTransactionIndexComplete(spaceCode);
+      } catch (markError) {
+        console.warn(
+          "[local-sync] Could not mark transaction index complete",
+          spaceCode,
+          markError,
+        );
+      }
+    }
   }
 
   const monthRanges = monthRangesForOfflineHydration(result.transactionPages);

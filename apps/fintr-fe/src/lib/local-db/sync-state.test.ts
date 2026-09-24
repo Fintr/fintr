@@ -123,7 +123,7 @@ describe("offline sync state — new spaces", () => {
     });
   });
 
-  it("requires reimport when summaries show activity but transactions were wiped", async () => {
+  it("accepts a completed index when summaries show activity but no rows were stored", async () => {
     await markOfflineSyncComplete(["fintr"]);
     await putLocalResponseSnapshot("monthlyFinancialSummaries:fintr", [
       {
@@ -143,11 +143,11 @@ describe("offline sync state — new spaces", () => {
     ]);
     await markSpaceTransactionIndexComplete("fintr");
 
-    await expect(isOfflineSpaceCacheComplete("fintr")).resolves.toBe(false);
+    await expect(isOfflineSpaceCacheComplete("fintr")).resolves.toBe(true);
     await expect(
       resolveOfflineSyncBootstrapState("fintr"),
     ).resolves.toMatchObject({
-      requiresReimport: true,
+      requiresReimport: false,
     });
   });
 });
