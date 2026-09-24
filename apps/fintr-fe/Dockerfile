@@ -6,7 +6,7 @@ FROM base AS deps
 WORKDIR /app
 COPY apps/fintr-fe/package.json apps/fintr-fe/pnpm-lock.yaml ./
 COPY packages/fintr-domain /packages/fintr-domain
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm install -g pnpm@9 && pnpm install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
@@ -38,7 +38,7 @@ ENV NEXT_PUBLIC_MAINTENANCE_MESSAGE=${NEXT_PUBLIC_MAINTENANCE_MESSAGE}
 ENV NEXT_PUBLIC_REVENUECAT_APPLE_API_KEY=${NEXT_PUBLIC_REVENUECAT_APPLE_API_KEY}
 ENV NEXT_PUBLIC_REVENUECAT_GOOGLE_API_KEY=${NEXT_PUBLIC_REVENUECAT_GOOGLE_API_KEY}
 ENV SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /packages/fintr-domain /packages/fintr-domain
 COPY apps/fintr-fe/ .
