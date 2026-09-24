@@ -18,7 +18,6 @@ import {
 import {
   isSpaceTransactionIndexComplete,
   markSpaceTransactionIndexComplete,
-  resetSpaceTransactionIndexComplete,
 } from "@/lib/local-db/transactions";
 import {
   markTransactionRelationIdsResyncComplete,
@@ -500,21 +499,25 @@ export const resyncTransactionRelationIdsIfNeeded = async (
     return;
   }
 
-  const bootstrapRange = offlineBootstrapDateRange();
+  let failed = false;
 
   for (const spaceCode of uniqueSpaceCodes) {
     try {
-      await resetSpaceTransactionIndexComplete(spaceCode);
       await ensureSpaceTransactionIndex(api, spaceCode, { force: true });
       await ensureSpaceTransactionRelationIds(spaceCode);
       invalidateOfflineReadQueries(queryClient, spaceCode);
     } catch (error) {
+      failed = true;
       console.warn(
         "[local-sync] Transaction relation-id resync failed",
         spaceCode,
         error,
       );
     }
+  }
+
+  if (failed) {
+    return;
   }
 
   await markTransactionRelationIdsResyncComplete();

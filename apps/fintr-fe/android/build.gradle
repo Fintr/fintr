@@ -26,17 +26,33 @@ allprojects {
 
 subprojects {
     afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_21
-                    targetCompatibility JavaVersion.VERSION_21
-                }
-            }
+        def androidExt = project.extensions.findByName("android")
+        if (androidExt == null) {
+            return
         }
-        // Plugins such as @capacitor/filesystem use kotlin { jvmToolchain(21) }; that must match
-        // Java 21 above or Gradle fails with "Inconsistent JVM-target compatibility".
-        def kotlinExt = project.extensions.findByName('kotlin')
+
+        def kotlinJvmTarget = null
+        if (androidExt.hasProperty("kotlinOptions")) {
+            kotlinJvmTarget = androidExt.kotlinOptions.jvmTarget
+        }
+
+        // RevenueCat pins Kotlin 1.8, which cannot target 21. Leave that module on Java 8.
+        // Other plugins (for example @capacitor/filesystem) use jvmToolchain(21) and must
+        // compile Java and Kotlin to the same version.
+        if (kotlinJvmTarget == "1.8") {
+            androidExt.compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+            return
+        }
+
+        androidExt.compileOptions {
+            sourceCompatibility JavaVersion.VERSION_21
+            targetCompatibility JavaVersion.VERSION_21
+        }
+
+        def kotlinExt = project.extensions.findByName("kotlin")
         if (kotlinExt != null) {
             try {
                 kotlinExt.jvmToolchain(21)
