@@ -19,8 +19,10 @@ personal/**/*
 
 *.png
 
-# Bundled tag sample illustrations
+# Bundled frontend illustrations served from public/
 !apps/fintr-fe/public/tags/*.png
+!apps/fintr-fe/public/profiles/*.png
+!apps/fintr-fe/public/badges/*.png
 
 # Local git worktrees (see .worktrees/)
 .worktrees/
