@@ -15,6 +15,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { ProFeatureGate } from "@/components/settings/pro-feature-gate";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { WeeklySpending } from "@/services/insights/types";
 
@@ -47,11 +49,13 @@ export const WeeklySpendingCard = ({
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
           Weekly Spending
+          <ProTrialBadge />
         </CardTitle>
         <CardDescription>Your daily expenses this week</CardDescription>
       </CardHeader>
 
       <CardContent className="px-4 pb-6 sm:px-6">
+        <ProFeatureGate featureName="Weekly Spending">
         {isLoading ? (
           <div className="flex justify-center py-10">
             <LoadingSpinner size="medium" />
@@ -111,6 +115,7 @@ export const WeeklySpendingCard = ({
             </BarChart>
           </ChartContainer>
         )}
+        </ProFeatureGate>
       </CardContent>
     </Card>
   );

@@ -5,9 +5,11 @@ module LlmConfig
 
   def agent_provider
     explicit = ENV["LLM_AGENT_PROVIDER"].to_s.strip.downcase.presence
-    return explicit if explicit.in?(%w[openrouter openai])
+    return explicit if explicit.in?(%w[gemini openrouter openai])
 
-    if ENV["OPENROUTER_API_KEY"].present?
+    if ENV["GEMINI_API_KEY"].present?
+      "gemini"
+    elsif ENV["OPENROUTER_API_KEY"].present?
       "openrouter"
     else
       "openai"
@@ -18,8 +20,8 @@ end
 Rails.application.configure do
   default_generation_model = ENV.fetch(
     "LLM_DEFAULT_MODEL",
-    "google/gemini-2.5-flash-lite",
-  ).presence || "google/gemini-2.5-flash-lite"
+    "gemini-2.5-flash-lite",
+  ).presence || "gemini-2.5-flash-lite"
 
   config.x.llm.default_model = default_generation_model
   config.x.llm.fast_model = ENV.fetch("LLM_FAST_MODEL", "openai/gpt-4o-mini").presence || "openai/gpt-4o-mini"

@@ -67,6 +67,9 @@ export interface SpaceSubscription {
   id: string;
   subscriptionPlan: SubscriptionPlan;
   status: string;
+  provider?: "xendit" | "revenuecat" | "grant";
+  store?: string;
+  managementUrl?: string;
   subscriptionType?: "paid" | "free";
   startedAt: string;
   endedAt?: string;

@@ -88,6 +88,8 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({
     try {
       const createdAccountName = await addAccount({
         api,
+        queryClient,
+        spaceCurrency,
         accountData: {
           name: accountName,
           balance: parseFloat(initialBalance), // Already validated

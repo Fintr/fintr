@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   isWorkspaceContextBlocking,
+  shouldRunOfflineSync,
   shouldShowAuthLoadingScreen,
   shouldShowDashboardShellLoadingScreen,
   shouldShowOfflineSyncScreen,
@@ -124,6 +125,69 @@ describe("shouldShowOfflineSyncScreen", () => {
       shouldShowOfflineSyncScreen({
         requiresOfflineReimport: false,
         offlineSyncStatus: "idle",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not block workspace setup while offline sync is not allowed to run", () => {
+    expect(
+      shouldShowOfflineSyncScreen({
+        requiresOfflineReimport: true,
+        offlineSyncStatus: "idle",
+        canRunOfflineSync: false,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("shouldRunOfflineSync", () => {
+  const ready = {
+    isAuthenticated: true,
+    isAuthLoading: false,
+    isOnOnboardingPage: false,
+    isOnAdminPage: false,
+    onboardingStep: "completed" as const,
+  };
+
+  it("waits until setup has finished so an empty workspace is not cached", () => {
+    expect(
+      shouldRunOfflineSync({
+        ...ready,
+        onboardingStep: null,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldRunOfflineSync({
+        ...ready,
+        onboardingStep: "currency",
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldRunOfflineSync({
+        ...ready,
+        onboardingStep: "accounts",
+      }),
+    ).toBe(false);
+  });
+
+  it("syncs after setup is complete and the user has left onboarding", () => {
+    expect(shouldRunOfflineSync(ready)).toBe(true);
+  });
+
+  it("stays off on onboarding and admin routes", () => {
+    expect(
+      shouldRunOfflineSync({
+        ...ready,
+        isOnOnboardingPage: true,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldRunOfflineSync({
+        ...ready,
+        isOnAdminPage: true,
       }),
     ).toBe(false);
   });

@@ -93,6 +93,30 @@ const extractCreatedEntity = (response: unknown): EntityRecord | undefined => {
   };
 };
 
+const previewPhotoUrl = (photo: File | null | undefined): string | null => {
+  if (!photo) {
+    return null;
+  }
+
+  if (typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+    return null;
+  }
+
+  return URL.createObjectURL(photo);
+};
+
+const releasePreviewPhoto = (photoUrl: string | null | undefined): void => {
+  if (!photoUrl?.startsWith("blob:")) {
+    return;
+  }
+
+  if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") {
+    return;
+  }
+
+  URL.revokeObjectURL(photoUrl);
+};
+
 export const buildOptimisticEntity = (params: {
   id: string;
   data: CreateEntityType;
@@ -103,13 +127,13 @@ export const buildOptimisticEntity = (params: {
     id,
     fullName: data.fullName.trim(),
     entityType: data.entityType,
-    photoUrl: null,
+    photoUrl: previewPhotoUrl(data.photo),
   };
 };
 
 /**
- * Local-first entity create (name-only): patch entity caches immediately,
- * enqueue outbox, then POST.
+ * Local-first entity create: write IndexedDB and the list cache first,
+ * then POST (including a photo, when one was chosen).
  */
 export const createEntityLocalFirst = async (
   api: AxiosInstance,
@@ -124,10 +148,6 @@ export const createEntityLocalFirst = async (
 
   if (!spaceCode) {
     throw new Error("spaceCode is required to create a local entity");
-  }
-
-  if (data.photo) {
-    throw new Error("Entity photo uploads require an online create");
   }
 
   const clientMutationId = newClientMutationId();
@@ -168,10 +188,12 @@ export const createEntityLocalFirst = async (
       const serverResponse = await createEntity(api, {
         fullName: data.fullName,
         entityType: data.entityType,
+        photo: data.photo ?? null,
       });
       const created = extractCreatedEntity(serverResponse);
 
       if (created && created.id !== localId) {
+        releasePreviewPhoto(localEntity.photoUrl);
         const currentEntities = await loadEntities(spaceCode);
         const withReplacedId = replaceEntityIdInList(
           currentEntities,
@@ -214,6 +236,7 @@ export const createEntityLocalFirst = async (
         return;
       }
 
+      releasePreviewPhoto(localEntity.photoUrl);
       const rollbackEntities = removeEntityFromList(
         await loadEntities(spaceCode),
         localId,

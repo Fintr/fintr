@@ -66,6 +66,83 @@ RSpec.describe Transactions::Operations::Accounts::DeleteAccount do
       end
     end
 
+    context 'when remove_transactions is true' do
+      let(:other_account) { create(:account, space: space, name: "Other Account") }
+      let!(:other_transaction) do
+        create(:transaction, account: other_account, space: space, user: user)
+      end
+      let(:to_account) do
+        create(:account, space: space, name: "Checking", balance: Money.from_amount(600, "PHP"))
+      end
+      let!(:transfer) do
+        create(
+          :transfer,
+          user: user,
+          space: space,
+          from_account: account_with_transactions,
+          to_account: to_account,
+          amount: Money.from_amount(100, "PHP"),
+          transaction_cost: Money.from_amount(0, "PHP"),
+          balance_state: "calculated"
+        )
+      end
+      let!(:loan) do
+        create(:loan, user: user, space: space, account: account_with_transactions)
+      end
+      let(:remove_params) do
+        {
+          space_id: space.id.to_s,
+          id: account_with_transactions.id.to_s,
+          user_id: user.id.to_s,
+          remove_transactions: true
+        }
+      end
+
+      it 'discards the account' do
+        result = operation.call(remove_params)
+
+        expect(result).to be_success
+        expect(account_with_transactions.reload).to be_discarded
+      end
+
+      it 'destroys transactions on the account' do
+        operation.call(remove_params)
+
+        expect(Transactions::Transaction.exists?(transaction.id)).to be false
+      end
+
+      it 'keeps transactions on other accounts' do
+        operation.call(remove_params)
+
+        expect(Transactions::Transaction.exists?(other_transaction.id)).to be true
+      end
+
+      it 'destroys transfers that use the account' do
+        operation.call(remove_params)
+
+        expect(Transactions::Transfer.exists?(transfer.id)).to be false
+      end
+
+      it 'reverts the other transfer account balance' do
+        operation.call(remove_params)
+
+        expect(to_account.reload.balance).to eq(Money.from_amount(500, "PHP"))
+      end
+
+      it 'destroys loans booked on the account' do
+        operation.call(remove_params)
+
+        expect(Transactions::Loan.exists?(loan.id)).to be false
+      end
+
+      it 'keeps transactions when the flag is false' do
+        result = operation.call(remove_params.merge(remove_transactions: false))
+
+        expect(result).to be_success
+        expect(Transactions::Transaction.exists?(transaction.id)).to be true
+      end
+    end
+
     context 'when account is not found (already discarded or non-existent)' do
       let(:params_with_invalid_id) do
         {

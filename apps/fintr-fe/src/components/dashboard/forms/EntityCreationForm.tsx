@@ -10,7 +10,6 @@ import { useEntitiesMutations } from "@/hooks/async/useEntitiesMutations";
 import { toast } from "sonner";
 import { extractFieldErrors, formatApiErrorMessage } from "@/utils/errorUtils";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface EntityCreationFormProps {
   onSuccess: (fullName: string) => void;
@@ -31,7 +30,6 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
   namePlaceholder = "Enter name",
   photoLabel = "Photo",
 }) => {
-  const queryClient = useQueryClient();
   const { createEntity } = useEntitiesMutations();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [entityName, setEntityName] = useState(initialName);
@@ -110,8 +108,6 @@ const EntityCreationForm: React.FC<EntityCreationFormProps> = ({
       });
 
       toast.success(`"${entityName.trim()}" has been added.`);
-
-      queryClient.invalidateQueries({ queryKey: ["entities"] });
 
       const finalEntityName = response?.data?.fullName || entityName.trim();
       setEntityName("");

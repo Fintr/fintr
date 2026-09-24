@@ -1,5 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthApi } from '@/hooks/useAuthApi';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { loansListQueryKey } from '@/services/loans/loans-list-cache';
 import { fetchLoans, Loan } from '@/services/loans/queries';
 
 /**
@@ -9,7 +11,7 @@ export const useLoans = () => {
   const { api } = useAuthApi({
     scope: "openid profile email read:current_user read:transactions",
   });
-  const queryClient = useQueryClient();
+  const [spaceCode] = useLocalStorage("spaceCode", "");
 
   const {
     data: loans,
@@ -19,9 +21,9 @@ export const useLoans = () => {
     refetch,
     isSuccess,
   } = useQuery<Loan[]>({
-    queryKey: ['loans'],
+    queryKey: loansListQueryKey(spaceCode),
     queryFn: () => fetchLoans(api),
-    enabled: !!api,
+    enabled: !!api && Boolean(spaceCode),
     staleTime: 30000,
     refetchOnWindowFocus: false,
   });

@@ -7,6 +7,7 @@ import type { Loan, LoansPage } from "./queries";
 import {
   removeLoanFromQueryCaches,
   upsertLoanInInfiniteData,
+  upsertLoanInQueryCaches,
 } from "./loans-list-cache";
 
 const loan = (id: string, entityName: string): Loan => ({
@@ -92,6 +93,38 @@ describe("upsertLoanInInfiniteData", () => {
 
     expect(result?.pages[0].loans).toHaveLength(1);
     expect(result?.pages[0].loans[0].id).toBe("loan-1");
+  });
+});
+
+describe("upsertLoanInQueryCaches", () => {
+  it("keeps another space's loans out of the current space list", () => {
+    const queryClient = new QueryClient();
+    const otherSpaceLoan = loan("loan-other", "Alice");
+    const currentLoan = loan("loan-current", "Bob");
+
+    queryClient.setQueryData(["loans"], {
+      pages: [page([otherSpaceLoan])],
+      pageParams: [1],
+    });
+    queryClient.setQueryData(["loans", "space-a"], {
+      pages: [page([otherSpaceLoan])],
+      pageParams: [1],
+    });
+
+    upsertLoanInQueryCaches(queryClient, {
+      spaceCode: "space-b",
+      loan: currentLoan,
+      seedListWhenEmpty: true,
+    });
+
+    const readIds = (key: readonly unknown[]): string[] | undefined =>
+      queryClient
+        .getQueryData<{ pages: Array<{ loans: Array<{ id: string }> }> }>(key)
+        ?.pages.flatMap((entry) => entry.loans.map((row) => row.id));
+
+    expect(readIds(["loans", "space-b"])).toEqual(["loan-current"]);
+    expect(readIds(["loans", "local", "space-b"])).toEqual(["loan-current"]);
+    expect(readIds(["loans", "space-a"])).toEqual(["loan-other"]);
   });
 });
 

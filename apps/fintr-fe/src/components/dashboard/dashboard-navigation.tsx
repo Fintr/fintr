@@ -18,6 +18,7 @@ import { resetGlobalAuthLock } from "@/components/deep-link-handler";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 
 const headerSecondaryButtonClassName =
   "bg-card text-primary shadow-none hover:bg-primary hover:text-white";
@@ -179,6 +180,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 AI Chat
+                <ProTrialBadge className="ml-2" />
               </Button>
               {showAddButtons && (
                 <>
@@ -190,6 +192,7 @@ const DashboardNavigation = ({ hideActionButtons = false, isAdmin }: DashboardNa
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     Add Receipt
+                    <ProTrialBadge className="ml-2" />
                   </Button>
                   <Button
                     onClick={() => setIsAddTransactionOpen(true)}

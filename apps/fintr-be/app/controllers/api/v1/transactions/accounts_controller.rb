@@ -87,7 +87,7 @@ module Api
         end
 
         def delete_params
-          params.permit(:id)
+          params.permit(:id, :remove_transactions)
         end
 
         def activity_params

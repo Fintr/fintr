@@ -20,7 +20,7 @@ module Finance
       {
         key: "ai_chat",
         name: "AI chat",
-        description: "Ask questions about your money.",
+        description: "Ask questions about your money. 30 chats per month.",
         available: true,
       },
       {
@@ -35,10 +35,16 @@ module Finance
         description: "Sample styles and generated images for tags.",
         available: true,
       },
+      {
+        key: "split_with_people",
+        name: "Split with people",
+        description: "Split a bill and track what each person owes you.",
+        available: true,
+      },
     ].freeze
 
     def self.description
-      "Dashboard Insights, AI receipt scanning, AI chat, and tag images. Bulk AI receipt scanning is coming soon."
+      "Dashboard Insights, AI receipt scanning, AI chat, tag images, and split bills. Bulk AI receipt scanning is coming soon."
     end
   end
 end

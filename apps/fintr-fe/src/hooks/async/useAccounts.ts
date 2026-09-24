@@ -7,7 +7,8 @@ import {
   extractAccountsFromResponse,
   loadCachedAccountsResponse,
 } from '@/services/transactions/accounts/local-cache';
-import { createAccount, adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
+import { adjustAccountBalance, CreateAccountType, UpdateAccountType, AdjustAccountBalanceType } from '@/services/transactions/accounts/mutation';
+import { createAccountLocalFirst } from '@/services/transactions/accounts/create-local-first';
 import { updateAccountLocalFirst } from '@/services/transactions/accounts/update-local-first';
 import { deleteAccountLocalFirst } from '@/services/transactions/accounts/delete-local-first';
 import { AccountBalanceTotals } from '@/types/accountTypes';
@@ -19,6 +20,25 @@ import {
 import { ACCOUNT_DETAIL_ACTIVITIES_KEY } from "@/hooks/async/useAccountDetailActivities";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+
+const readTotalsCurrency = (response: unknown): string | undefined => {
+  if (!response || typeof response !== "object") {
+    return undefined;
+  }
+
+  const root = response as Record<string, unknown>;
+  const data =
+    root.data && typeof root.data === "object" && !Array.isArray(root.data)
+      ? (root.data as Record<string, unknown>)
+      : root;
+  const totals = (data.balanceTotals ?? data.balance_totals) as
+    | { currency?: unknown }
+    | undefined;
+
+  return typeof totals?.currency === "string" && totals.currency.trim()
+    ? totals.currency
+    : undefined;
+};
 
 export const useAccounts = () => {
   const { api, isAuthenticated } = useAuthApi({
@@ -42,6 +62,7 @@ export const useAccounts = () => {
       (await loadCachedAccountsResponse(spaceCode)) ?? null,
     enabled: Boolean(spaceCode),
     staleTime: Infinity,
+    networkMode: "always",
   });
 
   const skipNetworkFetch = useSkipCachedNetworkFetch(localCacheQuery, spaceCode);
@@ -86,17 +107,35 @@ export const useAccounts = () => {
 
   const createAccountMutation = useMutation({
     mutationFn: async (accountData: CreateAccountType) => {
-      try {
-        const newAccount = await createAccount(api, accountData);
-        await invalidateAccountQueries();
-        toast.success(`Account "${accountData.name}" created successfully`);
-        return newAccount;
-      } catch (error: any) {
-        console.error('Error creating account:', error);
-        toast.error('Failed to create account. Please try again.');
-        throw error;
-      }
+      const cached = spaceCode
+        ? await loadCachedAccountsResponse(spaceCode)
+        : undefined;
+      const spaceCurrency = readTotalsCurrency(cached) ?? "PHP";
+      const result = await createAccountLocalFirst(
+        api,
+        {
+          spaceId: spaceCode,
+          data: accountData,
+        },
+        {
+          queryClient,
+          waitForSync: false,
+          balanceCurrency: accountData.balanceCurrency ?? spaceCurrency,
+        },
+      );
+
+      toast.success(`Account "${accountData.name}" created successfully`);
+
+      void result.syncPromise
+        .then(() => invalidateAccountQueries())
+        .catch((error: unknown) => {
+          console.error("Error creating account:", error);
+          toast.error("Failed to create account. Please try again.");
+        });
+
+      return result;
     },
+    networkMode: "always",
   });
 
   const updateAccountMutation = useMutation({
@@ -115,12 +154,18 @@ export const useAccounts = () => {
   });
 
   const deleteAccountMutation = useMutation({
-    mutationFn: async (accountId: string) => {
+    mutationFn: async (
+      input: string | { accountId: string; removeTransactions?: boolean },
+    ) => {
+      const accountId = typeof input === "string" ? input : input.accountId;
+      const removeTransactions =
+        typeof input === "string" ? false : input.removeTransactions === true;
       const result = await deleteAccountLocalFirst(
         api,
         {
           spaceId: spaceCode,
           accountId,
+          removeTransactions,
         },
         { queryClient, waitForSync: false },
       );

@@ -1,6 +1,8 @@
+import type { QueryClient } from "@tanstack/react-query";
+import type { AxiosInstance } from "axios";
 import { atom } from 'jotai';
-import { atomWithMutation } from 'jotai-tanstack-query';
-import { createAccount, CreateAccountType } from '@/services/transactions/accounts/mutation';
+import { createAccountLocalFirst } from '@/services/transactions/accounts/create-local-first';
+import { CreateAccountType } from '@/services/transactions/accounts/mutation';
 import { accountOptionsAtom } from '@/atoms/dashboardAtoms';
 import { extractFieldErrors } from '@/utils/errorUtils';
 
@@ -48,22 +50,28 @@ export const validateBalance = (balance: string): string[] => {
 
 // Type for mutation parameters
 interface CreateAccountParams {
-  api: any;
+  api: AxiosInstance;
   accountData: CreateAccountType;
+  queryClient?: QueryClient;
+  spaceCurrency?: string;
 }
 
-// Create a properly typed mutation atom
-export const createAccountMutationAtom = atomWithMutation<any, CreateAccountParams>(() => ({
-  mutationKey: ['createAccount'],
-  mutationFn: async ({ api, accountData }) => {
-    return await createAccount(api, accountData);
+const readSpaceId = (): string => {
+  if (typeof window === "undefined") {
+    return "";
   }
-}));
+
+  return window.localStorage.getItem("spaceCode") ?? "";
+};
 
 // Atom to handle create account operation and update UI state
 export const createAccountAtom = atom(
   null, // read function not used
-  async (get, set, { api, accountData }: CreateAccountParams) => {
+  async (
+    get,
+    set,
+    { api, accountData, queryClient, spaceCurrency }: CreateAccountParams,
+  ) => {
     try {
       // Reset validation errors on new submission
       set(accountValidationErrorsAtom, {});
@@ -74,12 +82,29 @@ export const createAccountAtom = atom(
         set(accountValidationErrorsAtom, { balance: balanceErrors });
         throw new Error('Validation failed');
       }
-      
-      // Get the mutation from the atom
-      const mutation = get(createAccountMutationAtom);
-      
-      // Call the mutation
-      const newAccount = await mutation.mutateAsync({ api, accountData });
+
+      const result = await createAccountLocalFirst(
+        api,
+        {
+          spaceId: readSpaceId(),
+          data: accountData,
+        },
+        {
+          queryClient,
+          waitForSync: false,
+          balanceCurrency: accountData.balanceCurrency ?? spaceCurrency ?? "PHP",
+        },
+      );
+
+      void result.syncPromise.catch((error: unknown) => {
+        console.error("Error creating account:", error);
+        const fieldErrors = extractFieldErrors(error);
+        if (Object.keys(fieldErrors).length > 0) {
+          set(accountValidationErrorsAtom, fieldErrors);
+        }
+      });
+
+      const newAccount = result.localAccount;
       
       // Update the account options atom with the new account
       const currentOptions = get(accountOptionsAtom);
@@ -96,7 +121,7 @@ export const createAccountAtom = atom(
           {
             label: accountData.name,
             value: accountData.name,
-            currency: accountData.balanceCurrency ?? "PHP",
+            currency: accountData.balanceCurrency ?? spaceCurrency ?? "PHP",
             accountCategory: accountData.accountCategory,
             balance: accountData.balance,
           },

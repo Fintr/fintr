@@ -11,8 +11,8 @@ import { workspaceTransitionAtom } from '@/atoms/spaceAtoms';
 import { useAuthApi } from '@/hooks/useAuthApi';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
-import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
+import { useDashboardPathname } from "@/hooks/useDashboardPathname";
 import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
 import LoadingScreen from "@/components/ui/loading-screen";
 import { WorkspaceSetupGate } from "@/components/onboarding/workspace-setup-gate";
@@ -27,6 +27,7 @@ import {
 } from "@/lib/platform-detection";
 import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
 import {
+  shouldRunOfflineSync,
   shouldShowOfflineSyncScreen,
   shouldShowPrivateContextLoadingScreen,
 } from "@/lib/app-loading-gates";
@@ -34,6 +35,8 @@ import { hasAppShellReady, markAppShellReady } from "@/lib/app-shell-state";
 import { useHydrationSafeValue } from "@/hooks/useHydrationSafeValue";
 import { offlineReimportRequiredAtom } from "@/atoms/offlineSyncAtoms";
 import { WeeklyFeedbackPrompt } from "@/components/feedback/weekly-feedback-prompt";
+import { ProGrantThankYouPrompt } from "@/components/settings/pro-grant-thank-you-prompt";
+import { useProAccess } from "@/hooks/async/useProAccess";
 import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
 import { isMaintenanceModeEnabled } from "@/lib/maintenance-mode";
 import { OfflineSyncScreen } from "@/components/offline/offline-sync-screen";
@@ -64,7 +67,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     () => window.localStorage.getItem("spaceCode")?.trim() ?? "",
     "",
   );
-  const pathname = usePathname();
+  const pathname = useDashboardPathname();
   const router = useRouter();
   const {
     spaceCode,
@@ -109,28 +112,38 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
 
   // Dashboard shell layout already applies mobile bottom padding + BottomNavigation
   const isDashboardPage = isDashboardShellRoute(pathname);
+  const { data: proAccess } = useProAccess();
+  const grantNoticePending = proAccess?.grantNotice?.pending === true;
   const weeklyFeedbackEnabled =
     Boolean(spaceCode) &&
     !isOnOnboardingPage &&
     !isStandalonePage &&
     !transitionState.isTransitioning &&
-    !pathname.startsWith("/admin");
+    !pathname.startsWith("/admin") &&
+    !grantNoticePending;
+  const thankYouEnabled =
+    !isOnOnboardingPage &&
+    !isOnboardingIncomplete &&
+    !isTutorialActive &&
+    !transitionState.isTransitioning;
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   useHydrateOfflineSyncReady();
   const requiresOfflineReimport = useAtomValue(offlineReimportRequiredAtom);
+  const canRunOfflineSync = shouldRunOfflineSync({
+    isAuthenticated,
+    isAuthLoading,
+    isOnOnboardingPage,
+    isOnAdminPage,
+    onboardingStep,
+  });
 
   const {
     status: offlineSyncStatus,
     progress: offlineSyncProgress,
     error: offlineSyncError,
     retry: retryOfflineSync,
-  } = useOfflineSync(
-    isAuthenticated &&
-    !isAuthLoading &&
-    !isOnOnboardingPage &&
-    !isOnAdminPage,
-  );
+  } = useOfflineSync(canRunOfflineSync);
 
   useOutboxDrain(
     isAuthenticated &&
@@ -221,6 +234,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
     shouldShowOfflineSyncScreen({
       requiresOfflineReimport,
       offlineSyncStatus,
+      canRunOfflineSync,
     })
   ) {
     return (
@@ -288,6 +302,7 @@ const PrivateLayout = ({ children }: { children: React.ReactNode }) => {
       {weeklyFeedbackEnabled && !isTutorialActive ? (
         <WeeklyFeedbackPrompt api={api} enabled={weeklyFeedbackEnabled} />
       ) : null}
+      {thankYouEnabled ? <ProGrantThankYouPrompt enabled={thankYouEnabled} /> : null}
     </div>
   );
 };

@@ -5,9 +5,15 @@ import type { ProFeature } from "@/lib/pro-features";
 export type ProAccessSource =
   | "admin"
   | "revenuecat"
+  | "grant"
   | "subscription"
   | "trial"
   | "none";
+
+export interface ProGrantNotice {
+  pending: boolean;
+  expiresAt: string;
+}
 
 export interface ProAccess {
   pro: boolean;
@@ -16,6 +22,7 @@ export interface ProAccess {
   trialEndsAt: string | null;
   trialDaysRemaining: number;
   proExpiresAt: string | null;
+  grantNotice?: ProGrantNotice | null;
   features: ProFeature[];
 }
 

@@ -15,6 +15,7 @@ import {
   OUTBOX_COMMAND_BUDGET_UPDATE,
   OUTBOX_COMMAND_CATEGORY_CONVERT,
   OUTBOX_COMMAND_CATEGORY_CREATE,
+  OUTBOX_COMMAND_ACCOUNT_DELETE,
   OUTBOX_COMMAND_TAG_CREATE,
   OUTBOX_COMMAND_TAG_DELETE,
   OUTBOX_COMMAND_LOAN_CREATE,
@@ -56,6 +57,10 @@ vi.mock("@/services/transactions/tags/mutation", () => ({
   deleteTransactionTag: vi.fn(),
 }));
 
+vi.mock("@/services/transactions/accounts/mutation", () => ({
+  deleteAccount: vi.fn(),
+}));
+
 import {
   createTransaction,
   deleteTransaction,
@@ -70,6 +75,7 @@ import {
 import { fetchBudgetsPage } from "@/services/budgets/queries";
 import { convertCategoryHierarchy, createTransactionCategory } from "@/services/transactions/categories/mutation";
 import { deleteTransactionTag, createTransactionTag } from "@/services/transactions/tags/mutation";
+import { deleteAccount } from "@/services/transactions/accounts/mutation";
 import { cacheTransactionCategoriesResponse } from "@/services/transactions/categories/local-cache";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import { drainOutboxForSpace } from "./drain-outbox";
@@ -617,6 +623,34 @@ describe("drainOutboxForSpace", () => {
         conversionType: "to_parent",
         newParentId: null,
       },
+    );
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("drains pending account delete commands with removeTransactions", async () => {
+    vi.mocked(deleteAccount).mockResolvedValue({ success: true });
+
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_ACCOUNT_DELETE,
+      clientMutationId: "cid-account-delete",
+      payload: {
+        accountId: "acc-cash",
+        removeTransactions: true,
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(deleteAccount).toHaveBeenCalledWith(
+      expect.anything(),
+      "acc-cash",
+      { removeTransactions: true },
     );
     expect(await getLocalDb().outbox.count()).toBe(0);
   });

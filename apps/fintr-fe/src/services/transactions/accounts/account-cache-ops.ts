@@ -23,6 +23,9 @@ import { overlayAccountOptionBalances } from "./overlay-account-option-balances"
 
 const PAYABLE_CATEGORIES = new Set(["credit_card", "loan"]);
 
+const normalizeCurrency = (value: unknown): string =>
+  String(value ?? "").trim().toUpperCase();
+
 const isPayableCategory = (category: string): boolean =>
   PAYABLE_CATEGORIES.has(category);
 
@@ -168,7 +171,13 @@ export const adjustBalanceTotalsInResponse = (
     return response;
   }
 
-  const balance = delta.balance;
+  // Keep the snapshot currency (the space currency). An account in another
+  // currency must not relabel the total or add its raw balance into it.
+  const totalsCurrency = normalizeCurrency(totals.currency) || "PHP";
+  const deltaCurrency = delta.currency
+    ? normalizeCurrency(delta.currency)
+    : totalsCurrency;
+  const balance = deltaCurrency === totalsCurrency ? delta.balance : 0;
   const nextTotals = {
     ...totals,
     total: Number(totals.total ?? 0) + balance,
@@ -176,7 +185,10 @@ export const adjustBalanceTotalsInResponse = (
       + (isPayableCategory(delta.accountCategory) ? 0 : balance),
     payableTotal: Number(totals.payableTotal ?? totals.payable_total ?? 0)
       + (isPayableCategory(delta.accountCategory) ? balance : 0),
-    currency: delta.currency ?? totals.currency ?? "PHP",
+    currency:
+      typeof totals.currency === "string" && totals.currency.trim()
+        ? totals.currency
+        : "PHP",
   };
 
   if (
@@ -382,6 +394,12 @@ const shouldAffectAccountBalance = (transaction: IndexTransaction): boolean => {
     return false;
   }
 
+  return calculatedTransactionAffectsBalance(transaction);
+};
+
+const calculatedTransactionAffectsBalance = (
+  transaction: IndexTransaction,
+): boolean => {
   if (transaction.calculated === false) {
     return false;
   }
@@ -406,8 +424,19 @@ export const applyLocalTransactionsToAccountBalances = async (params: {
   transactions: IndexTransaction[];
   mode: "apply" | "revert";
   queryClient?: QueryClient;
+  /**
+   * Account deletion reverts transfer legs and fees on the accounts that
+   * remain. Everyday income/expense edits leave those rows to the server.
+   */
+  includeTransferEffects?: boolean;
 }): Promise<void> => {
-  const { spaceId, transactions, mode, queryClient } = params;
+  const {
+    spaceId,
+    transactions,
+    mode,
+    queryClient,
+    includeTransferEffects = false,
+  } = params;
   if (!spaceId || transactions.length === 0) {
     return;
   }
@@ -421,7 +450,10 @@ export const applyLocalTransactionsToAccountBalances = async (params: {
   const deltas = new Map<string, number>();
 
   for (const transaction of transactions) {
-    if (!shouldAffectAccountBalance(transaction)) {
+    const affectsBalance = includeTransferEffects
+      ? calculatedTransactionAffectsBalance(transaction)
+      : shouldAffectAccountBalance(transaction);
+    if (!affectsBalance) {
       continue;
     }
 

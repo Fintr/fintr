@@ -54,6 +54,7 @@ import {
 } from "@/lib/dashboard-nav-routes";
 import { rememberDetailHref } from "@/utils/detailSearchParam";
 import { DashboardClientRoute } from "@/components/dashboard/dashboard-client-route";
+import CreateSubscriptionPage from "./subscriptions/create/page";
 
 const DashboardScrollToTop = ({
   scrollContainerRef,
@@ -247,9 +248,10 @@ export default function Layout({
     },
   });
 
-  // For standalone pages, just return children without dashboard layout
+  // Client navigations leave Next's route children on the previous page.
+  // Those pages render TabsContent, which crashes once this shell unmounts Tabs.
   if (isStandalonePage) {
-    return <>{children}</>;
+    return <CreateSubscriptionPage />;
   }
 
   return (

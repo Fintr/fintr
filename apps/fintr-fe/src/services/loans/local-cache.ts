@@ -10,6 +10,7 @@ import type { LoanPayment } from "@/services/loans/payments";
 import {
   upsertLoanInInfiniteData,
   upsertLoanInQueryCaches,
+  loansListQueryKey,
   type UpsertLoanListOptions,
 } from "@/services/loans/loans-list-cache";
 import { normalizeLoanPayments } from "@/utils/loan-payment-amounts";
@@ -180,7 +181,7 @@ export const refreshLoanSnapshotInIndexedDb = async (params: {
       ?.pages.flatMap((page) => page.loans ?? [])
       .find((row) => row.id === loanId) ??
     queryClient
-      ?.getQueryData<InfiniteData<LoansPage>>(["loans"])
+      ?.getQueryData<InfiniteData<LoansPage>>(loansListQueryKey(spaceCode))
       ?.pages.flatMap((page) => page.loans ?? [])
       .find((row) => row.id === loanId);
 
@@ -232,7 +233,9 @@ export const upsertLoanInCachedPages = async (
             "local",
             spaceCode,
           ]) ??
-          queryClient.getQueryData<InfiniteData<LoansPage>>(["loans"])
+          queryClient.getQueryData<InfiniteData<LoansPage>>(
+            loansListQueryKey(spaceCode),
+          )
         : undefined);
 
     const merged = upsertLoanInInfiniteData(

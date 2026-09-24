@@ -20,6 +20,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { ProFeatureGate } from "@/components/settings/pro-feature-gate";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { ExpenseBreakdownCenterLabel } from "@/components/dashboard/insights/expense-breakdown-center-label";
 import { CHART_COLORS, cn } from "@/lib/utils";
@@ -268,6 +270,7 @@ export const ExpenseBreakdownCard = ({
         <CardTitle className="flex items-center gap-2">
           <PieChartIcon className="h-5 w-5 text-primary" aria-hidden />
           {title}
+          <ProTrialBadge />
         </CardTitle>
         <CardDescription>
           {description}
@@ -275,6 +278,7 @@ export const ExpenseBreakdownCard = ({
       </CardHeader>
 
       <CardContent className="space-y-5 px-4 pb-6 sm:px-6">
+        <ProFeatureGate featureName="Expense Breakdown">
         {isLoading ? (
           <div className="flex justify-center py-10">
             <LoadingSpinner size="medium" />
@@ -498,6 +502,7 @@ export const ExpenseBreakdownCard = ({
             </ul>
           </div>
         )}
+        </ProFeatureGate>
       </CardContent>
     </Card>
   );

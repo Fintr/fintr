@@ -39,3 +39,10 @@ export const formFieldErrorTextClassName =
 /** Plain field error line (no callout box), e.g. GridPicker. */
 export const formFieldErrorInlineTextClassName =
   "text-sm text-red-900 dark:text-red-400";
+
+/** Floating label field fill (onboarding; matches tax calculator gross-income row). */
+export const floatingLabelFieldSurfaceClassName =
+  "border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-950/40";
+
+/** Label chip on floating fields — same fill as the control so the notch blends. */
+export const floatingLabelChipClassName = "bg-blue-50 dark:bg-blue-950/40";

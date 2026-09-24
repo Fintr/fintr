@@ -104,24 +104,86 @@ describe("allocateCostShare", () => {
       ).toThrow(/duplicate/i);
     });
 
-    it("rejects when others would take the whole bill", () => {
+    it("allows others to take the whole bill", () => {
+      const result = allocateCostShare({
+        totalAmount: 1000,
+        mode: "amount",
+        participants: [{ entityName: "Entity A", amount: 1000 }],
+      });
+
+      expect(result.yourShare).toBe(0);
+      expect(result.participants).toEqual([
+        { entityName: "Entity A", amount: 1000 },
+      ]);
+    });
+
+    it("rejects an amount above the bill total", () => {
       expect(() =>
         allocateCostShare({
           totalAmount: 1000,
           mode: "amount",
-          participants: [{ entityName: "Entity A", amount: 1000 }],
+          participants: [{ entityName: "Entity A", amount: 1000.01 }],
         }),
-      ).toThrow(/your share/i);
+      ).toThrow(/more than the total/i);
     });
 
-    it("rejects percents that leave you with nothing", () => {
+    it("rejects amounts that together exceed the bill total", () => {
+      expect(() =>
+        allocateCostShare({
+          totalAmount: 1000,
+          mode: "amount",
+          participants: [
+            { entityName: "Entity A", amount: 600 },
+            { entityName: "Entity B", amount: 500 },
+          ],
+        }),
+      ).toThrow(/more than the total/i);
+    });
+
+    it("allows a percent share of 100", () => {
+      const result = allocateCostShare({
+        totalAmount: 1000,
+        mode: "percent",
+        participants: [{ entityName: "Entity A", percent: 100 }],
+      });
+
+      expect(result.yourShare).toBe(0);
+      expect(result.participants).toEqual([
+        { entityName: "Entity A", amount: 1000 },
+      ]);
+    });
+
+    it("rejects a percent above 100", () => {
       expect(() =>
         allocateCostShare({
           totalAmount: 1000,
           mode: "percent",
-          participants: [{ entityName: "Entity A", percent: 100 }],
+          participants: [{ entityName: "Entity A", percent: 100.01 }],
         }),
-      ).toThrow(/percent/i);
+      ).toThrow(/100/i);
+    });
+
+    it("rejects a percent below 0.01", () => {
+      expect(() =>
+        allocateCostShare({
+          totalAmount: 1000,
+          mode: "percent",
+          participants: [{ entityName: "Entity A", percent: 0.009 }],
+        }),
+      ).toThrow(/0\.01/i);
+    });
+
+    it("rejects percents that total more than 100", () => {
+      expect(() =>
+        allocateCostShare({
+          totalAmount: 1000,
+          mode: "percent",
+          participants: [
+            { entityName: "Entity A", percent: 60 },
+            { entityName: "Entity B", percent: 50 },
+          ],
+        }),
+      ).toThrow(/100/i);
     });
 
     it("rejects a non-positive participant share", () => {

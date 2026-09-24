@@ -245,6 +245,27 @@ describe("resolveDashboardClientNavigation", () => {
     expect(event.preventDefault).toHaveBeenCalled();
   });
 
+  it("opens checkout on the first click without waiting for the App Router", () => {
+    const event = {
+      button: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+      stopImmediatePropagation: vi.fn(),
+    };
+
+    expect(
+      resolveDashboardClientNavigation({
+        href: "/dashboard/subscriptions/create",
+        origin,
+        event,
+      }),
+    ).toEqual({
+      href: "/dashboard/subscriptions/create",
+      tab: null,
+    });
+    expect(event.preventDefault).toHaveBeenCalled();
+  });
+
   it("does not intercept new-tab or download clicks", () => {
     const event = {
       button: 0,

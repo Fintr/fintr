@@ -106,7 +106,11 @@ jobs:
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           OPENAI_API_KEY: ${{ vars.OPENAI_API_KEY }}
           OPENROUTER_API_KEY: ${{ vars.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ vars.GEMINI_API_KEY }}
           AI_VISION_PROVIDER: ${{ vars.AI_VISION_PROVIDER }}
+          LLM_DEFAULT_MODEL: ${{ vars.LLM_DEFAULT_MODEL }}
+          LLM_AGENT_MODEL: ${{ vars.LLM_AGENT_MODEL }}
+          LLM_AGENT_PROVIDER: ${{ vars.LLM_AGENT_PROVIDER }}
           AI_VISION_MODEL: ${{ vars.AI_VISION_MODEL }}
           AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ vars.AWS_SECRET_ACCESS_KEY }}
@@ -152,7 +156,11 @@ jobs:
           write_env SENTRY_DSN "$SENTRY_DSN"
           write_env OPENAI_API_KEY "$OPENAI_API_KEY"
           write_env OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
+          write_env GEMINI_API_KEY "$GEMINI_API_KEY"
           write_env AI_VISION_PROVIDER "$AI_VISION_PROVIDER"
+          write_env LLM_DEFAULT_MODEL "$LLM_DEFAULT_MODEL"
+          write_env LLM_AGENT_MODEL "$LLM_AGENT_MODEL"
+          write_env LLM_AGENT_PROVIDER "$LLM_AGENT_PROVIDER"
           write_env AI_VISION_MODEL "$AI_VISION_MODEL"
           write_env AWS_ACCESS_KEY_ID "$AWS_ACCESS_KEY_ID"
           write_env AWS_SECRET_ACCESS_KEY "$AWS_SECRET_ACCESS_KEY"

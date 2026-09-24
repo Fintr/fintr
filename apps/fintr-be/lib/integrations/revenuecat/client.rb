@@ -30,6 +30,21 @@ module Integrations
         )
       end
 
+      # GET /v2/projects/{project_id}/customers/{customer_id}/subscriptions
+      # Permission: customer_information:subscriptions:read
+      def list_customer_subscriptions(customer_id:)
+        get(
+          "/v2/projects/#{encode(project_id)}/customers/#{encode(customer_id)}/subscriptions",
+        )
+      end
+
+      # GET /v2/projects/{project_id}/products/{product_id}
+      def get_product(product_id:)
+        get(
+          "/v2/projects/#{encode(project_id)}/products/#{encode(product_id)}",
+        )
+      end
+
       def get(path)
         uri = URI(path.start_with?("http") ? path : "#{BASE_URL}#{path}")
         request = Net::HTTP::Get.new(uri)

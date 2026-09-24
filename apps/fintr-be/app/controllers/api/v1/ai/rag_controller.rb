@@ -5,13 +5,24 @@ module Api
     module Ai
       class RagController < ApiController
         def query
-          access = ::Finance::Operations::Entitlements::ResolveProAccess.new.call(
-            with_current_params,
+          allowed = ::Finance::ProGate.require!(
+            user_id: current_user.id,
+            space_id: current_space.id,
           )
-          unless access.success? && access.value![:pro]
+          unless allowed.success?
             return render_error(
               message: "Fintr Pro is required for AI chat.",
               status: :forbidden,
+            )
+          end
+
+          within_limit = ::Ai::Operations::Usages::EnforceMonthlyChatLimit.new.call(
+            user_id: current_user.id,
+          )
+          unless within_limit.success?
+            return render_error(
+              message: within_limit.failure[:message],
+              status: :too_many_requests,
             )
           end
 

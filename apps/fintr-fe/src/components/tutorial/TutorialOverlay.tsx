@@ -1,48 +1,83 @@
 "use client";
 
 import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { createPortal, flushSync } from 'react-dom';
 import Joyride, { CallBackProps, STATUS, Step, TooltipRenderProps } from 'react-joyride';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { isTutorialActiveAtom } from '@/atoms/tutorialAtoms';
 import { onboardingStepAtom } from '@/atoms/onboardingAtoms';
 import { dashboardShellReadyAtom } from '@/atoms/dashboardAtoms';
+import { pendingDashboardBottomTabAtom } from '@/atoms/dashboardBottomTabAtoms';
+import { commitDashboardClientNavigation } from '@/lib/dashboard-nav-routes';
+import {
+  activateTourTargetOnce,
+  isFixedMobileTourStep,
+  isTourTabStep,
+  isTourTargetReady,
+  isTourTargetVisible,
+  planAdvanceToTabStep,
+  resolveTourStepNavigation,
+  shouldCommitTourNavigationImmediately,
+  shouldRunTourAction,
+  shouldRunTourActionOnPointerDown,
+  shouldHideTourOverlay,
+  tourBlockingOverlayStyle,
+  tourSpotlightPanels,
+  tourTooltipCardStyle,
+  tourTooltipPlacement,
+  TUTORIAL_Z_INDEX,
+} from '@/components/tutorial/tour-step-navigation';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
 import {
   hasNestedOverlayContent,
   isVisibleModalContentOpen,
+  NESTED_OVERLAY_LAYER_Z_INDEX,
 } from '@/lib/nested-overlay-portal';
-
-const TUTORIAL_Z_INDEX = 10050;
 
 /** Brand navy on white tooltip — bypasses `.dark .text-primary` (light blue on dark UI). */
 const tooltipTextClass = "text-[color:var(--primary)]";
 const tooltipTextMutedClass =
   "text-[color:color-mix(in_oklab,var(--primary)_70%,transparent)]";
 
-const isTourTargetVisible = (selector: string): boolean => {
-  const element = document.querySelector(selector) as HTMLElement | null;
-  if (!element) {
-    return false;
-  }
+function readTourSafeAreaInsets(): {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+} {
+  const probe = document.createElement("div");
+  probe.style.position = "fixed";
+  probe.style.visibility = "hidden";
+  probe.style.pointerEvents = "none";
+  probe.style.paddingTop = "env(safe-area-inset-top)";
+  probe.style.paddingRight = "env(safe-area-inset-right)";
+  probe.style.paddingBottom = "env(safe-area-inset-bottom)";
+  probe.style.paddingLeft = "env(safe-area-inset-left)";
+  document.body.appendChild(probe);
+  const style = window.getComputedStyle(probe);
+  const parsed = {
+    top: Number.parseFloat(style.paddingTop) || 0,
+    right: Number.parseFloat(style.paddingRight) || 0,
+    bottom: Number.parseFloat(style.paddingBottom) || 0,
+    left: Number.parseFloat(style.paddingLeft) || 0,
+  };
+  probe.remove();
 
-  const style = window.getComputedStyle(element);
-  if (
-    style.display === 'none' ||
-    style.visibility === 'hidden' ||
-    Number.parseFloat(style.opacity) === 0
-  ) {
-    return false;
-  }
-
-  const rect = element.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
-};
+  return {
+    top: Math.max(16, parsed.top),
+    right: Math.max(16, parsed.right),
+    bottom: Math.max(16, parsed.bottom),
+    left: Math.max(16, parsed.left),
+  };
+}
 
 // Custom tooltip component with working skip button
 interface CustomTooltipProps extends TooltipRenderProps {
+  actionLockRef: { current: number };
   onSkipClick: () => void;
+  onOpenNavigation: () => boolean;
 }
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({
@@ -52,26 +87,123 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
   tooltipProps,
   size,
   isLastStep,
+  actionLockRef,
   onSkipClick,
+  onOpenNavigation,
 }) => {
-  return (
+  const targetSelector = typeof step.target === "string" ? step.target : null;
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  const [cardStyle, setCardStyle] = useState<ReturnType<typeof tourTooltipCardStyle> | null>(null);
+
+  useLayoutEffect(() => {
+    const update = () => {
+      const element = targetSelector
+        ? document.querySelector(targetSelector)
+        : null;
+      const rect = element instanceof HTMLElement
+        ? element.getBoundingClientRect()
+        : null;
+      const measuredHeight = cardRef.current?.getBoundingClientRect().height;
+
+      setCardStyle(
+        tourTooltipCardStyle({
+          placement: step.placement,
+          target: rect,
+          cardHeight: measuredHeight && measuredHeight > 0 ? measuredHeight : undefined,
+          insets: readTourSafeAreaInsets(),
+          zIndex: isVisibleModalContentOpen() || hasNestedOverlayContent()
+            ? NESTED_OVERLAY_LAYER_Z_INDEX - 20
+            : undefined,
+          viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
+        }),
+      );
+    };
+
+    update();
+    const intervalId = window.setInterval(update, 200);
+    window.addEventListener("resize", update);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("resize", update);
+    };
+  }, [step.placement, targetSelector]);
+
+  const runTourAction = (action: string | null) => {
+    if (action !== "skip" && action !== "next") {
+      return;
+    }
+
+    const now = Date.now();
+    if (!shouldRunTourAction(actionLockRef.current, now)) {
+      return;
+    }
+    actionLockRef.current = now;
+
+    if (action === "skip") {
+      onSkipClick();
+      return;
+    }
+
+    if (onOpenNavigation()) {
+      return;
+    }
+
+    primaryProps.onClick?.({
+      preventDefault() {},
+      stopPropagation() {},
+    } as React.MouseEvent<HTMLButtonElement>);
+  };
+
+  const press = (
+    action: "skip" | "next",
+  ) => (
+    event: React.SyntheticEvent,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    runTourAction(action);
+  };
+
+  const pressPointer = (
+    action: "skip" | "next",
+  ) => (
+    event: React.PointerEvent,
+  ) => {
+    if (!shouldRunTourActionOnPointerDown(event.pointerType)) {
+      return;
+    }
+
+    press(action)(event);
+  };
+
+  const card = (
     <div
-      ref={tooltipProps.ref}
-      role={tooltipProps.role}
-      aria-modal={tooltipProps['aria-modal']}
-      className={`relative bg-white rounded-lg p-4 min-w-[260px] max-w-[min(100vw-2rem,20rem)] shadow-lg ${tooltipTextClass}`}
-      style={{ zIndex: TUTORIAL_Z_INDEX + 2 }}
+      role="dialog"
+      aria-modal="false"
+      ref={cardRef}
+      className={`bg-white rounded-lg p-4 shadow-lg ${tooltipTextClass}`}
+      style={cardStyle ?? tourTooltipCardStyle({
+        placement: step.placement,
+        target: null,
+        viewport: {
+          width: typeof window === "undefined" ? 390 : window.innerWidth,
+          height: typeof window === "undefined" ? 700 : window.innerHeight,
+        },
+      })}
       data-testid="tutorial-tooltip"
     >
       <button
         type="button"
         aria-label="Close tour"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onSkipClick();
-        }}
-        className={`absolute right-2 top-2 rounded-full p-2 ${tooltipTextMutedClass} hover:bg-primary/10 hover:text-[color:var(--primary)]`}
+        data-tour-action="skip"
+        onPointerDown={pressPointer("skip")}
+        onClick={press("skip")}
+        className={`absolute right-2 top-2 rounded-full p-2 min-h-[44px] min-w-[44px] ${tooltipTextMutedClass}`}
+        style={{ pointerEvents: "auto", touchAction: "manipulation" }}
       >
         <X className="h-4 w-4" />
       </button>
@@ -79,12 +211,11 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
       <div className="flex justify-between items-center mt-4 pt-3 border-t border-black/10">
         <button
           type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onSkipClick();
-          }}
-          className={`${tooltipTextClass} bg-transparent border-none cursor-pointer text-sm py-2 min-h-[44px]`}
+          data-tour-action="skip"
+          onPointerDown={pressPointer("skip")}
+          onClick={press("skip")}
+          className={`${tooltipTextClass} bg-transparent border-none cursor-pointer text-sm py-2 min-h-[48px] px-2`}
+          style={{ pointerEvents: "auto", touchAction: "manipulation" }}
         >
           Skip tour
         </button>
@@ -93,16 +224,84 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
             {index + 1}/{size}
           </span>
           <button
-            {...primaryProps}
-            className="bg-primary text-white rounded-md px-4 py-2 border-none cursor-pointer text-sm font-medium min-w-[80px]"
+            type="button"
+            data-tour-action="next"
+            onPointerDown={pressPointer("next")}
+            onClick={press("next")}
+            className="bg-primary text-white rounded-md px-4 py-2 border-none cursor-pointer text-sm font-medium min-w-[88px] min-h-[48px]"
+            style={{ pointerEvents: "auto", touchAction: "manipulation" }}
           >
-            {isLastStep ? 'Finish' : 'Next'}
+            {isLastStep ? "Finish" : "Next"}
           </button>
         </div>
       </div>
     </div>
   );
+
+  return (
+    <>
+      <span ref={tooltipProps.ref} />
+      {createPortal(card, document.body)}
+    </>
+  );
 };
+
+function TourSpotlight({ target }: { target: string }) {
+  const [panels, setPanels] = useState<ReturnType<typeof tourSpotlightPanels>>([]);
+
+  useLayoutEffect(() => {
+    const update = () => {
+      const element = document.querySelector(target);
+      if (!(element instanceof HTMLElement)) {
+        setPanels([]);
+        return;
+      }
+
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        setPanels([]);
+        return;
+      }
+
+      setPanels(
+        tourSpotlightPanels({
+          hole: rect,
+          viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
+        }),
+      );
+    };
+
+    update();
+    const intervalId = window.setInterval(update, 200);
+    window.addEventListener("resize", update);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("resize", update);
+    };
+  }, [target]);
+
+  if (panels.length === 0) {
+    return null;
+  }
+
+  return createPortal(
+    <>
+      {panels.map((panel) => (
+        <div
+          key={`${panel.top}-${panel.left}-${panel.width}-${panel.height}`}
+          aria-hidden
+          data-testid="tour-spotlight"
+          style={{ ...panel, zIndex: TUTORIAL_Z_INDEX }}
+        />
+      ))}
+    </>,
+    document.body,
+  );
+}
 
 const TutorialOverlay: React.FC = () => {
   const {
@@ -115,6 +314,7 @@ const TutorialOverlay: React.FC = () => {
 
   const pathname = usePathname();
   const setIsTutorialActive = useSetAtom(isTutorialActiveAtom);
+  const setPendingTab = useSetAtom(pendingDashboardBottomTabAtom);
   const onboardingStep = useAtomValue(onboardingStepAtom);
   const dashboardShellReady = useAtomValue(dashboardShellReadyAtom);
 
@@ -133,6 +333,7 @@ const TutorialOverlay: React.FC = () => {
   const [allowModalInteraction, setAllowModalInteraction] = useState(false);
   const isHandlingClickRef = React.useRef(false);
   const stepIndexRef = React.useRef(0);
+  const tourActionLockRef = React.useRef(0);
   
   // Refs for tracking timeouts and intervals for cleanup
   const timeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
@@ -167,6 +368,125 @@ const TutorialOverlay: React.FC = () => {
   useEffect(() => {
     stepIndexRef.current = stepIndex;
   }, [stepIndex]);
+
+  // Radix tabs select on mousedown. If this step is a tab, select it so the
+  // spotlight and the open form match the step instead of the previous tab.
+  useEffect(() => {
+    if (!isActive || !run) {
+      return;
+    }
+
+    const config = getConfig();
+    const step = config?.steps[stepIndex];
+    if (!isTourTabStep(step?.id) || !step?.targetSelector) {
+      return;
+    }
+
+    const selector = step.targetSelector;
+    let attempts = 0;
+    const intervalId = window.setInterval(() => {
+      attempts += 1;
+      if (isTourTargetReady(selector) || attempts > 20) {
+        window.clearInterval(intervalId);
+        return;
+      }
+
+      const tab = document.querySelector(selector);
+      if (tab instanceof HTMLElement) {
+        activateTourTargetOnce(tab);
+      }
+    }, 50);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [getConfig, isActive, run, stepIndex]);
+
+  // The menu screen is a separate chunk. Load it while this step is on screen
+  // so Next can open it before the loans tile step.
+  useEffect(() => {
+    if (!isActive || !run) {
+      return;
+    }
+
+    const config = getConfig();
+    const stepId = config?.steps[stepIndex]?.id;
+    if (stepId === "mobile-menu-button") {
+      void import("@/app/(private)/dashboard/app_settings/page");
+    }
+  }, [getConfig, isActive, run, stepIndex]);
+
+  // Tapping Menu itself opens the screen. Advance once the next tile is painted
+  // so the tour does not stay stuck on the bottom tab.
+  useEffect(() => {
+    if (!run) {
+      return;
+    }
+
+    const config = getConfig();
+    const currentIndex = stepIndex;
+    const step = config?.steps[currentIndex];
+    const navigation = step
+      ? resolveTourStepNavigation(
+          step.id,
+          config.steps[currentIndex + 1]?.targetSelector,
+        )
+      : null;
+
+    if (!navigation) {
+      return;
+    }
+
+    const intervalId = trackInterval(setInterval(() => {
+      if (
+        stepIndexRef.current !== currentIndex
+        || isHandlingClickRef.current
+      ) {
+        return;
+      }
+
+      if (!isTourTargetVisible(navigation.nextTargetSelector)) {
+        return;
+      }
+
+      const nextStepIndex = currentIndex + 1;
+      commitDashboardClientNavigation(navigation.href);
+      stepIndexRef.current = nextStepIndex;
+      setStepIndex(nextStepIndex);
+    }, 100));
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [getConfig, run, stepIndex, trackInterval]);
+
+  const handleOpenNavigation = useCallback(() => {
+    const config = getConfig();
+    const index = stepIndexRef.current;
+    const step = config?.steps[index];
+    if (!step) {
+      return false;
+    }
+
+    const navigation = resolveTourStepNavigation(
+      step.id,
+      config.steps[index + 1]?.targetSelector,
+    );
+    if (!navigation) {
+      return false;
+    }
+
+    isHandlingClickRef.current = false;
+    flushSync(() => {
+      setPendingTab(navigation.tab);
+    });
+
+    if (shouldCommitTourNavigationImmediately(pathname)) {
+      commitDashboardClientNavigation(navigation.href);
+    }
+
+    return true;
+  }, [getConfig, pathname, setPendingTab]);
 
   // Handle skip button click - directly calls skipTutorial
   const handleSkipClick = useCallback(async () => {
@@ -211,15 +531,6 @@ const TutorialOverlay: React.FC = () => {
     const joyrideSteps: Step[] = config.steps
       .filter((step) => step.targetSelector) // Only include steps with valid selectors
       .map((step) => {
-        // Convert position to react-joyride placement
-        const placementMap: Record<string, 'top' | 'bottom' | 'left' | 'right' | 'center' | 'auto'> = {
-          top: 'top',
-          bottom: 'bottom',
-          left: 'left',
-          right: 'right',
-          center: 'center',
-        };
-
         // Handle pseudo-selectors that react-joyride doesn't support
         let target = step.targetSelector || '';
         if (target.includes(':contains(')) {
@@ -236,10 +547,12 @@ const TutorialOverlay: React.FC = () => {
         }
         
         const finalTarget = target;
-        const finalPlacement = placementMap[step.position || 'bottom'] || 'auto';
+        const finalPlacement = tourTooltipPlacement(step.id, step.position);
+        const fixedTarget = isFixedMobileTourStep(step.id, platform);
 
         return {
           target: finalTarget,
+          isFixed: fixedTarget,
           content: (
             <div>
               <h3 className={`text-lg font-semibold mb-2 ${tooltipTextClass}`}>
@@ -257,8 +570,13 @@ const TutorialOverlay: React.FC = () => {
           hideBackButton: true,
           disableActions: false,
           floaterProps: {
+            disableAnimation: fixedTarget,
+            ...(fixedTarget
+              ? { wrapperOptions: { position: false } }
+              : {}),
             styles: {
               floater: {
+                pointerEvents: "auto",
                 zIndex: TUTORIAL_Z_INDEX + 2,
               },
             },
@@ -531,10 +849,136 @@ const TutorialOverlay: React.FC = () => {
       return; // These are handled specially in the callback
     }
     
+    const tourNavigation = currentStep
+      ? resolveTourStepNavigation(
+          currentStep.id,
+          config.steps[currentStepIndex + 1]?.targetSelector,
+        )
+      : null;
+
+    if (tourNavigation && action === 'next' && type === 'step:after') {
+      isHandlingClickRef.current = true;
+      setPendingTab(tourNavigation.tab);
+      commitDashboardClientNavigation(tourNavigation.href);
+
+      const nextStepIndex = currentStepIndex + 1;
+      const maxAttempts = 60;
+      let attempts = 0;
+
+      const pollInterval = trackInterval(setInterval(() => {
+        attempts += 1;
+        const visible = isTourTargetVisible(tourNavigation.nextTargetSelector);
+
+        if (!visible && attempts < maxAttempts) {
+          return;
+        }
+
+        clearInterval(pollInterval);
+
+        if (visible) {
+          stepIndexRef.current = nextStepIndex;
+          setStepIndex(nextStepIndex);
+          isHandlingClickRef.current = false;
+          return;
+        }
+
+        isHandlingClickRef.current = false;
+        setRun(false);
+        trackTimeout(setTimeout(() => {
+          setRun(true);
+        }, 0));
+      }, 50));
+
+      return;
+    }
+
+    const nextStep = config.steps[currentStepIndex + 1];
+    const tabAdvance = nextStep?.targetSelector
+      ? planAdvanceToTabStep({
+          currentAction: currentStep?.action,
+          nextStepId: nextStep.id,
+          nextTargetVisible: isTourTargetVisible(nextStep.targetSelector),
+        })
+      : null;
+    if (
+      tabAdvance &&
+      action === 'next' &&
+      type === 'step:after' &&
+      nextStep?.targetSelector
+    ) {
+      const nextSelector = nextStep.targetSelector;
+      if (
+        tabAdvance === "activate-current-target" &&
+        currentStep?.targetSelector
+      ) {
+        const opener = document.querySelector(currentStep.targetSelector);
+        if (opener instanceof HTMLElement) {
+          activateTourTargetOnce(opener);
+        }
+      } else {
+        const tab = document.querySelector(nextSelector);
+        if (tab instanceof HTMLElement) {
+          activateTourTargetOnce(tab);
+        }
+      }
+
+      const nextStepIndex = currentStepIndex + 1;
+      isHandlingClickRef.current = true;
+      let attempts = 0;
+      const pollInterval = trackInterval(setInterval(() => {
+        attempts += 1;
+        const ready = isTourTargetReady(nextSelector);
+        if (!ready && attempts < 40) {
+          const tab = document.querySelector(nextSelector);
+          if (tab instanceof HTMLElement && isTourTargetVisible(nextSelector)) {
+            activateTourTargetOnce(tab);
+          }
+          return;
+        }
+
+        clearInterval(pollInterval);
+        isHandlingClickRef.current = false;
+        if (!ready) {
+          return;
+        }
+
+        stepIndexRef.current = nextStepIndex;
+        setStepIndex(nextStepIndex);
+      }, 50));
+      return;
+    }
+
     // For 'highlight-only': just advance, no clicking
     if (currentStep?.action === 'highlight-only' && action === 'next' && type === 'step:after') {
       const nextStepIndex = index === currentStepIndex ? currentStepIndex + 1 : index;
+      const nextSelector = config.steps[nextStepIndex]?.targetSelector;
       console.log(`Highlight-only step: advancing from ${currentStepIndex} to ${nextStepIndex} without clicking`);
+
+      if (
+        nextSelector &&
+        config.steps[nextStepIndex]?.waitForElement
+      ) {
+        isHandlingClickRef.current = true;
+        let attempts = 0;
+        const pollInterval = trackInterval(setInterval(() => {
+          attempts += 1;
+          const ready = isTourTargetReady(nextSelector);
+          if (!ready && attempts < 40) {
+            return;
+          }
+
+          clearInterval(pollInterval);
+          isHandlingClickRef.current = false;
+          if (!ready) {
+            return;
+          }
+
+          stepIndexRef.current = nextStepIndex;
+          setStepIndex(nextStepIndex);
+        }, 50));
+        return;
+      }
+
       // Update ref immediately to prevent race conditions
       stepIndexRef.current = nextStepIndex;
       setStepIndex(nextStepIndex);
@@ -576,112 +1020,8 @@ const TutorialOverlay: React.FC = () => {
           console.log("TARGET ELEMENT FOUND:", targetElement);
           isHandlingClickRef.current = true;
           
-          // For Radix UI tabs, we need to dispatch proper events
-          // Try multiple approaches to ensure the click works
-          const clickElement = () => {
-            // Method 1: Standard click
-            targetElement.click();
-            
-            // Method 2: Dispatch mouse events in sequence (for Radix UI compatibility)
-            const mouseDownEvent = new MouseEvent('mousedown', {
-              bubbles: true,
-              cancelable: true,
-              view: window,
-              detail: 1,
-              buttons: 1,
-            });
-            targetElement.dispatchEvent(mouseDownEvent);
-            
-            const mouseUpEvent = new MouseEvent('mouseup', {
-              bubbles: true,
-              cancelable: true,
-              view: window,
-              detail: 1,
-              buttons: 0,
-            });
-            targetElement.dispatchEvent(mouseUpEvent);
-            
-            // Method 3: Dispatch click event with full options
-            const clickEvent = new MouseEvent('click', {
-              bubbles: true,
-              cancelable: true,
-              view: window,
-              detail: 1,
-              buttons: 0,
-            });
-            targetElement.dispatchEvent(clickEvent);
-            
-            // Method 4: Try pointer events (for touch devices)
-            if (window.PointerEvent) {
-              const pointerDownEvent = new PointerEvent('pointerdown', {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-                pointerId: 1,
-                pointerType: 'mouse',
-                buttons: 1,
-              });
-              targetElement.dispatchEvent(pointerDownEvent);
-              
-              const pointerUpEvent = new PointerEvent('pointerup', {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-                pointerId: 1,
-                pointerType: 'mouse',
-                buttons: 0,
-              });
-              targetElement.dispatchEvent(pointerUpEvent);
-            }
-          };
-          
-          clickElement();
-          
-          // Special handling for steps that trigger navigation
-          // If this step navigates to a new page, wait for navigation to complete AND next element to be available
-          const isNavigationStep = currentStep?.id === 'mobile-menu-button' || currentStep?.id === 'dashboard-tab';
-          
-          if (isNavigationStep) {
-            // Get the next step to check if its element is available
-            const nextStepIndex = currentStepIndex + 1;
-            const nextStep = config.steps[nextStepIndex];
-            
-            // Determine target path and next element selector
-            let targetPath = '';
-            let nextElementSelector = '';
-            
-            if (currentStep?.id === 'mobile-menu-button') {
-              targetPath = '/dashboard/app_settings';
-              nextElementSelector = nextStep?.targetSelector || '[data-tutorial-target="loan-menu-item"]';
-            } else if (currentStep?.id === 'dashboard-tab') {
-              targetPath = '/dashboard/insights';
-              nextElementSelector = nextStep?.targetSelector || '[data-tutorial-target="dashboard-summary"]';
-            }
-            
-            // Poll until the next element is visible — no hard timeout so slow navigation always works.
-            // We use an interval that checks every 200ms and gives up after 60 seconds.
-            const maxAttempts = 300; // 300 × 200ms = 60 seconds
-            let attempts = 0;
-            const pollInterval = trackInterval(setInterval(() => {
-              attempts++;
-              const nextElement = document.querySelector(nextElementSelector) as HTMLElement | null;
-              const isElementVisible = nextElement && nextElement.offsetParent !== null;
+          activateTourTargetOnce(targetElement);
 
-              if (isElementVisible || attempts >= maxAttempts) {
-                clearInterval(pollInterval);
-                console.log(
-                  'Navigation element ready, advancing from step', currentStepIndex, 'to step', nextStepIndex,
-                  'element visible:', isElementVisible,
-                );
-                stepIndexRef.current = nextStepIndex;
-                setStepIndex(nextStepIndex);
-                isHandlingClickRef.current = false;
-              }
-            }, 200));
-            
-            return;
-          }
-          
           // Determine delay based on step ID and platform
           // Use 500ms for loan-menu-item on mobile (after navigation), otherwise 0ms
           const delay = currentStep?.id === 'loan-menu-item' && platform === 'mobile' ? 500 : 0;
@@ -734,7 +1074,7 @@ const TutorialOverlay: React.FC = () => {
     // Update ref immediately to prevent race conditions
     stepIndexRef.current = nextStepIndex;
     setStepIndex(nextStepIndex);
-  }, [getConfig, platform, trackTimeout, trackInterval]);
+  }, [getConfig, platform, setPendingTab, trackTimeout, trackInterval]);
 
   // Handle tutorial completion or skip
   const handleTutorialCompletion = useCallback(async (status: string) => {
@@ -780,7 +1120,7 @@ const TutorialOverlay: React.FC = () => {
 
         const retryFindElement = () => {
           const targetElement = document.querySelector(selector) as HTMLElement | null;
-          if (targetElement && targetElement.offsetParent !== null) {
+          if (isTourTargetVisible(selector)) {
             console.log('Element found after retry, continuing tutorial at step', index);
             stepIndexRef.current = index;
             setRun(false);
@@ -883,7 +1223,19 @@ const TutorialOverlay: React.FC = () => {
     return null;
   }
 
+  const activeStepId = getConfig()?.steps[stepIndex]?.id;
+  const activeTarget = steps[stepIndex]?.target;
+  const showSpotlight =
+    run &&
+    !allowModalInteraction &&
+    !shouldHideTourOverlay(activeStepId) &&
+    typeof activeTarget === "string";
+
   return (
+    <>
+    {showSpotlight && typeof activeTarget === "string" && (
+      <TourSpotlight target={activeTarget} />
+    )}
     <Joyride
       steps={steps}
       run={run}
@@ -891,16 +1243,22 @@ const TutorialOverlay: React.FC = () => {
       continuous={true}
       showProgress={false}
       showSkipButton={false}
-      disableOverlay={allowModalInteraction}
-      disableOverlayClose={false}
+      disableOverlay={true}
+      disableOverlayClose={true}
       disableScrolling={true}
+      disableScrollParentFix={true}
       scrollOffset={20}
       scrollToFirstStep={true}
-      spotlightClicks={allowModalInteraction}
+      spotlightClicks={true}
       debug={process.env.NODE_ENV === 'development'}
       callback={handleJoyrideCallback}
       tooltipComponent={(props) => (
-        <CustomTooltip {...props} onSkipClick={handleSkipClick} />
+        <CustomTooltip
+          {...props}
+          actionLockRef={tourActionLockRef}
+          onSkipClick={handleSkipClick}
+          onOpenNavigation={handleOpenNavigation}
+        />
       )}
       styles={{
         options: {
@@ -908,8 +1266,8 @@ const TutorialOverlay: React.FC = () => {
           zIndex: TUTORIAL_Z_INDEX,
         },
         overlay: {
-          cursor: 'pointer',
-          zIndex: TUTORIAL_Z_INDEX,
+          ...tourBlockingOverlayStyle(),
+          cursor: 'default',
         },
         spotlight: {
           pointerEvents: 'none',
@@ -923,6 +1281,7 @@ const TutorialOverlay: React.FC = () => {
         },
       }}
     />
+    </>
   );
 };
 

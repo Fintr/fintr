@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loan } from "@/services/loans/queries";
 import { updateLoanLocalFirst } from "@/services/loans/update-local-first";
 import { ComboBox } from "@/components/ui/combobox";
-import { createEntity } from "@/services/entities/mutation";
+import { useEntitiesMutations } from "@/hooks/async/useEntitiesMutations";
 import { fetchEntitiesLocalFirst } from "@/services/entities/queries";
 import EntityCreationForm from "./EntityCreationForm";
 import { extractFieldErrors } from "@/utils/errorUtils";
@@ -33,6 +33,7 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
   const { api } = useAuthApi();
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const queryClient = useQueryClient();
+  const { createEntity } = useEntitiesMutations();
   const [isOpen, setIsOpen] = useState(false);
   const [entityName, setEntityName] = useState(loan.entityName);
   const [description, setDescription] = useState(loan.description || "");
@@ -88,13 +89,12 @@ const EditLoanModal: React.FC<EditLoanModalProps> = ({
 
     setIsCreatingEntity(true);
     try {
-      const response = await createEntity(api, {
+      const response = await createEntity({
         fullName: fullName.trim(),
         entityType: "loan",
       });
 
       const createdEntityName = response?.data?.fullName || fullName.trim();
-      queryClient.invalidateQueries({ queryKey: ["entities"] });
       setEntityName(createdEntityName);
       toast.success(`"${createdEntityName}" has been created and selected.`);
 

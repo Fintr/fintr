@@ -71,6 +71,7 @@ export {
   COST_SHARE_MODES,
   allocateCostShare,
   assertAllocateCostShare,
+  costShareEntryBounds,
   type AllocateCostShareInput,
   type CostShareAllocation,
   type CostShareMode,

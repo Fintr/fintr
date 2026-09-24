@@ -23,7 +23,7 @@ export const PRO_FEATURES: ProFeature[] = [
   {
     key: "ai_chat",
     name: "AI chat",
-    description: "Ask questions about your money.",
+    description: "Ask questions about your money. 30 chats per month.",
     available: true,
   },
   {
@@ -36,6 +36,12 @@ export const PRO_FEATURES: ProFeature[] = [
     key: "tag_images",
     name: "Tag images",
     description: "Sample styles and generated images for tags.",
+    available: true,
+  },
+  {
+    key: "split_with_people",
+    name: "Split with people",
+    description: "Split a bill and track what each person owes you.",
     available: true,
   },
 ];

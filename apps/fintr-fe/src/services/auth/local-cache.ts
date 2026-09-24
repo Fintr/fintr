@@ -6,6 +6,7 @@ import {
 const CURRENT_USER_KEY = "currentUser";
 
 export type CachedCurrentUserResponse = {
+  userSub?: string;
   data?: {
     spaceCode?: string;
     isAdmin?: boolean;
@@ -17,21 +18,40 @@ export type CachedCurrentUserResponse = {
 
 export const cacheCurrentUserResponse = async (
   payload: CachedCurrentUserResponse,
+  userSub?: string,
 ): Promise<void> => {
   try {
-    await putLocalResponseSnapshot(CURRENT_USER_KEY, payload);
+    const existing = await getLocalResponseSnapshot<CachedCurrentUserResponse>(
+      CURRENT_USER_KEY,
+    );
+    const resolvedUserSub = userSub || payload.userSub || existing?.userSub;
+
+    await putLocalResponseSnapshot(CURRENT_USER_KEY, {
+      ...payload,
+      ...(resolvedUserSub ? { userSub: resolvedUserSub } : {}),
+    });
   } catch (error) {
     console.warn("[local-db] Failed to cache current user", error);
   }
 };
 
-export const loadCachedCurrentUserResponse = async (): Promise<
-  CachedCurrentUserResponse | undefined
-> => {
+export const loadCachedCurrentUserResponse = async (
+  expectedUserSub?: string,
+): Promise<CachedCurrentUserResponse | undefined> => {
   try {
-    return await getLocalResponseSnapshot<CachedCurrentUserResponse>(
+    const snapshot = await getLocalResponseSnapshot<CachedCurrentUserResponse>(
       CURRENT_USER_KEY,
     );
+
+    if (!snapshot) {
+      return undefined;
+    }
+
+    if (expectedUserSub && snapshot.userSub !== expectedUserSub) {
+      return undefined;
+    }
+
+    return snapshot;
   } catch (error) {
     console.warn("[local-db] Failed to load cached current user", error);
     return undefined;

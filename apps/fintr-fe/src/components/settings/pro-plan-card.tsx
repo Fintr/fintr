@@ -19,8 +19,8 @@ import {
   useProAccess,
 } from "@/hooks/async/useProAccess";
 import { useSubscriptionPlans } from "@/hooks/async/useSubscriptions";
-import type { SubscriptionPlan } from "@/services/finance/subscriptions/queries";
 import { detectPlatform } from "@/lib/platform-detection";
+import { useNativeCheckoutGate } from "@/hooks/useNativeCheckoutGate";
 import { PRO_FEATURES } from "@/lib/pro-features";
 import {
   presentProCustomerCenter,
@@ -28,6 +28,8 @@ import {
   PurchaseCancelledError,
 } from "@/lib/revenuecat/purchase-pro";
 import { syncRevenueCatCustomer } from "@/services/finance/pro-access";
+import { proYearlySavingsPercent } from "@/lib/pro-plan-pricing";
+import { formatProGrantDate } from "@/components/settings/pro-grant-thank-you-dialog";
 import { formatCurrency } from "@/lib/utils";
 
 export function ProPlanCard() {
@@ -37,11 +39,17 @@ export function ProPlanCard() {
   const queryClient = useQueryClient();
   const [isPurchasing, setIsPurchasing] = useState(false);
 
-  const priceLabel = proPriceLabel(plans);
+  const pricedPlans = plans.length === 0 ? FALLBACK_PRO_PLANS : plans;
+  const priceLabel = proPriceLabel(pricedPlans);
+  const yearlySavings = proYearlySavingsPercent(pricedPlans);
 
+  const checkoutGate = useNativeCheckoutGate();
   const isNative =
-    typeof navigator !== "undefined" &&
-    detectPlatform(navigator.userAgent, document.documentElement).isNative;
+    checkoutGate === "native" ||
+    (
+      typeof navigator !== "undefined" &&
+      detectPlatform(navigator.userAgent, document.documentElement).isNative
+    );
   const hasPro = data?.pro === true;
   const isTrial = data?.source === "trial";
   const isPaidPro = hasPro && !isTrial;
@@ -51,6 +59,8 @@ export function ProPlanCard() {
     isPending,
     isPaidPro,
     isTrial,
+    source: data?.source,
+    proExpiresAt: data?.proExpiresAt ?? null,
     trialDaysRemaining: data?.trialDaysRemaining ?? 0,
   });
 
@@ -65,6 +75,7 @@ export function ProPlanCard() {
       await presentProPaywall(data.appUserId);
       const access = await syncRevenueCatCustomer(api);
       queryClient.setQueryData(PRO_ACCESS_QUERY_KEY, access);
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
       toast.success("Fintr Pro is active");
     } catch (error) {
       if (!(error instanceof PurchaseCancelledError)) {
@@ -88,6 +99,7 @@ export function ProPlanCard() {
       await presentProCustomerCenter(data.appUserId);
       const access = await syncRevenueCatCustomer(api);
       queryClient.setQueryData(PRO_ACCESS_QUERY_KEY, access);
+      await queryClient.invalidateQueries({ queryKey: ["currentSubscription"] });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Could not open subscription management";
@@ -104,7 +116,14 @@ export function ProPlanCard() {
         <CardDescription>{statusCopy}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-2xl font-semibold">{priceLabel}</p>
+        <p className="text-2xl font-semibold">
+          {priceLabel}
+          {yearlySavings == null ? null : (
+            <span className="text-base font-medium text-teal-600 dark:text-teal-500">
+              {` (saves ${yearlySavings}%)`}
+            </span>
+          )}
+        </p>
         <ul className="space-y-3 text-sm">
           {PRO_FEATURES.map((feature) => (
             <li key={feature.key} className="flex items-start justify-between gap-3">
@@ -147,11 +166,26 @@ export function ProPlanCard() {
   );
 }
 
-function proPriceLabel(plans: SubscriptionPlan[]): string {
-  if (plans.length === 0) {
-    return "₱100.00 / month or ₱1,000.00 / year";
-  }
+const FALLBACK_PRO_PLANS = [
+  {
+    interval: "month",
+    priceCents: 10_000,
+    priceCurrency: "PHP",
+  },
+  {
+    interval: "year",
+    priceCents: 100_000,
+    priceCurrency: "PHP",
+  },
+];
 
+function proPriceLabel(
+  plans: Array<{
+    priceCents: number;
+    priceCurrency: string;
+    interval: string;
+  }>,
+): string {
   return [...plans]
     .sort((left, right) => left.priceCents - right.priceCents)
     .map(
@@ -166,16 +200,27 @@ function statusMessage({
   isPending,
   isPaidPro,
   isTrial,
+  source,
+  proExpiresAt,
   trialDaysRemaining,
 }: {
   hasData: boolean;
   isPending: boolean;
   isPaidPro: boolean;
   isTrial: boolean;
+  source?: string;
+  proExpiresAt: string | null;
   trialDaysRemaining: number;
 }): string {
   if (!hasData && isPending) {
     return "Checking your Fintr Pro access…";
+  }
+
+  if (source === "grant" && proExpiresAt) {
+    const through = formatProGrantDate(proExpiresAt);
+    return through
+      ? `Fintr Pro is active through ${through}.`
+      : "Fintr Pro is active on this account.";
   }
 
   if (isPaidPro) {

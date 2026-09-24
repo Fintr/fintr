@@ -55,6 +55,13 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 
 vi.mock("@/lib/capacitor", () => ({
   shouldShowSimulatePaymentButton: () => false,
+  isNativeCapacitor: () => false,
+  isNativeCapacitorAsync: () => Promise.resolve(false),
+}));
+
+vi.mock("@/hooks/async/useProAccess", () => ({
+  PRO_ACCESS_QUERY_KEY: ["finance", "proAccess"],
+  useProAccess: () => ({ data: { appUserId: "user-1" } }),
 }));
 
 import SubscriptionsPage from "./page";

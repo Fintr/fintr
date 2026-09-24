@@ -43,7 +43,7 @@ export type CreateExpenseWithCostShareLocalFirstResult = {
   data: { id: string };
   pendingSync: boolean;
   allocation: CostShareAllocation;
-  expense: CreateTransactionLocalFirstResult;
+  expense: CreateTransactionLocalFirstResult | null;
   loans: CreateLoanLocalFirstResult[];
   syncPromise: Promise<CreateExpenseWithCostShareLocalFirstResult>;
 };
@@ -82,23 +82,26 @@ export const createExpenseWithCostShareLocalFirst = async (
     buildAllocationInput(data.amount, costShare),
   );
 
-  const expense = await createTransactionLocalFirst(
-    api,
-    {
-      spaceId,
-      data: {
-        ...data,
-        amount: allocation.yourShare,
-      },
-      entryCurrency: params.entryCurrency,
-      spaceCurrency: params.spaceCurrency,
-      amountCurrency: params.amountCurrency,
-    },
-    {
-      ...options,
-      waitForSync: false,
-    },
-  );
+  const expense =
+    allocation.yourShare > 0
+      ? await createTransactionLocalFirst(
+          api,
+          {
+            spaceId,
+            data: {
+              ...data,
+              amount: allocation.yourShare,
+            },
+            entryCurrency: params.entryCurrency,
+            spaceCurrency: params.spaceCurrency,
+            amountCurrency: params.amountCurrency,
+          },
+          {
+            ...options,
+            waitForSync: false,
+          },
+        )
+      : null;
 
   const loans: CreateLoanLocalFirstResult[] = [];
   for (const participant of allocation.participants) {
@@ -138,14 +141,19 @@ export const createExpenseWithCostShareLocalFirst = async (
     queryClient,
   });
 
-  const pendingSync = expense.pendingSync || loans.some((loan) => loan.pendingSync);
+  const pendingSync =
+    (expense?.pendingSync ?? false) || loans.some((loan) => loan.pendingSync);
 
   const assemble = (
-    nextExpense: CreateTransactionLocalFirstResult,
+    nextExpense: CreateTransactionLocalFirstResult | null,
     nextLoans: CreateLoanLocalFirstResult[],
   ): CreateExpenseWithCostShareLocalFirstResult => ({
-    data: nextExpense.data,
-    pendingSync: nextExpense.pendingSync || nextLoans.some((loan) => loan.pendingSync),
+    data: {
+      id: nextExpense?.data.id ?? nextLoans[0]?.data.id ?? "",
+    },
+    pendingSync:
+      (nextExpense?.pendingSync ?? false)
+      || nextLoans.some((loan) => loan.pendingSync),
     allocation,
     expense: nextExpense,
     loans: nextLoans,
@@ -153,7 +161,7 @@ export const createExpenseWithCostShareLocalFirst = async (
   });
 
   const syncPromise = (async () => {
-    const nextExpense = await expense.syncPromise;
+    const nextExpense = expense ? await expense.syncPromise : null;
     const nextLoans = await Promise.all(loans.map((loan) => loan.syncPromise));
     return assemble(nextExpense, nextLoans);
   })();

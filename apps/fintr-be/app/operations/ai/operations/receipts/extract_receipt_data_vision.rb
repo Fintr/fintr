@@ -7,7 +7,6 @@ module Ai
       class ExtractReceiptDataVision < Dry::Operation
         DEFAULT_MAX_VISION_EDGE = 768  # Receipt text stays readable; smaller = faster upload + inference
         DEFAULT_JPEG_QUALITY    = 82
-        DEFAULT_IMAGE_DETAIL    = "low" # OpenAI-compatible; much faster than "high" for receipts
         DEFAULT_MAX_TOKENS      = 220
         class Contract < Dry::Validation::Contract
           params do
@@ -46,7 +45,7 @@ module Ai
           space_accounts      = step fetch_space_accounts(space:)
           space_merchants     = step fetch_space_merchants(space:)
           base64_image        = step encode_image_to_base64(params:)
-          ai_response         = step call_openai_vision_api(
+          ai_response         = step call_vision_chat(
                                     base64_image:,
                                     space_categories:,
                                     space_accounts:,
@@ -111,7 +110,7 @@ module Ai
           catalog = entities.map do |entity|
             {
               name: entity.full_name,
-              identifiers: merchant_identifier_labels(entity),
+              identifiers: merchant_identifier_labels(entity)
             }
           end
 
@@ -167,65 +166,42 @@ module Ai
           end
         end
 
-        def call_openai_vision_api(base64_image:, space_categories:, space_accounts:, space_merchants: [])
-          system_prompt = build_vision_system_prompt(
+        def call_vision_chat(base64_image:, space_categories:, space_accounts:, space_merchants: [])
+          instructions = build_vision_system_prompt(
             space_categories,
             space_accounts,
             space_merchants,
           )
 
           begin
-            client = ::Ai::Llm::VisionClient.client
-            model  = ::Ai::Llm::VisionClient.model
-
-            response = client.chat(
-              parameters: {
-                model: model,
-                messages: [
-                  {
-                    role: "system",
-                    content: system_prompt
-                  },
-                  {
-                    role: "user",
-                    content: [
-                      {
-                        type: "text",
-                        text: "Extract total, date, category, account, and the matching merchant from this receipt."
-                      },
-                      {
-                        type: "image_url",
-                        image_url: {
-                          url: base64_image,
-                          detail: vision_image_detail
-                        }
-                      }
-                    ]
-                  }
-                ],
-                temperature: 0.0,
-                max_tokens: vision_max_tokens
-              }.merge(::Ai::Llm::VisionClient.openrouter_chat_extras)
+            ai_content = ::Ai::Llm::VisionClient.ask(
+              instructions: instructions,
+              prompt: "Extract total, date, category, account, and the matching merchant from this receipt.",
+              image: base64_image,
+              max_output_tokens: vision_max_tokens,
             )
-
-            ai_content = response.dig("choices", 0, "message", "content")&.strip
             return Failure(ai_error: "No response from vision API") if ai_content.blank?
 
             Success(ai_content)
           rescue StandardError => e
-            failure_message = vision_api_error_message(e)
             Failure(
-              ai_vision_error: failure_message,
-              error: e
+              ai_vision_error: vision_api_error_message(e),
+              error: e,
             )
           end
         end
 
         def vision_api_error_message(exception)
           msg = exception.message.to_s
-          return "Vision API payment required (402). Add credits or a payment method at https://openrouter.ai/credits" if msg.include?("402")
-          return "Vision API authentication failed (401). Check OPENROUTER_API_KEY or OPENAI_API_KEY." if msg.include?("401")
-          return "Vision API rate limit (429). Try again in a few moments." if msg.include?("429")
+          if exception.is_a?(RubyLLM::PaymentRequiredError) || msg.include?("402")
+            return "Vision API payment required (402). Add credits or a payment method at https://openrouter.ai/credits"
+          end
+          if exception.is_a?(RubyLLM::UnauthorizedError) || msg.include?("401")
+            return "Vision API authentication failed (401). Check OPENROUTER_API_KEY."
+          end
+          if exception.is_a?(RubyLLM::RateLimitError) || msg.include?("429")
+            return "Vision API rate limit (429). Try again in a few moments."
+          end
 
           "Vision API call failed"
         end
@@ -269,7 +245,7 @@ module Ai
             else
               {
                 name: merchant[:name] || merchant["name"],
-                identifiers: Array(merchant[:identifiers] || merchant["identifiers"]),
+                identifiers: Array(merchant[:identifiers] || merchant["identifiers"])
               }
             end
           end
@@ -294,13 +270,6 @@ module Ai
           raw = ENV["AI_VISION_JPEG_QUALITY"].to_s.strip
           quality = raw.present? ? raw.to_i : DEFAULT_JPEG_QUALITY
           quality.clamp(60, 95)
-        end
-
-        def vision_image_detail
-          detail = ENV["AI_VISION_IMAGE_DETAIL"].to_s.strip.downcase
-          return DEFAULT_IMAGE_DETAIL if detail.blank?
-
-          %w[low high auto].include?(detail) ? detail : DEFAULT_IMAGE_DETAIL
         end
 
         def vision_max_tokens

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,26 +53,60 @@ const UnifiedAuthPage = ({
     lastName: "",
   });
   const [registerError, setRegisterError] = useState<string | null>(null);
-  const isSignupView = registerError !== null ? true : !isLogin;
+  const [authMode, setAuthMode] = useState<"login" | "signup">(
+    isLogin ? "login" : "signup",
+  );
+  const navigationFallbackRef = useRef<number | null>(null);
+  const isSignupView = registerError !== null || authMode === "signup";
+
+  useEffect(() => {
+    setAuthMode(isLogin ? "login" : "signup");
+  }, [isLogin]);
+
+  useEffect(() => {
+    return () => {
+      if (navigationFallbackRef.current != null) {
+        window.clearTimeout(navigationFallbackRef.current);
+      }
+    };
+  }, []);
+
+  const openAuthRoute = (path: "/login" | "/signup") => {
+    router.push(path);
+
+    if (navigationFallbackRef.current != null) {
+      window.clearTimeout(navigationFallbackRef.current);
+    }
+
+    // Soft navigations can update the URL and still paint the previous form
+    // when a cached HTML document is served as the flight payload.
+    navigationFallbackRef.current = window.setTimeout(() => {
+      if (window.location.pathname !== path) {
+        window.location.assign(path);
+      }
+    }, AUTH_REDIRECT_FALLBACK_MS);
+  };
 
   const showSignupForm = () => {
     setRegisterError(null);
+    setAuthMode("signup");
     if (onAuthModeChange) {
       onAuthModeChange("signup");
       return;
     }
 
-    router.push("/signup");
+    openAuthRoute("/signup");
   };
 
   const showLoginForm = () => {
     setRegisterError(null);
+    setAuthMode("login");
     if (onAuthModeChange) {
       onAuthModeChange("login");
       return;
     }
 
-    router.push("/login");
+    openAuthRoute("/login");
   };
 
   useEffect(() => {

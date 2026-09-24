@@ -25,6 +25,7 @@ import { ExpenseBreakdownCard } from "@/components/dashboard/insights/expense-br
 import { FinancialHealthGauge } from "@/components/dashboard/insights/financial-health-gauge";
 import { WeeklySpendingCard } from "@/components/dashboard/insights/weekly-spending-card";
 import { ProFeatureGate } from "@/components/settings/pro-feature-gate";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 import { ChartTooltipContent } from "@/components/dashboard/insights/chart-tooltip-content";
 import {
   LineChart as RechartsLineChart,
@@ -722,7 +723,6 @@ const InsightsTab = ({ isActive = true }: { isActive?: boolean }) => {
   };
 
   return (
-    <ProFeatureGate featureName="Dashboard Insights">
     <div className="space-y-6 pb-6 md:space-y-8">
         <FilterSheet
           open={filtersOpen}
@@ -810,12 +810,16 @@ const InsightsTab = ({ isActive = true }: { isActive?: boolean }) => {
               data-tutorial-target="financial-health-score"
             >
               <CardHeader className="px-4">
-                <CardTitle>Financial Health Score</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  Financial Health Score
+                  <ProTrialBadge />
+                </CardTitle>
                 <CardDescription>
                   Based on your spending habits and savings
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-4">
+                <ProFeatureGate featureName="Financial Health Score">
                 {displayLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner size="medium" />
@@ -891,6 +895,7 @@ const InsightsTab = ({ isActive = true }: { isActive?: boolean }) => {
                     </div>
                   </>
                 )}
+                </ProFeatureGate>
               </CardContent>
             </Card>
           ) : null}
@@ -1192,7 +1197,6 @@ const InsightsTab = ({ isActive = true }: { isActive?: boolean }) => {
           </Card>
         )}
     </div>
-    </ProFeatureGate>
   );
 };
 

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DATE_FILTER_PRESETS,
   getPresetDateRange,
   inferDateFilterTypeSelector,
+  matchPresetFromDateRange,
   resolveAllTimeStartDate,
 } from "@/utils/dateFilterPresets";
 
@@ -37,6 +39,48 @@ describe("resolveAllTimeStartDate", () => {
   });
 });
 
+describe("DATE_FILTER_PRESETS", () => {
+  it("includes This Month with the other calendar periods", () => {
+    const labels = DATE_FILTER_PRESETS.map((preset) => preset.label);
+
+    expect(labels).toContain("This Month");
+    expect(labels.indexOf("This Month")).toBe(labels.indexOf("Last 2 Weeks") + 1);
+    expect(DATE_FILTER_PRESETS.find((preset) => preset.label === "This Month")?.id).toBe(
+      "this_month",
+    );
+  });
+});
+
+describe("getPresetDateRange week presets", () => {
+  const thursday = new Date(2026, 8, 24);
+
+  it("uses Monday through Sunday, matching ISO weeks used by AI chat", () => {
+    expect(getPresetDateRange("this_week", thursday)).toEqual({
+      startDate: "2026-09-21",
+      endDate: "2026-09-24",
+    });
+
+    expect(getPresetDateRange("last_week", thursday)).toEqual({
+      startDate: "2026-09-14",
+      endDate: "2026-09-20",
+    });
+
+    expect(getPresetDateRange("last_2_weeks", thursday)).toEqual({
+      startDate: "2026-09-07",
+      endDate: "2026-09-20",
+    });
+  });
+});
+
+describe("getPresetDateRange this_month", () => {
+  it("starts at the beginning of the reference month and ends on that day", () => {
+    const range = getPresetDateRange("this_month", new Date("2026-09-24"));
+
+    expect(range.startDate).toBe("2026-09-01");
+    expect(range.endDate).toBe("2026-09-24");
+  });
+});
+
 describe("getPresetDateRange all_time", () => {
   it("starts from the earliest transaction date instead of space creation", () => {
     const range = getPresetDateRange(
@@ -68,5 +112,17 @@ describe("inferDateFilterTypeSelector", () => {
         `${year}-${month}-${day}`,
       ),
     ).toBe("single");
+  });
+
+  it("keeps the current month through today as a single-month filter when This Month is a preset", () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    const startDate = `${year}-${month}-01`;
+    const endDate = `${year}-${month}-${day}`;
+
+    expect(matchPresetFromDateRange(startDate, endDate)).toBeNull();
+    expect(inferDateFilterTypeSelector(startDate, endDate)).toBe("single");
   });
 });

@@ -7,50 +7,9 @@ import {
   cacheLoansAllPages,
   loadCachedLoansInfiniteData,
 } from "@/services/loans/local-cache";
+import { loansListQueryKey } from "@/services/loans/loans-list-cache";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
 import { shouldFetchNextInfinitePage } from "./shouldFetchNextInfinitePage";
-import type { LoansPage } from "@/services/loans/queries";
-import type { InfiniteData } from "@tanstack/react-query";
-
-const countLoansInInfiniteData = (
-  data: InfiniteData<LoansPage> | undefined,
-): number =>
-  data?.pages?.reduce((sum, page) => sum + (page?.loans?.length ?? 0), 0) ?? 0;
-
-const reconcileLoansListCaches = async (params: {
-  spaceCode: string;
-  queryClient: ReturnType<typeof useQueryClient>;
-}): Promise<void> => {
-  const { spaceCode, queryClient } = params;
-  if (!spaceCode) {
-    return;
-  }
-
-  const networkLoans = queryClient.getQueryData<InfiniteData<LoansPage>>([
-    "loans",
-  ]);
-  const localLoans = queryClient.getQueryData<InfiniteData<LoansPage>>([
-    "loans",
-    "local",
-    spaceCode,
-  ]);
-  const indexedLoans = await loadCachedLoansInfiniteData(spaceCode);
-
-  const networkCount = countLoansInInfiniteData(networkLoans);
-  const localCount = Math.max(
-    countLoansInInfiniteData(localLoans),
-    countLoansInInfiniteData(indexedLoans),
-  );
-
-  if (
-    networkCount > 0 &&
-    networkCount > localCount &&
-    networkLoans?.pages?.length
-  ) {
-    await cacheLoansAllPages(spaceCode, networkLoans.pages);
-    queryClient.setQueryData(["loans", "local", spaceCode], networkLoans);
-  }
-};
 
 export const useInfiniteLoans = ({
   loadMoreRef,
@@ -89,13 +48,22 @@ export const useInfiniteLoans = ({
     status,
     isError,
     isSuccess,
+    isPlaceholderData,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ["loans"],
-    queryFn: ({ pageParam = 1 }) => fetchLoansPage(api, { pageParam }),
+    queryKey: loansListQueryKey(spaceCode),
+    queryFn: ({ pageParam = 1 }) =>
+      fetchLoansPage(api, {
+        pageParam,
+        requestConfig: {
+          headers: {
+            "X-Space-Code": spaceCode,
+          },
+        },
+      }),
     getNextPageParam: (lastPage) => lastPage?.nextPage ?? undefined,
     initialPageParam: 1,
-    enabled: !!api && !skipNetworkFetch,
+    enabled: !!api && Boolean(spaceCode) && !skipNetworkFetch,
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnMount: !skipNetworkFetch,
@@ -107,8 +75,26 @@ export const useInfiniteLoans = ({
   });
 
   useEffect(() => {
-    void reconcileLoansListCaches({ spaceCode, queryClient });
-  }, [spaceCode, queryClient, localLoansQuery.data, data]);
+    if (
+      !spaceCode ||
+      skipNetworkFetch ||
+      isPlaceholderData ||
+      !isSuccess ||
+      !data?.pages
+    ) {
+      return;
+    }
+
+    void cacheLoansAllPages(spaceCode, data.pages);
+    queryClient.setQueryData(["loans", "local", spaceCode], data);
+  }, [
+    data,
+    isPlaceholderData,
+    isSuccess,
+    queryClient,
+    skipNetworkFetch,
+    spaceCode,
+  ]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -152,7 +138,16 @@ export const useInfiniteLoans = ({
     cachedInfiniteData?.pages.flatMap((page) => page?.loans ?? []) ?? [];
   const loansFromNetwork =
     data?.pages.flatMap((page) => page?.loans ?? []) ?? [];
-  const loans = loansFromLocal.length > 0 ? loansFromLocal : loansFromNetwork;
+  const networkReady =
+    !skipNetworkFetch &&
+    isSuccess &&
+    !isPlaceholderData &&
+    Boolean(data?.pages);
+  const loans = networkReady
+    ? loansFromNetwork
+    : loansFromLocal.length > 0
+      ? loansFromLocal
+      : loansFromNetwork;
 
   const hasLocalLoans = Boolean(cachedInfiniteData?.pages?.length);
   const localReady = skipNetworkFetch && localLoansQuery.isSuccess;

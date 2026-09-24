@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { MerchantPicker } from "@/components/ui/merchant-picker";
@@ -81,7 +80,6 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
   const copy = FIELD_COPY[loanType];
   const { api } = useAuthApi();
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const queryClient = useQueryClient();
   const { createEntity } = useEntitiesMutations();
   const [showCreationPanel, setShowCreationPanel] = useState(false);
   const [isCreatingEntity, setIsCreatingEntity] = useState(false);
@@ -155,7 +153,6 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
       });
 
       const createdEntityName = response?.data?.fullName || trimmed;
-      queryClient.invalidateQueries({ queryKey: ["entities"] });
       onChange(createdEntityName);
       toast.success(`${createdEntityName} saved.`);
       onSuccess?.();

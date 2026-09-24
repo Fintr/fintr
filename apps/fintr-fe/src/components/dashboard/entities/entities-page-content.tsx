@@ -3,8 +3,6 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { HandCoins, Plus, Search, Store, ChevronRight } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -71,14 +69,13 @@ const TAB_COPY: Record<
 };
 
 export function EntitiesPageContent() {
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<EntityTab>("merchants");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
   const copy = TAB_COPY[activeTab];
-  const { entities, isLoading, isError, refetch } = useEntities(
+  const { entities, isLoading, isError } = useEntities(
     copy.entityType,
     debouncedSearch,
   );
@@ -93,8 +90,6 @@ export function EntitiesPageContent() {
 
   const handleEntityCreated = () => {
     setIsCreateOpen(false);
-    queryClient.invalidateQueries({ queryKey: ["entities"] });
-    refetch();
   };
 
   const TabIcon = copy.icon;

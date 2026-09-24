@@ -57,6 +57,17 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
   end
 
   describe "#call" do
+    let!(:subscription_plan) { create(:subscription_plan, slug: "pro-#{SecureRandom.hex(4)}") }
+    let!(:space_subscription) do
+      create(
+        :space_subscription,
+        space:,
+        subscription_plan:,
+        status: :active,
+        subscription_type: :paid,
+      )
+    end
+
     context "when the block succeeds" do
       let(:block_result) { Dry::Monads::Result::Success.new({ data: "success" }) }
       let(:time_start) { Time.current }
@@ -206,16 +217,54 @@ RSpec.describe Ai::Operations::Usages::CreateUsage, type: :operation do
       end
     end
 
+    context "when the account only has the trial" do
+      let(:block_result) { Dry::Monads::Result::Success.new({ data: "success" }) }
+
+      before { space_subscription.destroy! }
+
+      it "creates a usage record" do
+        result = operation.call(params) { block_result }
+
+        expect(result).to be_success
+        expect(Ai::Usage.last.user_id).to eq(user.id)
+      end
+    end
+
     context "when the trial has ended and the space has no Pro subscription" do
       let(:block_result) { Dry::Monads::Result::Success.new({ data: "success" }) }
 
-      before { user.update!(trial_ends_at: 1.day.ago) }
+      before do
+        user.update!(trial_ends_at: 1.day.ago)
+        space_subscription.destroy!
+      end
 
       it "returns a Pro requirement failure" do
         result = operation.call(params) { block_result }
 
         expect(result).to be_failure
         expect(result.failure).to eq("Fintr Pro is required for this feature.")
+      end
+
+      it "allows an AI chat request without Pro" do
+        result = operation.call(params.merge(ai_type: "ai_chat")) { block_result }
+
+        expect(result).to be_success
+      end
+
+      it "rejects an AI chat request after 30 chats this month" do
+        create_list(
+          :ai_usage,
+          30,
+          :ai_chat,
+          user: user,
+          space: space,
+          created_at: Time.current,
+        )
+
+        result = operation.call(params.merge(ai_type: "ai_chat")) { block_result }
+
+        expect(result).to be_failure
+        expect(result.failure).to eq("You have used all 30 AI chats for this month.")
       end
     end
   end

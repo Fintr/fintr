@@ -20,6 +20,7 @@ import { TagPresetStylePicker } from "@/components/dashboard/tag-preset-style-pi
 import { TAG_COLOR_PALETTE } from "@/utils/categoryAppearance";
 import { tagStylePresetSrc } from "@/lib/tags/preset-style-images";
 import { useProAccess } from "@/hooks/async/useProAccess";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 import { toast } from "sonner";
 import type { TransactionTag } from "@/types/transactionTagTypes";
 
@@ -227,7 +228,10 @@ const TagFormDialog: React.FC<TagFormDialogProps> = ({
           />
 
           <div className="space-y-2">
-            <Label>Styled tag preview</Label>
+            <div className="flex items-center gap-2">
+              <Label>Styled tag preview</Label>
+              <ProTrialBadge />
+            </div>
             <TagStylePreview tag={previewTag} />
             <p className="text-xs text-muted-foreground">
               Choose a sample illustration

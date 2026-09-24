@@ -9,6 +9,7 @@ import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import {
   applyAccountsResponseToCaches,
   applyLocalTransactionsToAccountBalances,
+  upsertAccountInCaches,
 } from "./account-cache-ops";
 import {
   cacheDashboardShell,
@@ -111,6 +112,43 @@ describe("applyAccountsResponseToCaches", () => {
           ?.balance,
       ),
     ).toBe(569889.23);
+  });
+});
+
+describe("upsertAccountInCaches", () => {
+  afterEach(async () => {
+    await resetLocalDbForTests();
+  });
+
+  it("stores a foreign-currency account without switching totals off the space currency", async () => {
+    await seedCashAccount("1000");
+
+    await upsertAccountInCaches({
+      spaceId: "space-a",
+      account: {
+        id: "acc-usd",
+        name: "USD Wallet",
+        balance: "50",
+        balanceCurrency: "USD",
+        accountCategory: "cash",
+      },
+    });
+
+    const accounts = await listSpaceAccounts("space-a");
+    expect(accounts.find((row) => row.id === "acc-usd")).toMatchObject({
+      name: "USD Wallet",
+      balance: "50",
+      balanceCurrency: "USD",
+    });
+
+    const cached = await loadCachedAccountsResponse("space-a");
+    const totals = (
+      cached as {
+        data: { balanceTotals: { total: number; currency: string } };
+      }
+    ).data.balanceTotals;
+    expect(totals.currency).toBe("PHP");
+    expect(totals.total).toBe(1000);
   });
 });
 

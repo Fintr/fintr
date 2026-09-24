@@ -46,6 +46,47 @@ export const normalizeEntityRecord = (
   return record;
 };
 
+const entityIdentityKey = (entity: EntityRecord): string =>
+  `${entity.entityType}:${entity.fullName.trim().toLowerCase()}`;
+
+const preservePendingLocalEntities = (
+  incoming: EntityRecord[],
+  previous: EntityRecord[] | undefined,
+): EntityRecord[] => {
+  const incomingKeys = new Set(incoming.map(entityIdentityKey));
+  const pending = (previous ?? []).filter((entity) => {
+    if (!entity.id.startsWith("local:")) {
+      return false;
+    }
+
+    return !incomingKeys.has(entityIdentityKey(entity));
+  });
+
+  return [...incoming, ...pending];
+};
+
+export const mergePendingLocalEntities = (
+  localEntities: EntityRecord[],
+  networkEntities: EntityRecord[],
+): EntityRecord[] => {
+  const networkKeys = new Set(networkEntities.map(entityIdentityKey));
+  const pending = localEntities.filter((entity) => {
+    if (!entity.id.startsWith("local:")) {
+      return false;
+    }
+
+    return !networkKeys.has(entityIdentityKey(entity));
+  });
+
+  if (pending.length === 0) {
+    return networkEntities;
+  }
+
+  return [...networkEntities, ...pending].sort((left, right) =>
+    left.fullName.localeCompare(right.fullName),
+  );
+};
+
 const mergePreservedIdentifiers = (
   incoming: EntityRecord[],
   previous: EntityRecord[] | undefined,
@@ -112,8 +153,11 @@ export const cacheEntitiesResponse = async (
 
   try {
     const previous = await loadCachedEntitiesResponse(spaceCode);
-    const entities = mergePreservedIdentifiers(
-      normalizeEntityRecords(payload),
+    const entities = preservePendingLocalEntities(
+      mergePreservedIdentifiers(
+        normalizeEntityRecords(payload),
+        previous,
+      ),
       previous,
     );
     await putLocalResponseSnapshot(entitiesKey(spaceCode), entities);

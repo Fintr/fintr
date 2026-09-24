@@ -149,6 +149,58 @@ describe("createExpenseWithCostShareLocalFirst", () => {
     expect(accounts[0]?.balance).toBe("1000");
   });
 
+  it("records a 100 percent share as a loan and skips a zero expense", async () => {
+    await seedCashAccount("2000");
+    const queryClient = new QueryClient();
+
+    const result = await createExpenseWithCostShareLocalFirst(
+      {} as never,
+      {
+        spaceId: "space-a",
+        data: {
+          amount: 1000,
+          description: "Dinner",
+          transactionType: "expense",
+          categoryName: "Food",
+          accountName: "Cash",
+          date: "2026-08-08",
+          scheduleType: ScheduleTypeEnum.ONE_TIME,
+        },
+        costShare: {
+          mode: "percent",
+          participants: [{ entityName: "Entity A", percent: 100 }],
+        },
+        amountCurrency: "PHP",
+      },
+      { queryClient, waitForSync: false },
+    );
+
+    expect(result.allocation.yourShare).toBe(0);
+    expect(result.expense).toBeNull();
+    expect(result.loans).toHaveLength(1);
+
+    const rows = await loadCachedTransactionsInRange(
+      "space-a",
+      "2026-08-01",
+      "2026-08-31",
+    );
+    expect(
+      rows.find((row) => row.type === CombinedTransactionTypeEnum.EXPENSE),
+    ).toBeUndefined();
+    expect(
+      rows.find((row) => row.type === CombinedTransactionTypeEnum.LOAN_DISBURSEMENT)
+        ?.amount,
+    ).toBe(1000);
+
+    const outbox = await getLocalDb().outbox.toArray();
+    expect(outbox.map((record) => record.commandType)).toEqual([
+      OUTBOX_COMMAND_LOAN_CREATE,
+    ]);
+
+    const accounts = await listSpaceAccounts("space-a");
+    expect(accounts[0]?.balance).toBe("1000");
+  });
+
   it("converts each person's lent share into space currency using the expense rate", async () => {
     await seedCashAccount("50000");
     const queryClient = new QueryClient();

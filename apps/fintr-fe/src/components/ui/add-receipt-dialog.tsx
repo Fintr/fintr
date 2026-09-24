@@ -10,7 +10,7 @@ interface AddReceiptDialogProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  title?: string;
+  title?: React.ReactNode;
   className?: string;
   footer?: React.ReactNode;
   fullScreen?: boolean;
@@ -185,6 +185,8 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
 
   if (!isOpen || !mounted) return null;
 
+  const fillsViewport = fullScreen && isMobile;
+
   const isJoyrideElement = (target: EventTarget | null): boolean => {
     if (!target || !(target instanceof Element)) return false;
     
@@ -217,8 +219,8 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
     <div
       className={cn(
         "fixed inset-0 z-[100]",
-        fullScreen ? "flex flex-col" : "flex items-center justify-center",
-        !fullScreen && (isMobile ? "p-0" : "p-4"),
+        fillsViewport ? "flex flex-col" : "flex items-center justify-center",
+        !fillsViewport && (isMobile ? "p-0" : "p-4"),
       )}
       onPointerDown={(e) => {
         if (isTutorialActive && !isJoyrideElement(e.target)) {
@@ -228,7 +230,7 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
       }}
       style={isTutorialActive ? { pointerEvents: 'none' } : undefined}
     >
-      {!fullScreen && (
+      {!fillsViewport && (
         <div
           className={cn(
             "fixed inset-0 bg-black/50 z-[100]",
@@ -259,11 +261,13 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
         data-add-receipt-dialog-content
         className={cn(
           "relative z-[101] bg-background shadow-lg text-primary",
-          fullScreen
+          fillsViewport
             ? "flex h-dvh w-full flex-col overflow-hidden"
             : cn(
-              "w-full max-w-md overflow-hidden flex flex-col",
-              isMobile ? "rounded-none" : "rounded-lg",
+              "flex w-full max-w-md flex-col overflow-hidden",
+              isMobile
+                ? "rounded-none"
+                : "max-h-[calc(100dvh-2rem)] rounded-lg",
             ),
           "transition-opacity duration-200",
           className
@@ -291,17 +295,19 @@ export const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({
           <div
             className={cn(
               "flex flex-shrink-0 items-center justify-between",
-              fullScreen
+              fillsViewport
                 ? "border-b px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]"
                 : "px-6 pb-2 pt-6",
             )}
           >
-            <h2 className="text-lg font-semibold text-primary">{title}</h2>
+            <h2 className="flex min-w-0 items-center gap-2 text-lg font-semibold text-primary">
+              {title}
+            </h2>
           </div>
         )}
         <div 
           className={cn(
-            fullScreen ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "overflow-y-auto",
+            fillsViewport ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "overflow-y-auto",
           )}
           style={{
             WebkitOverflowScrolling: "touch",

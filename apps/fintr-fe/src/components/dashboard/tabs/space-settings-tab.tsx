@@ -43,6 +43,11 @@ import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { getActionCableClient, ActionCableMessage } from "@/lib/actionCable";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { SubscribeProButton } from "@/components/settings/subscribe-pro-button";
+import {
+  ManageStoreSubscriptionButton,
+  storeBillingLabel,
+} from "@/components/settings/manage-store-subscription-button";
 import { getColor, shouldShowV2Features, formatCurrency } from "@/lib/utils";
 import { shouldShowSimulatePaymentButton } from "@/lib/capacitor";
 import { TransactionCategory } from "@/types/transactionCategoryTypes";
@@ -123,6 +128,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
     (sub) => sub.status === "active" || sub.status === "pending" || sub.status === "requires_action"
   );
   const shouldShowCreateButton = !hasActivePendingOrRequiresAction;
+
+  useEffect(() => {
+    void refetchSubscription();
+  }, [refetchSubscription]);
 
   // Set up Action Cable subscription for real-time updates
   useEffect(() => {
@@ -1119,12 +1128,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Link href="/dashboard/subscriptions/create">
-                        <Button>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Subscribe
-                        </Button>
-                      </Link>
+                      <SubscribeProButton>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Subscribe
+                      </SubscribeProButton>
                     </CardContent>
                   </Card>
                 )}
@@ -1139,6 +1146,16 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                         <div>
                           <h4 className="text-lg font-semibold">{activeSubscription.subscriptionPlan.name}</h4>
                           <p className="text-gray-600">{activeSubscription.subscriptionPlan.description}</p>
+                          {activeSubscription.provider === "revenuecat" && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              Billed through the {storeBillingLabel(activeSubscription.store)}.
+                            </p>
+                          )}
+                          {activeSubscription.provider === "grant" && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              Included for 1 year. It does not renew. Subscribe yourself to keep Fintr Pro after it ends.
+                            </p>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -1304,6 +1321,12 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                               )}
                             </Button>
                           )}
+                          {activeSubscription.provider === "revenuecat" ? (
+                            <ManageStoreSubscriptionButton
+                              managementUrl={activeSubscription.managementUrl}
+                              onFinished={refetchSubscription}
+                            />
+                          ) : activeSubscription.provider === "grant" ? null : (
                           <Button
                             variant="destructive"
                             onClick={() => setShowCancelDialog(activeSubscription.id)}
@@ -1321,6 +1344,7 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                               </>
                             )}
                           </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -1878,12 +1902,10 @@ const   SpaceSettingsTab = ({ initialTab = "categories", hideTabs = false }: Spa
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link href="/dashboard/subscriptions/create">
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Subscribe
-                    </Button>
-                  </Link>
+                  <SubscribeProButton>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Subscribe
+                  </SubscribeProButton>
                 </CardContent>
               </Card>
             )}

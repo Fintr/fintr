@@ -33,12 +33,24 @@ const optionBalanceMatchesAccount = (
  * live in the accounts cache. Overlay so the picker shows the same number
  * as the accounts list.
  */
+const optionFromAccount = (account: Account): AccountOptionWithCurrency => ({
+  label: account.name,
+  value: account.name,
+  currency: account.balanceCurrency,
+  accountCategory: account.accountCategory,
+  balance: account.balance,
+});
+
 export const overlayAccountOptionBalances = (
   options: AccountOptionWithCurrency[],
   accounts: Account[],
 ): AccountOptionWithCurrency[] => {
-  if (options.length === 0 || accounts.length === 0) {
+  if (accounts.length === 0) {
     return options;
+  }
+
+  if (options.length === 0) {
+    return accounts.map(optionFromAccount);
   }
 
   const accountsByName = new Map(
@@ -61,5 +73,15 @@ export const overlayAccountOptionBalances = (
     };
   });
 
-  return changed ? next : options;
+  const knownNames = new Set(next.map((option) => option.value));
+  const missing = accounts.filter((account) => !knownNames.has(account.name));
+
+  if (!changed && missing.length === 0) {
+    return options;
+  }
+
+  return [
+    ...next,
+    ...missing.map(optionFromAccount),
+  ];
 };

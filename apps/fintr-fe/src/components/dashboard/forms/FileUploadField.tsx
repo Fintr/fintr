@@ -183,7 +183,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
       <Label className="text-sm">{label}</Label>
       {showImagePreview ? (
         <div className="space-y-2">
-          <div className="border border-gray-300 rounded-lg p-4">
+          <div className="rounded-lg border border-gray-300 p-4 dark:border-border">
             {imageUrl ? (
               <button
                 type="button"

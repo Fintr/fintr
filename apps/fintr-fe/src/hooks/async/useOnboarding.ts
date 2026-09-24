@@ -15,6 +15,7 @@ import {
 } from '@/services/onboarding/mutations';
 import { getOnboardingData } from '@/services/onboarding/queries';
 import { onboardingBudgetCategoriesAtom, onboardingAccountsDataAtom, onboardingAccountCategoriesAtom, incomeRequirementsAtom } from '@/atoms/budgetAtoms';
+import { cacheWorkspaceSetupInIndexedDb } from '@/services/onboarding/cache-workspace-setup';
 import { toast } from 'sonner';
 import { onboardingDataAtom, onboardingStepAtom } from '@/atoms/onboardingAtoms';
 
@@ -40,6 +41,19 @@ export const useOnboarding = (step?: string) => {
     queueMicrotask(() => {
       void queryClient.invalidateQueries({ queryKey: ['spaces'] });
       void queryClient.invalidateQueries({ queryKey: ['space-context'] });
+    });
+  };
+
+  const cacheSetupLocally = async () => {
+    const spaceCode =
+      typeof window === "undefined"
+        ? ""
+        : window.localStorage.getItem("spaceCode") ?? "";
+
+    await cacheWorkspaceSetupInIndexedDb({
+      api,
+      queryClient,
+      spaceCode,
     });
   };
 
@@ -113,6 +127,7 @@ export const useOnboarding = (step?: string) => {
       }));
       invalidateUserContext();
       invalidateWorkspaceLists();
+      await cacheSetupLocally();
       toast.success('Currency set successfully');
       return response;
     },
@@ -176,6 +191,7 @@ export const useOnboarding = (step?: string) => {
       try {
         const response = await skipOnboardingSetup({ api });
         invalidateUserContext();
+        await cacheSetupLocally();
         return response;
       } catch (error) {
         console.error('Error skipping onboarding:', error);
@@ -195,6 +211,7 @@ export const useOnboarding = (step?: string) => {
         const response = await saveStep3Data({ api, ...data });
         setOnboardingStep('import');
         invalidateUserContext();
+        await cacheSetupLocally();
         toast.success('Accounts setup completed successfully');
         return response;
       } catch (error) {

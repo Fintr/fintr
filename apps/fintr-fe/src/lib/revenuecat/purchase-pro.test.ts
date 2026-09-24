@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   customerHasProEntitlement,
+  manageProSubscription,
   presentProCustomerCenter,
   presentProPaywall,
   purchaseProPlan,
@@ -171,5 +172,22 @@ describe("RevenueCat purchases", () => {
 
     expect(purchases.logIn).toHaveBeenCalledWith({ appUserID: "user-1" });
     expect(revenueCatUi.presentCustomerCenter).toHaveBeenCalled();
+  });
+
+  it("opens the store management page in the browser", async () => {
+    platform.isNative = false;
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    await manageProSubscription(
+      "user-1",
+      "https://apps.apple.com/account/subscriptions",
+    );
+
+    expect(revenueCatUi.presentCustomerCenter).not.toHaveBeenCalled();
+    expect(open).toHaveBeenCalledWith(
+      "https://apps.apple.com/account/subscriptions",
+      "_blank",
+      "noopener,noreferrer",
+    );
   });
 });

@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -108,19 +109,20 @@ const DeleteCategoryDialog: React.FC<DeleteCategoryDialogProps> = ({
       )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Delete category</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="text-sm text-gray-600">
+          <DialogTitle className="text-primary">Delete category</DialogTitle>
+          <DialogDescription>
             Are you sure you want to delete{" "}
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-primary">
               &quot;{category.name}&quot;
             </span>
             ?
-          </div>
-
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
           {errorMessage ? (
-            <div className="text-sm text-red-900 bg-red-100/50 p-3 rounded-md border border-red-300">
+            <div
+              className="rounded-md border border-red-300 bg-red-100/50 p-3 text-sm text-red-900 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-400"
+            >
               <strong>Error:</strong> {errorMessage}
             </div>
           ) : null}

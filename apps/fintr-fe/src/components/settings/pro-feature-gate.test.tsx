@@ -66,8 +66,21 @@ describe("ProFeatureGate", () => {
     expect(screen.queryByText("Insights body")).not.toBeInTheDocument();
   });
 
-  it("shows the feature when Pro is active", () => {
+  it("shows the feature during the trial", () => {
     proState.data = { pro: true, source: "trial", trialDaysRemaining: 6 };
+    proState.isPending = false;
+
+    render(
+      <ProFeatureGate featureName="Dashboard Insights">
+        <p>Insights body</p>
+      </ProFeatureGate>,
+    );
+
+    expect(screen.getByText("Insights body")).toBeInTheDocument();
+  });
+
+  it("shows the feature when a Pro subscription is active", () => {
+    proState.data = { pro: true, source: "subscription", trialDaysRemaining: 0 };
     proState.isPending = false;
 
     render(

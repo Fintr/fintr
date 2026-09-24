@@ -72,6 +72,7 @@ import {
   cacheLoansAllPages,
   loadCachedLoansInfiniteData,
 } from "@/services/loans/local-cache";
+import { loansListQueryKey } from "@/services/loans/loans-list-cache";
 import { fetchBudgetsPage } from "@/services/budgets/queries";
 import {
   cacheBudgetsResponse,
@@ -101,6 +102,7 @@ import {
 } from "@/services/spaces/spaces-list-cache";
 import { spacesApi } from "@/services/spaces/api";
 import { cacheCurrentUserResponse, loadCachedCurrentUserResponse } from "@/services/auth/local-cache";
+import { AuthStorage } from "@/lib/auth-storage";
 import { achievementsApi } from "@/services/achievements/api";
 import {
   cacheGamificationProfile,
@@ -613,7 +615,7 @@ export const seedReactQueryFromLocalCache = async (
   const cachedLoans = await loadCachedLoansInfiniteData(spaceCode);
   if (cachedLoans) {
     queryClient.setQueryData(["loans", "local", spaceCode], cachedLoans);
-    queryClient.setQueryData(["loans"], cachedLoans);
+    queryClient.setQueryData(loansListQueryKey(spaceCode), cachedLoans);
     seededAny = true;
   }
 
@@ -707,6 +709,7 @@ export const syncLocalDataFromBackend = async (
   options?: {
     onStep?: (step: SyncStep) => void;
     onTierReady?: (tier: 0 | 1 | 2) => void;
+    deferExchangeRates?: boolean;
   },
 ): Promise<BootstrapNetworkResult> => {
   if (isSpaceSyncPullEnabled()) {
@@ -714,6 +717,7 @@ export const syncLocalDataFromBackend = async (
     const v2Result = await bootstrapSpaceV2(api, queryClient, params, {
       onStep: options?.onStep,
       onTierReady: options?.onTierReady,
+      deferExchangeRates: options?.deferExchangeRates,
     });
 
     return {
@@ -992,7 +996,7 @@ const syncLocalDataFromBackendV1 = async (
       pages: loanPages,
       pageParams: loanPages.map((_, index) => index + 1),
     });
-    queryClient.setQueryData(["loans"], {
+    queryClient.setQueryData(loansListQueryKey(spaceCode), {
       pages: loanPages,
       pageParams: loanPages.map((_, index) => index + 1),
     });
@@ -1231,7 +1235,10 @@ export const syncAllWorkspacesLocalData = async (
 
   try {
     const currentUserResponse = await api.get("/auth/private");
-    await cacheCurrentUserResponse(currentUserResponse.data);
+    await cacheCurrentUserResponse(
+      currentUserResponse.data,
+      AuthStorage.getUser()?.sub,
+    );
   } catch (error) {
     console.warn("[local-sync] Current user bootstrap fetch failed", error);
   }

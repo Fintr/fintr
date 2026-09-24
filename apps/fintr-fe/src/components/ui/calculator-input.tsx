@@ -11,6 +11,10 @@ import React, {
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  clampBoundedDraft,
+  finalizeBoundedDraft,
+} from "@/lib/clamp-bounded-draft";
 import { cn } from "@/lib/utils";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import {
@@ -44,6 +48,10 @@ interface CalculatorInputProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  minValue?: number;
+  maxValue?: number;
+  /** When set, the field shows `value` if a keystroke is outside the cap. */
+  followValue?: boolean;
 }
 
 // iOS-style calculator layout
@@ -234,6 +242,9 @@ export function CalculatorInput({
   placeholder = "0.00",
   className = "",
   disabled = false,
+  minValue,
+  maxValue,
+  followValue = false,
 }: CalculatorInputProps) {
   const [showKeyboard, setShowKeyboard] = useState(false);
   // Internal expression state - may contain operators
@@ -277,6 +288,8 @@ export function CalculatorInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const expressionRef = useRef(expression);
   const isExpressionModeRef = useRef(isExpressionMode);
+  const minValueRef = useRef(minValue);
+  const maxValueRef = useRef(maxValue);
   const skipNextCalculatorButtonClickRef = useRef(false);
   const disarmClickThroughGuardRef = useRef<(() => void) | null>(null);
   const clickGuardTimeoutRef = useRef<number | null>(null);
@@ -284,6 +297,8 @@ export function CalculatorInput({
 
   expressionRef.current = expression;
   isExpressionModeRef.current = isExpressionMode;
+  minValueRef.current = minValue;
+  maxValueRef.current = maxValue;
 
   const collapseSelectionToEnd = useCallback(() => {
     const input = inputRef.current;
@@ -430,9 +445,26 @@ export function CalculatorInput({
   // Sync with external value when not in expression mode
   useEffect(() => {
     if (!isExpressionMode) {
-      setExpression(numberFormatting.stripDelimiters(value));
+      const next = numberFormatting.stripDelimiters(value);
+      expressionRef.current = next;
+      setExpression(next);
     }
   }, [value, isExpressionMode]);
+
+  useLayoutEffect(() => {
+    if (!followValue || isExpressionMode) {
+      return;
+    }
+
+    const next = numberFormatting.stripDelimiters(value);
+    if (expression === next) {
+      expressionRef.current = next;
+      return;
+    }
+
+    expressionRef.current = next;
+    setExpression(next);
+  }, [expression, followValue, isExpressionMode, value]);
 
   // Avoid select-all flash when the value updates from calculator keys
   useEffect(() => {
@@ -449,17 +481,44 @@ export function CalculatorInput({
       nextIsExpressionMode: boolean,
       options?: { notifyChange?: boolean },
     ) => {
-      expressionRef.current = nextExpression;
+      const limitedExpression = nextIsExpressionMode
+        ? nextExpression
+        : clampBoundedDraft(nextExpression, {
+            min: minValueRef.current,
+            max: maxValueRef.current,
+          });
+
+      expressionRef.current = limitedExpression;
       isExpressionModeRef.current = nextIsExpressionMode;
-      setExpression(nextExpression);
+      setExpression(limitedExpression);
       setIsExpressionMode(nextIsExpressionMode);
 
       if (options?.notifyChange && !nextIsExpressionMode) {
-        onChange(nextExpression);
+        onChange(limitedExpression);
       }
     },
-    [onChange],
+    [maxValue, minValue, onChange],
   );
+
+  const commitBoundedDraft = useCallback(() => {
+    if (minValue == null && maxValue == null) {
+      return;
+    }
+
+    if (isExpressionModeRef.current) {
+      return;
+    }
+
+    const finalized = finalizeBoundedDraft(expressionRef.current, {
+      min: minValueRef.current,
+      max: maxValueRef.current,
+    });
+    if (finalized === expressionRef.current) {
+      return;
+    }
+
+    applyExpressionUpdate(finalized, false, { notifyChange: true });
+  }, [applyExpressionUpdate, maxValue, minValue]);
 
   const dismissKeyboard = useCallback(() => {
     setShowKeyboard(false);
@@ -474,8 +533,11 @@ export function CalculatorInput({
       } else {
         applyExpressionUpdate(value, false);
       }
+      return;
     }
-  }, [applyExpressionUpdate, value]);
+
+    commitBoundedDraft();
+  }, [applyExpressionUpdate, commitBoundedDraft, value]);
 
   const dismissKeyboardRef = useRef(dismissKeyboard);
   dismissKeyboardRef.current = dismissKeyboard;
@@ -579,6 +641,7 @@ export function CalculatorInput({
 
     if (!hasOperator(currentExpression)) {
       setShowKeyboard(false);
+      commitBoundedDraft();
       return;
     }
 
@@ -590,7 +653,7 @@ export function CalculatorInput({
       applyExpressionUpdate(resultStr, false, { notifyChange: true });
       setShowKeyboard(false);
     }
-  }, [applyExpressionUpdate]);
+  }, [applyExpressionUpdate, commitBoundedDraft]);
 
   const handleEvaluateRef = useRef(handleEvaluate);
   handleEvaluateRef.current = handleEvaluate;

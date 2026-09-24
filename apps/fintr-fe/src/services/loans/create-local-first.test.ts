@@ -65,7 +65,7 @@ describe("createLoanLocalFirst", () => {
 
     const cachedList = queryClient.getQueryData<{
       pages: Array<{ loans: Array<{ id: string }> }>;
-    }>(["loans"]);
+    }>(["loans", "space-a"]);
     expect(cachedList?.pages[0]?.loans.map((loan) => loan.id)).toEqual([
       result.data.id,
     ]);
@@ -143,7 +143,7 @@ describe("createLoanLocalFirst", () => {
         .getQueryData<{ pages: Array<{ loans: Array<{ id: string }> }> }>(key)
         ?.pages.flatMap((page) => page.loans.map((loan) => loan.id));
 
-    expect(readLoanIds(["loans"])).toEqual(["loan-server-1"]);
+    expect(readLoanIds(["loans", "space-a"])).toEqual(["loan-server-1"]);
     expect(readLoanIds(["loans", "local", "space-a"])).toEqual([
       "loan-server-1",
     ]);

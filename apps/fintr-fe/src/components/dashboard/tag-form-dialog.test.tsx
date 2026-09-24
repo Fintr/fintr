@@ -7,14 +7,15 @@ import { tagStylePresetSrc } from "@/lib/tags/preset-style-images";
 
 const proAccess = vi.hoisted(() => ({
   pro: true,
+  source: "trial",
 }));
 
 vi.mock("@/hooks/async/useProAccess", () => ({
   useProAccess: () => ({
     data: {
       pro: proAccess.pro,
-      source: proAccess.pro ? "trial" : "none",
-      trialDaysRemaining: proAccess.pro ? 7 : 0,
+      source: proAccess.source,
+      trialDaysRemaining: proAccess.source === "trial" ? 7 : 0,
     },
     isPending: false,
   }),
@@ -40,6 +41,7 @@ vi.mock("sonner", () => ({
 describe("TagFormDialog — create", () => {
   beforeEach(() => {
     proAccess.pro = true;
+    proAccess.source = "trial";
   });
 
   it("shows the sample style picker before the tag exists", () => {
@@ -55,6 +57,7 @@ describe("TagFormDialog — create", () => {
     expect(
       screen.getByRole("button", { name: /use japan vacation sample/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Pro")).toBeInTheDocument();
   });
 
   it("previews a sample locally instead of assigning it immediately", async () => {
@@ -109,6 +112,7 @@ describe("TagFormDialog — create", () => {
 
   it("points people to Settings when tag images need Fintr Pro", () => {
     proAccess.pro = false;
+    proAccess.source = "none";
 
     render(
       <TagFormDialog
@@ -126,5 +130,6 @@ describe("TagFormDialog — create", () => {
     expect(
       screen.queryByRole("button", { name: /use japan vacation sample/i }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText("Pro")).not.toBeInTheDocument();
   });
 });

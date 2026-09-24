@@ -14,6 +14,33 @@ import {
 } from "@/atoms/dashboardAtoms";
 import ExpenseForm from "./ExpenseForm";
 
+const proAccess = vi.hoisted(() => ({
+  pro: true,
+  source: "subscription" as "trial" | "none" | "subscription",
+}));
+
+vi.mock("@/hooks/async/useProAccess", () => ({
+  useProAccess: () => ({
+    data: {
+      pro: proAccess.pro,
+      source: proAccess.source,
+      trialDaysRemaining: proAccess.source === "trial" ? 4 : 0,
+    },
+    isPending: false,
+    isPaused: false,
+  }),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
+}));
+
 vi.mock("@/hooks/useAuthApi", () => ({
   useAuthApi: () => ({ api: {} }),
 }));
@@ -1221,6 +1248,8 @@ const renderCreateExpenseForm = () => {
 describe("ExpenseForm cost share create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    proAccess.pro = true;
+    proAccess.source = "subscription";
     mockExpenseCategoryOptions.mockReturnValue([medicineCategory]);
     mockCreateTransactionLocalFirst.mockResolvedValue(localFirstSuccess());
     mockCreateExpenseWithCostShareLocalFirst.mockResolvedValue(localFirstSuccess());
@@ -1268,5 +1297,20 @@ describe("ExpenseForm cost share create", () => {
       }),
     );
     expect(mockCreateTransactionLocalFirst).not.toHaveBeenCalled();
+  });
+
+  it("records a normal expense instead of a split without Fintr Pro", async () => {
+    proAccess.pro = false;
+    proAccess.source = "none";
+    const user = userEvent.setup();
+    renderCreateExpenseForm();
+
+    await user.click(screen.getByRole("button", { name: "Pick Expense Category" }));
+    await user.click(screen.getByRole("button", { name: "Pick Account" }));
+    await user.click(screen.getByRole("button", { name: /split with people/i }));
+    await user.click(screen.getByRole("button", { name: /add expense/i }));
+
+    expect(mockCreateExpenseWithCostShareLocalFirst).not.toHaveBeenCalled();
+    expect(mockCreateTransactionLocalFirst).toHaveBeenCalled();
   });
 });

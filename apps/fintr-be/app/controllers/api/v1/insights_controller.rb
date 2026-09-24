@@ -5,7 +5,14 @@ module Api
     class InsightsController < ApiController
       include InsightsEndpoint
 
-      before_action :require_pro_access
+      before_action :require_pro_access,
+                    only: %i[
+                      index
+                      health_scores
+                      expense_breakdown
+                      weekly_spending
+                      account_breakdown
+                    ]
 
       def index
         insights_data = Insights::Operations::CreateInsightsData.new.call(
@@ -82,7 +89,7 @@ module Api
 
       def narratives
         render_insight_section do |context|
-          Insights::Operations::CreateNarratives.new.call(
+          narratives = Insights::Operations::CreateNarratives.new.call(
             space: context[:space],
             transactions: context[:transactions],
             prior_transactions: context[:prior_transactions],
@@ -94,21 +101,43 @@ module Api
             period_days: context[:period_days],
             category_filtered: context[:category_filtered]
           )
+          present_narratives(narratives:)
         end
       end
 
       private
 
+      PRO_FEATURE_NAMES = {
+        "index" => "Dashboard Insights",
+        "health_scores" => "Financial Health Score",
+        "expense_breakdown" => "Expense Breakdown",
+        "weekly_spending" => "Weekly Spending",
+        "account_breakdown" => "Dashboard Insights",
+      }.freeze
+
       def require_pro_access
-        access = ::Finance::Operations::Entitlements::ResolveProAccess.new.call(
-          with_current_params,
-        )
-        return if access.success? && access.value![:pro]
+        return if pro_access_allowed?
 
         render_error(
-          message: "Fintr Pro is required for Dashboard Insights.",
+          message: "Fintr Pro is required for #{PRO_FEATURE_NAMES.fetch(action_name)}.",
           status: :forbidden,
         )
+      end
+
+      def present_narratives(narratives:)
+        return narratives unless narratives.success?
+        return narratives if pro_access_allowed?
+
+        Dry::Monads::Success(
+          narratives.value!.merge(insights: [])
+        )
+      end
+
+      def pro_access_allowed?
+        ::Finance::ProGate.require!(
+          user_id: current_user.id,
+          space_id: current_space.id,
+        ).success?
       end
 
       def summary_structure_params(context)

@@ -15,8 +15,10 @@ import { useAuthApi } from '@/hooks/useAuthApi';
 import { useGetSpaceCode } from '@/hooks/useGetSpaceCode';
 import { completeTutorial } from '@/services/auth/user/tutorial';
 import { markTutorialCompletedLocally } from '@/services/auth/tutorial-completion';
-import { performanceUtils } from '@/lib/utils';
-import { getTutorialConfig as getTutorialConfigFromSteps } from '@/config/tutorialSteps';
+import {
+  getTutorialConfig as getTutorialConfigFromSteps,
+  resolveTutorialPlatform,
+} from '@/config/tutorialSteps';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { desktopTutorialCompletedAtom, mobileTutorialCompletedAtom, tutorialDataLoadedAtom } from '@/atoms/tutorialAtoms';
 import { currentSpaceAtom } from '@/atoms/spaceAtoms';
@@ -88,10 +90,10 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const [platform, setPlatform] = useState<TutorialPlatform | null>(null);
   const [isCompletingTutorial, setIsCompletingTutorial] = useState(false);
 
-  // Detect platform (with SSR guard)
+  // Match the dashboard chrome. The Menu tab is hidden from the `md` breakpoint up.
   const detectPlatform = useCallback((): TutorialPlatform => {
     if (typeof window === 'undefined') return 'desktop';
-    return performanceUtils.isMobileDevice() ? 'mobile' : 'desktop';
+    return resolveTutorialPlatform(window.innerWidth);
   }, []);
 
   // Check if tutorial is completed for a platform

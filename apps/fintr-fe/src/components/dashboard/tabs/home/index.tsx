@@ -35,6 +35,7 @@ import { useTransactionTags } from "@/hooks/async/useTransactionTags";
 import { usePrefetchAccountDetailRoutes } from "@/hooks/usePrefetchAccountDetailRoutes";
 import { HOME_CONTENT_SHEET_Z_CLASS } from "@/lib/dashboard-chrome-stacking";
 import { syncDocumentScreenClass } from "@/lib/document-screen-class";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 
 const parseBalance = (value: string): number => {
   const parsed = Number.parseFloat(value);
@@ -226,8 +227,11 @@ const HomeTab = ({ isActive = true }: { isActive?: boolean }) => {
               onClick={() => setIsAddReceiptOpen(true)}
               className="flex flex-col items-center gap-2"
             >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-500">
-                <Camera className="h-6 w-6" />
+              <span className="relative">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-500">
+                  <Camera className="h-6 w-6" />
+                </span>
+                <ProTrialBadge className="absolute -right-2 -top-1 px-1 text-[8px]" />
               </span>
               <span className="text-xs font-medium text-primary">Scan Receipt</span>
             </button>

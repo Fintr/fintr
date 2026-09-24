@@ -1,14 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { act, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 
 const mockAssign = vi.fn();
 const mockReplace = vi.fn();
+const mockPush = vi.fn();
 const mockUseAuth = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: mockPush,
     replace: mockReplace,
   }),
 }));
@@ -45,6 +46,7 @@ describe("UnifiedAuthPage post-login redirect", () => {
   beforeEach(() => {
     mockAssign.mockReset();
     mockReplace.mockReset();
+    mockPush.mockReset();
     vi.mocked(AuthStorage.isAuthenticated).mockReturnValue(true);
     vi.stubGlobal("location", {
       pathname: "/login",
@@ -123,5 +125,17 @@ describe("UnifiedAuthPage post-login redirect", () => {
 
     expect(mockReplace).not.toHaveBeenCalled();
     expect(mockAssign).not.toHaveBeenCalled();
+  });
+
+  it("shows the signup form as soon as Sign up is clicked", async () => {
+    const UnifiedAuthPage = (await import("./unified-auth-page")).default;
+    render(<UnifiedAuthPage isLogin={true} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
+
+    expect(screen.getByLabelText(/First Name/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Account" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+    expect(mockPush).toHaveBeenCalledWith("/signup");
   });
 });

@@ -65,9 +65,46 @@ describe("upsertLoanInCachedPages", () => {
     expect(cached?.pages[0].loans[0].outstandingBalance).toBe(100);
   });
 
-  it("does not overwrite the cached list with a single loan on update", async () => {
+  it("does not merge another space's loan list into this space", async () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(["loans"], {
+      pages: [
+        {
+          loans: [loan("loan-other", "Alice"), loan("loan-2", "B")],
+          nextPage: null,
+          totalPages: 1,
+          totalCount: 2,
+        },
+      ],
+      pageParams: [1],
+    });
+    queryClient.setQueryData(["loans", "space-other"], {
+      pages: [
+        {
+          loans: [loan("loan-other", "Alice")],
+          nextPage: null,
+          totalPages: 1,
+          totalCount: 1,
+        },
+      ],
+      pageParams: [1],
+    });
+
+    await upsertLoanInCachedPages(
+      spaceCode,
+      loan("loan-current", "Bob"),
+      { queryClient, seedListWhenEmpty: true },
+    );
+
+    const cached = await loadCachedLoansInfiniteData(spaceCode);
+    expect(cached?.pages.flatMap((page) => page.loans.map((row) => row.id))).toEqual([
+      "loan-current",
+    ]);
+  });
+
+  it("does not overwrite the cached list with a single loan on update", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["loans", "local", spaceCode], {
       pages: [
         {
           loans: [loan("loan-1", "A"), loan("loan-2", "B")],

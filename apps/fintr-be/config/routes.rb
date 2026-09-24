@@ -60,6 +60,7 @@ Rails.application.routes.draw do
         end
         namespace :finance do
           resources :sponsor_codes, only: %i[index show create update destroy]
+          resources :pro_grants, only: %i[index create]
           resources :free_subscriptions, only: %i[create] do
             collection do
               delete :remove
@@ -245,6 +246,9 @@ Rails.application.routes.draw do
       # Finance routes
       namespace :finance do
         resource :pro_access, only: [:show], controller: "pro_access"
+        resource :pro_grant_acknowledgement,
+                 only: [:create],
+                 controller: "pro_grant_acknowledgements"
         resource :revenuecat_sync, only: [:create], controller: "revenuecat_sync"
         resources :subscriptions, only: %i[index create update] do
           collection do

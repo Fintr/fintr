@@ -73,6 +73,11 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
     before do
       allow(Finance::Operations::Subscriptions::GetCurrentSubscriptions).to receive(:new)
         .and_return(get_current_subscriptions_operation)
+      sync_customer = instance_double(Finance::Operations::Revenuecat::SyncCustomer)
+      allow(Finance::Operations::Revenuecat::SyncCustomer).to receive(:new).and_return(sync_customer)
+      allow(sync_customer).to receive(:call).and_return(
+        Dry::Monads::Failure(revenuecat: "not configured"),
+      )
     end
 
     context "when request is successful with subscriptions" do
@@ -111,6 +116,63 @@ RSpec.describe "Api::V1::Finance::Subscriptions", type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response["success"]).to be(true)
         expect(json_response["data"]["subscriptions"]).to eq([])
+      end
+    end
+
+    context "when the user has a RevenueCat subscription" do
+      let(:present_subscription) do
+        instance_double(Finance::Operations::Revenuecat::PresentSubscription)
+      end
+
+      before do
+        allow(get_current_subscriptions_operation).to receive(:call).and_return(
+          Dry::Monads::Success([])
+        )
+        sync_customer = instance_double(Finance::Operations::Revenuecat::SyncCustomer)
+        allow(Finance::Operations::Revenuecat::SyncCustomer).to receive(:new).and_return(sync_customer)
+        allow(sync_customer).to receive(:call).and_return(Dry::Monads::Success(:synced))
+        allow(Finance::Operations::Revenuecat::PresentSubscription).to receive(:new)
+          .and_return(present_subscription)
+        allow(present_subscription).to receive(:call).and_return(
+          Dry::Monads::Success(
+            id: "store-sub",
+            provider: "revenuecat",
+            status: "active",
+            subscription_plan: { name: "Pro Yearly" },
+          )
+        )
+      end
+
+      it "includes the store subscription on the same list" do
+        get "/api/v1/finance/subscriptions/current_subscriptions", headers: headers
+
+        json_response = JSON.parse(response.body)
+        subscription = json_response["data"]["subscriptions"].last
+        expect(subscription["provider"]).to eq("revenuecat")
+        expect(subscription["status"]).to eq("active")
+        expect(subscription["subscriptionPlan"]["name"]).to eq("Pro Yearly")
+      end
+    end
+
+    context "when the user has a complimentary Fintr Pro year" do
+      before do
+        allow(get_current_subscriptions_operation).to receive(:call).and_return(
+          Dry::Monads::Success([])
+        )
+        create(:pro_grant, user:, expires_at: 1.year.from_now)
+      end
+
+      it "includes the complimentary year as a subscription that does not renew" do
+        get "/api/v1/finance/subscriptions/current_subscriptions", headers: headers
+
+        json_response = JSON.parse(response.body)
+        subscription = json_response["data"]["subscriptions"].last
+        expect(subscription["provider"]).to eq("grant")
+        expect(subscription["status"]).to eq("active")
+        expect(subscription["totalCycles"]).to eq(1)
+        expect(subscription["subscriptionPlan"]["description"]).to eq(
+          "Included for one year. This does not renew.",
+        )
       end
     end
 

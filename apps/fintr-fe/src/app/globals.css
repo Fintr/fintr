@@ -319,9 +319,10 @@ body > .profiler-results {
     );
   }
 
-  /* Spacer below fixed mobile header so content doesn't sit under it */
+  /* Spacer below fixed mobile header so content doesn't sit under it.
+     Matches MOBILE_STICKY_HEADER_BODY_HEIGHT_PX (py-2 + h-8 row + 1px rule). */
   .mobile-header-spacer {
-    height: 40px;
+    height: 49px;
   }
 
   /* Android-only safe-area adjustments (3-button nav devices). */
@@ -441,4 +442,31 @@ body > .profiler-results {
 
 [data-sonner-toast] > * {
   transition-duration: 180ms !important;
+}
+
+/* Joyride's floater is positioned with a CSS transform, which drops taps on
+   iOS. The visible card is portaled outside this tree. */
+#react-joyride-portal,
+#react-joyride-portal * {
+  pointer-events: none !important;
+}
+
+#react-joyride-portal .react-joyride__overlay,
+#react-joyride-portal .__floater {
+  display: none !important;
+}
+
+/*
+ * Eruda mounts a viewport-sized host above the app in Capacitor development.
+ * Even with its panel closed, WKWebView can hit-test that host before the
+ * portaled tour controls. Keep devtools out of the hit path during the tour.
+ */
+body[data-tutorial-active="true"] #eruda,
+body[data-tutorial-active="true"] .eruda-container,
+body[data-tutorial-active="true"] .eruda-entry-btn {
+  pointer-events: none !important;
+}
+
+body[data-tutorial-active="true"] .eruda-entry-btn {
+  display: none !important;
 }

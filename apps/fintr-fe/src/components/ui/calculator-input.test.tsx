@@ -19,6 +19,77 @@ vi.mock("@/hooks/usePlatformDetection", () => ({
 }));
 
 describe("CalculatorInput", () => {
+  it("clamps a plain value to the minimum and maximum", () => {
+    const onChange = vi.fn();
+
+    render(
+      <CalculatorInput
+        value="50"
+        minValue={0.01}
+        maxValue={100}
+        onChange={onChange}
+        placeholder="0"
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("0");
+    fireEvent.change(input, { target: { value: "150" } });
+
+    expect(input).toHaveValue("100");
+    expect(onChange).toHaveBeenCalledWith("100");
+
+    fireEvent.change(input, { target: { value: "0.001" } });
+    expect(input).toHaveValue("0.01");
+    expect(onChange).toHaveBeenLastCalledWith("0.01");
+  });
+
+  it("shows the controlled value when a keystroke is rejected", () => {
+    const onChange = vi.fn();
+
+    render(
+      <CalculatorInput
+        value="40"
+        followValue
+        minValue={0.01}
+        maxValue={100}
+        onChange={onChange}
+        placeholder="0"
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("0"), {
+      target: { value: "90" },
+    });
+
+    expect(screen.getByPlaceholderText("0")).toHaveValue("40");
+    expect(onChange).toHaveBeenCalledWith("90");
+  });
+
+  it("raises a below-minimum draft to the minimum when the keypad closes", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <div>
+        <CalculatorInput
+          value=""
+          minValue={0.01}
+          maxValue={100}
+          onChange={onChange}
+          placeholder="0"
+        />
+        <button type="button">Outside</button>
+      </div>,
+    );
+
+    const input = screen.getByPlaceholderText("0");
+    fireEvent.change(input, { target: { value: "0" } });
+    await user.click(screen.getByRole("button", { name: "Outside" }));
+
+    expect(input).toHaveValue("0.01");
+    expect(onChange).toHaveBeenLastCalledWith("0.01");
+  });
+
   const mockOnChange = vi.fn();
 
   beforeEach(() => {

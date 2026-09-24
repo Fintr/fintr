@@ -10,11 +10,21 @@ import {
 } from "@/lib/local-db";
 import type { Account } from "@/types/accountTypes";
 
-import { removeAccountFromCaches, upsertAccountInCaches } from "./account-cache-ops";
+import {
+  applyLocalTransactionsToAccountBalances,
+  removeAccountFromCaches,
+  upsertAccountInCaches,
+} from "./account-cache-ops";
 import { deleteAccount } from "./mutation";
+import {
+  removeAccountTransactionsFromLocalCache,
+  restoreAccountTransactionsInLocalCache,
+} from "./remove-account-transactions-local";
+import type { IndexTransaction } from "@/types/transactionTypes";
 
 export type AccountDeleteOutboxPayload = {
   accountId: string;
+  removeTransactions: boolean;
 };
 
 export type DeleteAccountLocalFirstResult = {
@@ -69,10 +79,12 @@ export const deleteAccountLocalFirst = async (
   params: {
     spaceId: string;
     accountId: string;
+    removeTransactions?: boolean;
   },
   options: DeleteAccountLocalFirstOptions = {},
 ): Promise<DeleteAccountLocalFirstResult> => {
   const { spaceId, accountId } = params;
+  const removeTransactions = params.removeTransactions === true;
   const { queryClient, waitForSync = true } = options;
 
   if (!spaceId) {
@@ -86,11 +98,34 @@ export const deleteAccountLocalFirst = async (
     throw new Error("Local account not found for delete");
   }
 
+  let removedTransactions: IndexTransaction[] = [];
+  let summariesAdjusted = false;
+
+  if (removeTransactions) {
+    const removed = await removeAccountTransactionsFromLocalCache({
+      spaceId,
+      account: removedAccount,
+      queryClient,
+    });
+    removedTransactions = removed.transactions;
+    summariesAdjusted = removed.summariesAdjusted;
+  }
+
   await removeAccountFromCaches({
     spaceId,
     account: removedAccount,
     queryClient,
   });
+
+  if (removedTransactions.length > 0) {
+    await applyLocalTransactionsToAccountBalances({
+      spaceId,
+      transactions: removedTransactions,
+      mode: "revert",
+      includeTransferEffects: true,
+      queryClient,
+    });
+  }
 
   const clientMutationId = newClientMutationId();
   await enqueueOutboxRecord({
@@ -98,6 +133,7 @@ export const deleteAccountLocalFirst = async (
     commandType: OUTBOX_COMMAND_ACCOUNT_DELETE,
     payload: {
       accountId,
+      removeTransactions,
     },
     clientMutationId,
   });
@@ -114,7 +150,9 @@ export const deleteAccountLocalFirst = async (
 
   const runSync = async (): Promise<void> => {
     try {
-      const serverResponse = await deleteAccount(api, accountId);
+      const serverResponse = await deleteAccount(api, accountId, {
+        removeTransactions,
+      });
 
       if (
         serverResponse &&
@@ -151,6 +189,21 @@ export const deleteAccountLocalFirst = async (
         return;
       }
 
+      if (removedTransactions.length > 0) {
+        await applyLocalTransactionsToAccountBalances({
+          spaceId,
+          transactions: removedTransactions,
+          mode: "apply",
+          includeTransferEffects: true,
+          queryClient,
+        });
+        await restoreAccountTransactionsInLocalCache({
+          spaceId,
+          transactions: removedTransactions,
+          summariesAdjusted,
+          queryClient,
+        });
+      }
       await upsertAccountInCaches({
         spaceId,
         account: removedAccount,

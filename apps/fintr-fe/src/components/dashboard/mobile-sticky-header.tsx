@@ -12,7 +12,6 @@ import {
 } from "@/utils/categoryManagement";
 import { shouldShowImmediateBackButton } from "@/lib/dashboard-back-button-routes";
 import { useDetailPushExit } from "@/components/dashboard/detail-push-transition";
-
 export { shouldShowImmediateBackButton };
 
 interface MobileStickyHeaderProps {
@@ -189,19 +188,21 @@ function MobileStickyHeaderContent({ title }: MobileStickyHeaderProps) {
           >
             <ArrowLeft className="h-5 w-5 text-primary" />
           </Button>
-          <h1
-            className={`
-              text-lg font-bold text-primary
-              transition-all
-              duration-300
-              ease-in-out
-              pt-1
-              leading-none
-              ${isScrolled ? "pl-0" : "pl-0"}
-            `}
-          >
-            {pageTitle}
-          </h1>
+          <div className="flex min-w-0 items-center gap-2">
+            <h1
+              className={`
+                text-lg font-bold text-primary
+                transition-all
+                duration-300
+                ease-in-out
+                pt-1
+                leading-none
+                ${isScrolled ? "pl-0" : "pl-0"}
+              `}
+            >
+              {pageTitle}
+            </h1>
+          </div>
         </div>
       </div>
       {/* Animated border that appears on scroll */}

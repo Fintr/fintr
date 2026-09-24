@@ -42,6 +42,7 @@ import {
   cacheLoanPayments,
   cacheLoansAllPages,
 } from "@/services/loans/local-cache";
+import { loansListQueryKey } from "@/services/loans/loans-list-cache";
 import {
   cacheBudgetsResponse,
 } from "@/services/budgets/local-cache";
@@ -320,6 +321,7 @@ const applyBootstrapTier1 = async (params: {
   startDate: string;
   endDate: string;
   queryClient: QueryClient;
+  deferExchangeRates?: boolean;
 }): Promise<TransactionsPage[]> => {
   const { api, bundle, spaceCode, startDate, endDate } = params;
   const pendingLocalCreates = await collectPendingLocalCreateTransactions(spaceCode);
@@ -354,23 +356,25 @@ const applyBootstrapTier1 = async (params: {
     await markSpaceTransactionIndexComplete(spaceCode);
   }
 
-  const spaceCurrency =
-    typeof bundle.space?.currency === "string"
-      ? bundle.space.currency
-      : "PHP";
-  const defaultTransactionCurrency =
-    bundle.space?.defaultTransactionCurrency ?? null;
+  if (!params.deferExchangeRates) {
+    const spaceCurrency =
+      typeof bundle.space?.currency === "string"
+        ? bundle.space.currency
+        : "PHP";
+    const defaultTransactionCurrency =
+      bundle.space?.defaultTransactionCurrency ?? null;
 
-  await refreshSpaceExchangeRates({
-    api,
-    spaceCode,
-    accounts: bundle.accounts,
-    transactionPages,
-    spaceCurrency,
-    defaultTransactionCurrency,
-    requestConfig: spaceRequestConfig(spaceCode),
-    force: true,
-  });
+    await refreshSpaceExchangeRates({
+      api,
+      spaceCode,
+      accounts: bundle.accounts,
+      transactionPages,
+      spaceCurrency,
+      defaultTransactionCurrency,
+      requestConfig: spaceRequestConfig(spaceCode),
+      force: true,
+    });
+  }
 
   return transactionPages;
 };
@@ -424,7 +428,7 @@ const applyBootstrapTier2 = async (params: {
       pages: loanPages,
       pageParams: [1],
     });
-    queryClient.setQueryData(["loans"], {
+    queryClient.setQueryData(loansListQueryKey(spaceCode), {
       pages: loanPages,
       pageParams: [1],
     });
@@ -494,6 +498,7 @@ export const bootstrapSpaceV2 = async (
   options?: {
     onStep?: (step: SyncStep) => void;
     onTierReady?: (tier: 0 | 1 | 2) => void;
+    deferExchangeRates?: boolean;
   },
 ): Promise<BootstrapV2Result> => {
   const errors: string[] = [];
@@ -543,6 +548,7 @@ export const bootstrapSpaceV2 = async (
       startDate,
       endDate,
       queryClient,
+      deferExchangeRates: options?.deferExchangeRates,
     });
     options?.onTierReady?.(1);
     options?.onStep?.("exchange-rates");

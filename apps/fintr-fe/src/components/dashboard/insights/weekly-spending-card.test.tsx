@@ -1,7 +1,34 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WeeklySpendingCard } from "./weekly-spending-card";
+
+const proAccess = vi.hoisted(() => ({
+  pro: true,
+  source: "subscription" as "trial" | "none" | "subscription",
+}));
+
+vi.mock("@/hooks/async/useProAccess", () => ({
+  useProAccess: () => ({
+    data: {
+      pro: proAccess.pro,
+      source: proAccess.source,
+      trialDaysRemaining: proAccess.source === "trial" ? 4 : 0,
+    },
+    isPending: false,
+    isPaused: false,
+  }),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
+}));
 
 const weekWithSpending = [
   { day: "Mon", amount: 1200 },
@@ -14,6 +41,11 @@ const weekWithSpending = [
 ];
 
 describe("WeeklySpendingCard", () => {
+  beforeEach(() => {
+    proAccess.pro = true;
+    proAccess.source = "subscription";
+  });
+
   it("keeps the bar chart in a compact fixed-height frame", () => {
     render(
       <WeeklySpendingCard
@@ -46,6 +78,39 @@ describe("WeeklySpendingCard", () => {
 
     expect(
       screen.getByText("No spending recorded this week yet."),
+    ).toBeInTheDocument();
+    expect(document.querySelector("[data-slot='chart']")).toBeNull();
+  });
+
+  it("badges Weekly Spending during a trial", () => {
+    proAccess.source = "trial";
+
+    render(
+      <WeeklySpendingCard
+        data={weekWithSpending}
+        formatAmount={(amount) => String(amount)}
+      />,
+    );
+
+    expect(screen.getByText("Weekly Spending")).toBeInTheDocument();
+    expect(screen.getByText("Pro")).toBeInTheDocument();
+    expect(document.querySelector("[data-slot='chart']")).not.toBeNull();
+  });
+
+  it("locks the chart when Fintr Pro is required", () => {
+    proAccess.pro = false;
+    proAccess.source = "none";
+
+    render(
+      <WeeklySpendingCard
+        data={weekWithSpending}
+        formatAmount={(amount) => String(amount)}
+      />,
+    );
+
+    expect(screen.getByText("Weekly Spending")).toBeInTheDocument();
+    expect(
+      screen.getByText("Fintr Pro is required for Weekly Spending"),
     ).toBeInTheDocument();
     expect(document.querySelector("[data-slot='chart']")).toBeNull();
   });

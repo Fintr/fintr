@@ -2,6 +2,8 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMobileModalViewportHeight } from "@/hooks/useMobileModalViewportHeight";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
@@ -568,6 +570,17 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         {title && (
           <div className="flex flex-shrink-0 items-center justify-between px-6 pb-2 pt-6">
             <h2 className="min-w-0 flex-1 truncate text-lg font-semibold text-primary">{title}</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => onCloseRef.current()}
+              aria-label="Close"
+              data-tutorial-target={closeButtonDataTarget}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         )}
         <div

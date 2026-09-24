@@ -31,6 +31,9 @@ module Auth
     has_one :gamification_stat,
             class_name: "Achievements::UserGamificationStat",
             dependent: :destroy
+    has_one :pro_grant,
+            class_name: "Finance::ProGrant",
+            dependent: :destroy
 
     validates :email,
               presence: true,

@@ -8,7 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { offlineSyncReadyAtom } from "@/atoms/offlineSyncAtoms";
 import { resetLocalDbForTests } from "@/lib/local-db";
-import { cacheLoansAllPages } from "@/services/loans/local-cache";
+import {
+  cacheLoansAllPages,
+  loadCachedLoansInfiniteData,
+} from "@/services/loans/local-cache";
 import type { Loan } from "@/services/loans/queries";
 
 const fetchLoansPage = vi.fn();
@@ -192,6 +195,151 @@ describe("useInfiniteLoans", () => {
     await waitFor(() => {
       expect(result.current.loans).toHaveLength(1);
       expect(result.current.loans[0]?.outstandingBalance).toBe(500);
+    });
+  });
+
+  it("does not copy another space's loans into the current space", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      writable: true,
+      value: true,
+    });
+
+    const currentSpaceLoan = {
+      ...sampleLoan(),
+      id: "loan-current",
+      entityName: "Bob",
+    };
+    const otherSpaceLoan = {
+      ...sampleLoan(),
+      id: "loan-other",
+      entityName: "Alice",
+    };
+
+    await cacheLoansAllPages("space-b", [
+      {
+        loans: [currentSpaceLoan],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 1,
+      },
+    ]);
+
+    fetchLoansPage.mockResolvedValue({
+      loans: [currentSpaceLoan],
+      nextPage: null,
+      totalPages: 1,
+      totalCount: 1,
+    });
+
+    localStorage.setItem("spaceCode", "space-b");
+    const { wrapper, queryClient } = createWrapper();
+    queryClient.setQueryData(["loans"], {
+      pages: [
+        {
+          loans: [otherSpaceLoan, currentSpaceLoan],
+          nextPage: null,
+          totalPages: 1,
+          totalCount: 2,
+        },
+      ],
+      pageParams: [1],
+    });
+    queryClient.setQueryData(["loans", "space-a"], {
+      pages: [
+        {
+          loans: [otherSpaceLoan],
+          nextPage: null,
+          totalPages: 1,
+          totalCount: 1,
+        },
+      ],
+      pageParams: [1],
+    });
+
+    const loadMoreRef = createRef<HTMLDivElement>();
+    const { result } = renderHook(
+      () => useInfiniteLoans({ loadMoreRef }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loans.map((loan) => loan.entityName)).toEqual([
+        "Bob",
+      ]);
+      expect(fetchLoansPage).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          requestConfig: expect.objectContaining({
+            headers: expect.objectContaining({
+              "X-Space-Code": "space-b",
+            }),
+          }),
+        }),
+      );
+    });
+
+    await waitFor(async () => {
+      const cached = await loadCachedLoansInfiniteData("space-b");
+      expect(
+        cached?.pages.flatMap((page) => page.loans.map((loan) => loan.id)),
+      ).toEqual(["loan-current"]);
+    });
+  });
+
+  it("replaces a contaminated local loan list with the current space response", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      writable: true,
+      value: true,
+    });
+
+    const currentSpaceLoan = {
+      ...sampleLoan(),
+      id: "loan-current",
+      entityName: "Bob",
+    };
+    const otherSpaceLoan = {
+      ...sampleLoan(),
+      id: "loan-other",
+      entityName: "Alice",
+    };
+
+    await cacheLoansAllPages("space-b", [
+      {
+        loans: [otherSpaceLoan, currentSpaceLoan],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 2,
+      },
+    ]);
+
+    fetchLoansPage.mockResolvedValue({
+      loans: [currentSpaceLoan],
+      nextPage: null,
+      totalPages: 1,
+      totalCount: 1,
+    });
+
+    localStorage.setItem("spaceCode", "space-b");
+    const { wrapper } = createWrapper();
+    const loadMoreRef = createRef<HTMLDivElement>();
+    const { result } = renderHook(
+      () => useInfiniteLoans({ loadMoreRef }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loans.map((loan) => loan.id)).toEqual([
+        "loan-current",
+      ]);
+    });
+
+    await waitFor(async () => {
+      const cached = await loadCachedLoansInfiniteData("space-b");
+      expect(
+        cached?.pages.flatMap((page) => page.loans.map((loan) => loan.id)),
+      ).toEqual(["loan-current"]);
     });
   });
 });

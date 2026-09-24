@@ -302,7 +302,7 @@ const AccountList: React.FC<AccountListProps> = ({
           </Button>
         </div>
         {showMoreInfo && balancesByCurrency.length > 0 && (
-          <div className="rounded-md border border-gray-200 bg-muted/30 p-3 space-y-1.5">
+          <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1.5">
             {balancesByCurrency.map(({ currency, total }) => {
               const isSpaceCurrency = currency === spaceCurrency;
               const rate = ratesToSpace[currency] ?? 1;
@@ -356,7 +356,7 @@ const AccountList: React.FC<AccountListProps> = ({
               );
             })}
             {accountCurrencies.length > 1 && !ratesLoading && (
-              <div className="flex justify-between items-center text-sm pt-1.5 border-t border-gray-200 mt-1.5">
+              <div className="flex justify-between items-center text-sm pt-1.5 border-t border-border mt-1.5">
                 <span className="text-muted-foreground font-medium">
                   Total
                 </span>

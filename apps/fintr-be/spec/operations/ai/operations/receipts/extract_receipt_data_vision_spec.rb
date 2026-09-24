@@ -170,19 +170,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
     end
 
     before do
-      # Stub plug-and-play vision client (OpenAI or OpenRouter)
-      mock_vision_client = instance_double(OpenAI::Client)
-      allow(mock_vision_client).to receive(:chat).and_return({
-        "choices" => [
-          {
-            "message" => {
-              "content" => ai_response_content
-            }
-          }
-        ]
-      })
-      allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
-      allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
+      allow(::Ai::Llm::VisionClient).to receive(:ask).and_return(ai_response_content)
     end
 
     context "when all steps are successful" do
@@ -251,12 +239,9 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         end
       end
 
-      context "when call_openai_vision_api fails" do
+      context "when call_vision_chat fails" do
         before do
-          mock_vision_client = instance_double(OpenAI::Client)
-          allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
-          allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
-          allow(mock_vision_client).to receive(:chat).and_raise(StandardError, "API error")
+          allow(::Ai::Llm::VisionClient).to receive(:ask).and_raise(StandardError, "API error")
         end
 
         it "returns a failure" do
@@ -398,7 +383,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         expect(result).to be_success
         expect(result.value!).to eq([
           { name: "SM Cinema", identifiers: [] },
-          { name: "Whole Foods", identifiers: [] },
+          { name: "Whole Foods", identifiers: [] }
         ])
       end
 
@@ -499,66 +484,53 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
       end
     end
 
-    describe "#call_openai_vision_api" do
+    describe "#call_vision_chat" do
       let(:base64_image) { "data:image/jpeg;base64,dummy_base64_image_data" }
       let(:space_categories) { ["Food", "Transport"] }
-      let(:mock_vision_client) { instance_double(OpenAI::Client) }
-      let(:mock_response) do
-        {
-          "choices" => [
-            {
-              "message" => {
-                "content" => <<~JSON
-                  {"total_amount": "50.00", "category": "Food", "confidence": "high"}
-                JSON
-              }
-            }
-          ]
-        }
-      end
+      let(:vision_content) { "{\"total_amount\": \"50.00\", \"category\": \"Food\", \"confidence\": \"high\"}" }
 
       before do
-        allow(::Ai::Llm::VisionClient).to receive(:client).and_return(mock_vision_client)
-        allow(::Ai::Llm::VisionClient).to receive(:model).and_return("gpt-4o")
-        allow(mock_vision_client).to receive(:chat).and_return(mock_response)
+        allow(::Ai::Llm::VisionClient).to receive(:ask).and_return(vision_content)
       end
 
       it "calls vision API and returns success with content" do
-        result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+        result = operation.__send__(:call_vision_chat, base64_image:, space_categories:, space_accounts: [])
         expect(result).to be_success
         expect(result.value!).to eq("{\"total_amount\": \"50.00\", \"category\": \"Food\", \"confidence\": \"high\"}")
       end
 
-      it "calls vision API with temperature 0.0" do
-        expect(mock_vision_client).to receive(:chat) do |params|
-          expect(params[:parameters][:temperature]).to eq(0.0)
-          mock_response
-        end
+      it "sends the receipt image to the vision client" do
+        operation.__send__(:call_vision_chat, base64_image:, space_categories:, space_accounts: [])
 
-        operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+        expect(::Ai::Llm::VisionClient).to have_received(:ask).with(
+          instructions: a_string_including("Receipt OCR"),
+          prompt: a_string_including("Extract total"),
+          image: base64_image,
+          max_output_tokens: 220,
+        )
       end
 
       context "when vision API returns no content" do
         before do
-          allow(mock_vision_client).to receive(:chat).and_return({ "choices" => [{ "message" => { "content" => nil } }] })
+          allow(::Ai::Llm::VisionClient).to receive(:ask).and_return("")
         end
 
         it "returns failure" do
-          result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+          result = operation.__send__(:call_vision_chat, base64_image:, space_categories:, space_accounts: [])
           expect(result).to be_failure
-          expect(result.failure).to include(ai_error: 'No response from vision API')
+          expect(result.failure).to include(ai_error: "No response from vision API")
         end
       end
 
       context "when vision API call fails" do
         before do
-          allow(mock_vision_client).to receive(:chat).and_raise(StandardError, "API error")
+          allow(::Ai::Llm::VisionClient).to receive(:ask).and_raise(StandardError, "API error")
         end
 
         it "returns failure" do
-          result = operation.__send__(:call_openai_vision_api, base64_image:, space_categories:, space_accounts: [])
+          result = operation.__send__(:call_vision_chat, base64_image:, space_categories:, space_accounts: [])
           expect(result).to be_failure
-          expect(result.failure).to include(ai_vision_error: 'Vision API call failed')
+          expect(result.failure).to include(ai_vision_error: "Vision API call failed")
         end
       end
     end
@@ -626,7 +598,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
         let(:space_categories) { ["Groceries"] }
         let(:space_merchants) do
           [
-            { name: "1855", identifiers: ["CORPORATION A"] },
+            { name: "1855", identifiers: ["CORPORATION A"] }
           ]
         end
 
@@ -932,7 +904,7 @@ RSpec.describe Ai::Operations::Receipts::ExtractReceiptDataVision, type: :operat
       context "when the printed name matches a merchant identifier" do
         let(:space_merchants) do
           [
-            { name: "1855", identifiers: ["CORPORATION A"] },
+            { name: "1855", identifiers: ["CORPORATION A"] }
           ]
         end
         let(:parsed_data) do

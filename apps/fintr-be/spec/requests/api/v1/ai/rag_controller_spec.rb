@@ -159,22 +159,92 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
       end
     end
 
-    context "when the user does not have Fintr Pro" do
-      before { allow_pro_access(false) }
+    context "when the account only has the trial" do
+      let(:created_conversation) { create(:ai_conversation, user: user, space: space) }
 
-      it "returns forbidden error" do
+      before do
+        operation = instance_double(Finance::Operations::Entitlements::ResolveProAccess)
+        allow(Finance::Operations::Entitlements::ResolveProAccess).to receive(:new).and_return(operation)
+        allow(operation).to receive(:call).and_return(
+          Dry::Monads::Success(
+            pro: true,
+            source: "trial",
+            features: [],
+          ),
+        )
+
+        create_conversation = instance_double(::Ai::Operations::Conversations::CreateConversation)
+        allow(::Ai::Operations::Conversations::CreateConversation).to receive(:new).and_return(create_conversation)
+        allow(create_conversation).to receive(:call).and_return(Dry::Monads::Success(created_conversation))
+
+        create_usage = instance_double(::Ai::Operations::Usages::CreateUsage)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage)
+        allow(create_usage).to receive(:call).and_return(Dry::Monads::Success(true))
+        allow(Ai::AiChatJob).to receive(:perform_later)
+      end
+
+      it "allows the chat request" do
         post "/api/v1/ai/rag/query",
              params: valid_params,
              headers: auth_setup[:headers]
 
-        expect(response).to have_http_status(:forbidden)
+        expect(response).to have_http_status(:ok)
+      end
+    end
 
-        response_data = JSON.parse(response.body)
-        expect(response_data["success"]).to be false
-        expect(response_data["error"]["message"]).to eq("Fintr Pro is required for AI chat.")
+    context "when the user does not have Fintr Pro" do
+      let(:created_conversation) { create(:ai_conversation, user: user, space: space) }
+
+      before do
+        allow_pro_access(false)
+
+        create_conversation = instance_double(::Ai::Operations::Conversations::CreateConversation)
+        allow(::Ai::Operations::Conversations::CreateConversation).to receive(:new).and_return(create_conversation)
+        allow(create_conversation).to receive(:call).and_return(
+          Dry::Monads::Success(created_conversation),
+        )
+
+        create_usage = instance_double(::Ai::Operations::Usages::CreateUsage)
+        allow(::Ai::Operations::Usages::CreateUsage).to receive(:new).and_return(create_usage)
+        allow(create_usage).to receive(:call).and_return(Dry::Monads::Success(true))
+        allow(Ai::AiChatJob).to receive(:perform_later)
       end
 
-      it "does not create a conversation when Pro is required" do
+      it "allows the chat request" do
+        post "/api/v1/ai/rag/query",
+             params: valid_params,
+             headers: auth_setup[:headers]
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when the monthly AI chat limit is reached" do
+      before do
+        allow_pro_access(false)
+        create_list(
+          :ai_usage,
+          30,
+          :ai_chat,
+          user: user,
+          space: space,
+          created_at: Time.current,
+        )
+      end
+
+      it "returns too many requests" do
+        post "/api/v1/ai/rag/query",
+             params: valid_params,
+             headers: auth_setup[:headers]
+
+        expect(response).to have_http_status(:too_many_requests)
+        response_data = JSON.parse(response.body)
+        expect(response_data["error"]["message"]).to eq(
+          "You have used all 30 AI chats for this month.",
+        )
+      end
+
+      it "does not create a conversation" do
         expect(::Ai::Operations::Conversations::CreateConversation).not_to receive(:new)
 
         post "/api/v1/ai/rag/query",
@@ -182,7 +252,7 @@ RSpec.describe Api::V1::Ai::RagController, type: :request do
              headers: auth_setup[:headers]
       end
 
-      it "does not start background processing when token limit is reached" do
+      it "does not start background processing" do
         expect(Ai::AiChatJob).not_to receive(:perform_later)
 
         post "/api/v1/ai/rag/query",

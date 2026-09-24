@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { useState } from "react";
+import { ProFeatureGate } from "@/components/settings/pro-feature-gate";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 import { InsightCard } from "@/services/insights/types";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -203,23 +205,26 @@ export const InsightNarrativeCards = ({
     <section aria-labelledby="dashboard-insights-heading">
       <h2
         id="dashboard-insights-heading"
-        className="mb-3 text-base font-semibold text-foreground"
+        className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground"
       >
         Insights
+        <ProTrialBadge />
       </h2>
-      <div
-        className={cn(
-          dashboardSectionInsetClassName,
-          "grid gap-3 p-3 sm:grid-cols-2",
-        )}
-      >
-        {insights.map((insight) => (
-          <InsightNarrativeCard
-            key={`${insight.type}-${insight.profileKey ?? insight.title}`}
-            insight={insight}
-          />
-        ))}
-      </div>
+      <ProFeatureGate featureName="Insights">
+        <div
+          className={cn(
+            dashboardSectionInsetClassName,
+            "grid gap-3 p-3 sm:grid-cols-2",
+          )}
+        >
+          {insights.map((insight) => (
+            <InsightNarrativeCard
+              key={`${insight.type}-${insight.profileKey ?? insight.title}`}
+              insight={insight}
+            />
+          ))}
+        </div>
+      </ProFeatureGate>
     </section>
   );
 };

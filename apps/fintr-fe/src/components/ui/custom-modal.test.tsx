@@ -342,4 +342,26 @@ describe("CustomModal mobile positioning", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(pushStateSpy).not.toHaveBeenCalled();
   });
+
+  it("closes from the header button the desktop tour targets", async () => {
+    const onClose = vi.fn();
+
+    render(
+      <CustomModal
+        isOpen
+        onClose={onClose}
+        title="Add Transaction"
+        closeButtonDataTarget="transaction-close"
+      >
+        <div>content</div>
+      </CustomModal>,
+    );
+
+    const close = await screen.findByRole("button", { name: "Close" });
+    expect(close).toHaveAttribute("data-tutorial-target", "transaction-close");
+
+    close.click();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

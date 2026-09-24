@@ -20,6 +20,7 @@ import {
 import { useAiChat } from "@/hooks/async/useAiChat";
 import { useProAccess } from "@/hooks/async/useProAccess";
 import { ProRequiredNotice } from "@/components/settings/pro-feature-gate";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 import { useConversations } from "@/hooks/async/useConversations";
 import { useInfiniteMessages } from "@/hooks/async/useInfiniteMessages";
 import { ChatMessage } from "@/types/aiChatTypes";
@@ -606,6 +607,7 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                     <DialogTitle className="flex items-center gap-2 text-primary">
                       <MessageSquare className="h-5 w-5 text-primary" />
                       Fintr AI Assistant
+                      <ProTrialBadge />
                     </DialogTitle>
                   </div>
                   
@@ -654,13 +656,16 @@ const EnhancedAiChatModal: React.FC<EnhancedAiChatModalProps> = ({ isOpen, onClo
                 <div className="flex justify-center py-2 border-b bg-muted/20">
                   <span className="text-sm text-muted-foreground">Checking Fintr Pro…</span>
                 </div>
-              ) : hasPro && proAccess?.source === "trial" ? (
+              ) : hasPro ? (
                 <div className="flex justify-center py-2 border-b bg-muted/20">
                   <span className="text-sm text-muted-foreground">
-                    {proAccess.trialDaysRemaining} days left in your trial
+                    {proAccess?.source === "trial"
+                      ? `${proAccess.trialDaysRemaining} days left in your trial · `
+                      : null}
+                    30 AI chats per month
                   </span>
                 </div>
-              ) : hasPro ? null : (
+              ) : (
                 <div className="border-b bg-muted/20 px-4 py-2">
                   <ProRequiredNotice featureName="AI chat" />
                 </div>

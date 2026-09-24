@@ -9,6 +9,9 @@ module Finance
                  blueprint: Finance::SubscriptionPlanSerializer
     field :status
     field :subscription_type, name: :subscriptionType
+    field :provider do
+      "xendit"
+    end
     field :started_at, name: :startedAt
     field :ended_at, name: :endedAt
     field :current_cycle_count, name: :currentCycleCount

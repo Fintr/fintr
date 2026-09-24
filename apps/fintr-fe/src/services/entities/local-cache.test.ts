@@ -26,6 +26,36 @@ describe("entities local cache", () => {
     await resetLocalDbForTests();
   });
 
+  it("keeps a pending local merchant when a stale server list is cached", async () => {
+    await cacheEntitiesResponse("SPACE_1", [
+      {
+        id: "local:merchant-1",
+        fullName: "Merchant1",
+        entityType: "transaction",
+        photoUrl: "blob:merchant-1",
+      },
+      {
+        id: "entity-store",
+        fullName: "Store",
+        entityType: "transaction",
+      },
+    ]);
+
+    await cacheEntitiesResponse("SPACE_1", [
+      {
+        id: "entity-store",
+        full_name: "Store",
+        entity_type: "transaction",
+      },
+    ]);
+
+    const cached = await loadCachedEntitiesResponse("SPACE_1");
+    expect(cached?.map((entity) => entity.fullName)).toEqual([
+      "Store",
+      "Merchant1",
+    ]);
+  });
+
   it("caches and filters entities by type and search", async () => {
     const rows = normalizeEntityRecords([
       {

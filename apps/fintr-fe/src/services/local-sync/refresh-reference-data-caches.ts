@@ -3,6 +3,7 @@ import type { AxiosInstance } from "axios";
 
 import {
   cacheEntitiesResponse,
+  loadCachedEntitiesResponse,
 } from "@/services/entities/local-cache";
 import { fetchEntities } from "@/services/entities/mutation";
 import { applyAccountsResponseToCaches } from "@/services/transactions/accounts/account-cache-ops";
@@ -84,7 +85,12 @@ export const refreshReferenceDataCaches = async (params: {
       ...(loanContactsResponse?.data ?? []),
     ];
     await cacheEntitiesResponse(spaceCode, entities);
-    queryClient.setQueryData(["entities", "local", spaceCode], entities);
+    const cachedEntities =
+      (await loadCachedEntitiesResponse(spaceCode)) ?? entities;
+    queryClient.setQueryData(
+      ["entities", "local", spaceCode],
+      cachedEntities,
+    );
   } catch (error) {
     console.warn("[sync] Reference refresh entities failed", spaceCode, error);
   }

@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Account } from "@/types/accountTypes";
 import { useAccounts } from "@/hooks/async/useAccounts";
 import { toast } from "sonner";
@@ -27,7 +30,15 @@ const AccountDeleteDialog: React.FC<AccountDeleteDialogProps> = ({
 }) => {
   const { deleteAccount } = useAccounts();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [removeTransactions, setRemoveTransactions] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setRemoveTransactions(false);
+      setErrorMessage(null);
+    }
+  }, [open]);
 
   const handleDeleteAccount = async () => {
     if (!account) return;
@@ -36,7 +47,10 @@ const AccountDeleteDialog: React.FC<AccountDeleteDialogProps> = ({
     setErrorMessage(null);
 
     try {
-      const response = await deleteAccount(account.id);
+      const response = await deleteAccount({
+        accountId: account.id,
+        removeTransactions,
+      });
 
       if (response?.success === true) {
         toast.success(`Account "${account.name}" has been deleted`);
@@ -61,15 +75,39 @@ const AccountDeleteDialog: React.FC<AccountDeleteDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Delete Account</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="text-sm text-gray-600">
+          <DialogTitle className="text-primary dark:text-primary-dark-mode">
+            Delete Account
+          </DialogTitle>
+          <DialogDescription>
             Are you sure you want to delete the account{" "}
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-primary dark:text-primary-dark-mode">
               &quot;{account?.name}&quot;
             </span>
             ?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="remove-account-transactions"
+              checked={removeTransactions}
+              onCheckedChange={(checked) =>
+                setRemoveTransactions(checked === true)
+              }
+              disabled={isDeleting}
+            />
+            <div className="space-y-1">
+              <Label
+                htmlFor="remove-account-transactions"
+                className="text-sm font-medium text-foreground leading-snug"
+              >
+                Also remove transactions for this account
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Income, expenses, transfers, and loan activity on this account
+                are deleted. Transfers update the other account.
+              </p>
+            </div>
           </div>
 
           {errorMessage && (
@@ -93,7 +131,11 @@ const AccountDeleteDialog: React.FC<AccountDeleteDialogProps> = ({
               onClick={handleDeleteAccount}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Account"}
+              {isDeleting
+                ? "Deleting..."
+                : removeTransactions
+                  ? "Delete account and transactions"
+                  : "Delete Account"}
             </Button>
           </div>
         </div>

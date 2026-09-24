@@ -99,11 +99,11 @@ importers:
         specifier: ^8.1.300
         version: 8.1.300
       '@revenuecat/purchases-capacitor':
-        specifier: 10.4.0
-        version: 10.4.0(@capacitor/core@7.6.5)
+        specifier: 11.3.2
+        version: 11.3.2(@capacitor/core@7.6.5)
       '@revenuecat/purchases-capacitor-ui':
-        specifier: ^10.4.0
-        version: 10.4.0(@capacitor/core@7.6.5)
+        specifier: 11.3.2
+        version: 11.3.2(@capacitor/core@7.6.5)
       '@sentry/nextjs':
         specifier: ^10
         version: 10.46.0(@opentelemetry/context-async-hooks@2.6.1(@opentelemetry/api@1.9.1))(@opentelemetry/core@2.6.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(next@16.2.9(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react@19.2.6)(webpack@5.105.4(lightningcss@1.30.2))
@@ -2076,8 +2076,8 @@ packages:
       react-redux:
         optional: true
 
-  '@revenuecat/purchases-capacitor-ui@10.4.0':
-    resolution: {integrity: sha512-HgQiP2aR2jkGmULlFGuDKJWGzG8HPCTujtzCj0vlUjUOp0DYwOALxFi0nOEVROWFS6QTTy+zSybb8eWgIYQFTQ==}
+  '@revenuecat/purchases-capacitor-ui@11.3.2':
+    resolution: {integrity: sha512-WmXukwbRISYlSaMDP+97HVKQD2VDDXL3FzgFEVhNEjxu/Dl/hSx/AXYiQAWuSuHYaxU0dWUZZwgC+XMVjsa1Dg==}
     peerDependencies:
       '@capacitor/core': ^7.0.0
 
@@ -2086,11 +2086,16 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@revenuecat/purchases-typescript-internal-esm@14.2.0':
-    resolution: {integrity: sha512-RPkRmE757x4EzHeULazVGieBhGmmq2t3AlHGCFiXQr1ZDdGzlnm00ZasTQYkaR2b1Ghklk2XCmTBp2oiMCbU2g==}
+  '@revenuecat/purchases-capacitor@11.3.2':
+    resolution: {integrity: sha512-3T4/lcAwpbPagrT4DuXvJ+8RewzFmHf3fQJQuhVy+uTQk5HGMHNlXcm2A/UdyHtWqU+/VqWbCClPFYGnpnNXAQ==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
 
   '@revenuecat/purchases-typescript-internal-esm@14.3.0':
     resolution: {integrity: sha512-7mkuBupATfPvBw+skTE/chY6UEux9ZidTbKBOcZ/MgALKJdcww7LgSbChdyoGdQlSJXBFf1zRPzHH+RB7y+LQA==}
+
+  '@revenuecat/purchases-typescript-internal-esm@17.25.0':
+    resolution: {integrity: sha512-KC4BjFaQclXqFafG1Enh7t8GSwdg8p905by7UrHq0WSJmLhOR6yXSj6WDv1iwsFSAZxPPwgozNxt+U6IOFTdCA==}
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -7758,20 +7763,25 @@ snapshots:
       react: 19.2.6
       react-redux: 9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1)
 
-  '@revenuecat/purchases-capacitor-ui@10.4.0(@capacitor/core@7.6.5)':
+  '@revenuecat/purchases-capacitor-ui@11.3.2(@capacitor/core@7.6.5)':
     dependencies:
       '@capacitor/core': 7.6.5
       '@revenuecat/purchases-capacitor': 10.4.0(@capacitor/core@7.6.5)
-      '@revenuecat/purchases-typescript-internal-esm': 14.2.0
+      '@revenuecat/purchases-typescript-internal-esm': 17.25.0
 
   '@revenuecat/purchases-capacitor@10.4.0(@capacitor/core@7.6.5)':
     dependencies:
       '@capacitor/core': 7.6.5
       '@revenuecat/purchases-typescript-internal-esm': 14.3.0
 
-  '@revenuecat/purchases-typescript-internal-esm@14.2.0': {}
+  '@revenuecat/purchases-capacitor@11.3.2(@capacitor/core@7.6.5)':
+    dependencies:
+      '@capacitor/core': 7.6.5
+      '@revenuecat/purchases-typescript-internal-esm': 17.25.0
 
   '@revenuecat/purchases-typescript-internal-esm@14.3.0': {}
+
+  '@revenuecat/purchases-typescript-internal-esm@17.25.0': {}
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 

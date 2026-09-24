@@ -131,11 +131,48 @@ function hasAppDetailSearch(url) {
   );
 }
 
+function isRscRequest(request) {
+  const url = new URL(request.url);
+
+  if (url.searchParams.has("_rsc")) {
+    return true;
+  }
+
+  if (request.headers.get("RSC") === "1") {
+    return true;
+  }
+
+  const accept = request.headers.get("Accept") || "";
+  return accept.includes("text/x-component");
+}
+
+function isHtmlResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  return contentType.includes("text/html");
+}
+
 async function matchCachedRequest(cache, request) {
   const url = new URL(request.url);
   const options = hasAppDetailSearch(url) ? CACHE_MATCH_STRICT : CACHE_MATCH_OPTIONS;
 
-  return cache.match(request, options);
+  if (!isRscRequest(request)) {
+    return cache.match(request, options);
+  }
+
+  // ignoreSearch treats /signup and /signup?_rsc=… as the same cache key.
+  // A cached HTML document must not be returned as the flight payload, or
+  // client navigations keep the previous page until a full refresh.
+  const keys = await cache.keys(request, options);
+
+  for (const key of keys) {
+    const response = await cache.match(key);
+
+    if (response && !isHtmlResponse(response)) {
+      return response;
+    }
+  }
+
+  return null;
 }
 
 const SHELL_CRITICAL_PREFIXES = ["/_next/static/"];
@@ -499,7 +536,7 @@ async function resolveOfflineFallback(request) {
   const url = new URL(request.url);
   const byPath = await resolveCachedByPathname(url.pathname);
 
-  if (byPath) {
+  if (byPath && !(isRscRequest(request) && isHtmlResponse(byPath))) {
     return byPath;
   }
 
@@ -580,7 +617,7 @@ async function handleRequest(request) {
   // (precache vs <img>); match by pathname before hitting the network.
   const byPath = await resolveCachedByPathname(url.pathname);
 
-  if (byPath) {
+  if (byPath && !(isRscRequest(request) && isHtmlResponse(byPath))) {
     return byPath;
   }
 

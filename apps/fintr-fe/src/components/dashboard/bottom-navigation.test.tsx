@@ -1,7 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import { createElement } from "react";
+
+const proAccess = vi.hoisted(() => ({
+  source: "none" as "trial" | "none" | "revenuecat",
+}));
+
+vi.mock("@/hooks/async/useProAccess", () => ({
+  useProAccess: () => ({
+    data: {
+      pro: proAccess.source !== "none",
+      source: proAccess.source,
+      trialDaysRemaining: proAccess.source === "trial" ? 5 : 0,
+    },
+    isPending: false,
+  }),
+}));
 
 const mockUsePlatformDetection = vi.fn();
 const addTransactionDialog = vi.hoisted(() => vi.fn(() => null));
@@ -42,6 +57,7 @@ const webPlatform = {
 describe("BottomNavigation — iOS native safe area", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    proAccess.source = "none";
     mockUsePlatformDetection.mockReturnValue(webPlatform);
     (global as any).resetDocumentClassList?.();
   });
@@ -162,9 +178,34 @@ describe("BottomNavigation — iOS native safe area", () => {
   });
 });
 
+describe("BottomNavigation — light mode bar", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    proAccess.source = "none";
+    mockUsePlatformDetection.mockReturnValue(webPlatform);
+  });
+
+  it("uses the navy bar from the light-mode reference", async () => {
+    const BottomNavigation = (await import("./bottom-navigation")).default;
+    const { container } = render(<BottomNavigation />);
+
+    const nav = container.querySelector("nav");
+    expect(nav?.className).toContain("bg-[#0d3557]");
+    expect(nav?.className).toContain("dark:bg-card/95");
+
+    const home = screen.getByRole("link", { name: "Home" });
+    const transactions = screen.getByRole("link", { name: "Transactions" });
+    expect(home.className).toContain("text-white/70");
+    expect(transactions.className).toContain("text-white");
+    expect(transactions.className).not.toContain("text-white/70");
+    expect(transactions.className).toContain("dark:text-primary-dark-mode");
+  });
+});
+
 describe("BottomNavigation — fast tab switching", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    proAccess.source = "none";
     mockUsePlatformDetection.mockReturnValue(webPlatform);
   });
 
@@ -195,5 +236,43 @@ describe("BottomNavigation — fast tab switching", () => {
     fireEvent.pointerDown(screen.getByRole("link", { name: "Dashboard" }));
 
     expect(store.get(pendingDashboardBottomTabAtom)).toBe("insights");
+  });
+});
+
+describe("BottomNavigation — trial Pro badges", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    proAccess.source = "trial";
+    mockUsePlatformDetection.mockReturnValue(webPlatform);
+  });
+
+  it("badges AI chat and receipt scanning during a trial", async () => {
+    const BottomNavigation = (await import("./bottom-navigation")).default;
+    render(<BottomNavigation />);
+
+    expect(
+      within(screen.getByRole("link", { name: /Dashboard/ })).queryByText("Pro"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("link", { name: "Home" })).queryByText("Pro"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Options" }));
+
+    expect(
+      within(screen.getByRole("button", { name: /Chat with AI/ })).getByText(
+        "Pro",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("button", { name: /Add Receipt/ })).getByText(
+        "Pro",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("button", { name: /Add Transaction/ }),
+      ).queryByText("Pro"),
+    ).not.toBeInTheDocument();
   });
 });

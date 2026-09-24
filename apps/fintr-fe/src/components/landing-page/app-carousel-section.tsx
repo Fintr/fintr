@@ -104,11 +104,11 @@ export default function AppCarouselSection() {
 
         {/* Carousel */}
         <div className="overflow-hidden" ref={emblaRef}>
-          <div className="flex">
+          <div className="flex -ml-6 touch-pan-y">
             {appScreenshots.map((screenshot, index) => (
               <div
                 key={index}
-                className="flex-[0_0_100%] min-w-0 sm:flex-[0_0_50%] lg:flex-[0_0_33.333%] pl-4 first:pl-0"
+                className="min-w-0 flex-[0_0_100%] pl-6 sm:flex-[0_0_50%] lg:flex-[0_0_33.333%]"
               >
                 <div className="bg-white/5 backdrop-blur-sm rounded-[24px] p-6 border border-white/10 h-[650px]">
                   <div className="relative w-full h-full rounded-[20px] overflow-hidden shadow-2xl">

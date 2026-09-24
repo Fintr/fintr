@@ -19,6 +19,7 @@ import {
   OUTBOX_COMMAND_TRANSFER_DELETE,
   OUTBOX_COMMAND_TRANSFER_UPDATE,
   OUTBOX_COMMAND_USER_SETTINGS_UPDATE,
+  OUTBOX_COMMAND_ACCOUNT_DELETE,
   OUTBOX_COMMAND_BUDGET_CREATE,
   OUTBOX_COMMAND_BUDGET_UPDATE,
   OUTBOX_COMMAND_BUDGET_DELETE,
@@ -70,6 +71,8 @@ import {
   createTransactionTag,
   deleteTransactionTag,
 } from "@/services/transactions/tags/mutation";
+import type { AccountDeleteOutboxPayload } from "@/services/transactions/accounts/delete-local-first";
+import { deleteAccount } from "@/services/transactions/accounts/mutation";
 import {
   applyTransactionTagsToCaches,
   loadTransactionTags,
@@ -155,6 +158,7 @@ const isNetworkLikeError = (error: unknown): boolean => {
       error.message === "Failed to create loan" ||
       error.message === "Failed to create loan payment" ||
       error.message === "Failed to delete transaction" ||
+      error.message === "Failed to delete account" ||
       error.message === "Failed to update transfer" ||
       error.message === "Failed to update loan" ||
       error.message === "Failed to update loan payment" ||
@@ -859,6 +863,51 @@ const drainBudgetEnsureMonth = async (params: {
   return "ok";
 };
 
+const drainAccountDelete = async (params: {
+  api: AxiosInstance;
+  record: LocalOutboxRecord;
+}): Promise<"ok" | "network" | "failed"> => {
+  const { api, record } = params;
+  const payload = record.payload as AccountDeleteOutboxPayload;
+
+  try {
+    const serverResponse = await deleteAccount(api, payload.accountId, {
+      removeTransactions: payload.removeTransactions === true,
+    });
+
+    if (
+      serverResponse &&
+      typeof serverResponse === "object" &&
+      (serverResponse as { success?: unknown }).success === false
+    ) {
+      throw serverResponse;
+    }
+
+    await removeOutboxRecord(record.id);
+    return "ok";
+  } catch (error) {
+    if (isNetworkLikeError(error)) {
+      await updateOutboxStatus({
+        id: record.id,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Network error draining outbox",
+      });
+      return "network";
+    }
+
+    await updateOutboxStatus({
+      id: record.id,
+      status: "failed",
+      lastError:
+        error instanceof Error
+          ? error.message
+          : "Validation error draining outbox",
+    });
+    return "failed";
+  }
+};
+
 const drainTagDelete = async (params: {
   api: AxiosInstance;
   record: LocalOutboxRecord;
@@ -1415,6 +1464,19 @@ export const drainOutboxForSpace = async (params: {
 
       if (record.commandType === OUTBOX_COMMAND_TAG_CREATE) {
         const outcome = await drainTagCreate({ api, record });
+        if (outcome === "ok") {
+          processed += 1;
+        } else if (outcome === "failed") {
+          failed += 1;
+        } else {
+          stoppedEarly = true;
+          break;
+        }
+        continue;
+      }
+
+      if (record.commandType === OUTBOX_COMMAND_ACCOUNT_DELETE) {
+        const outcome = await drainAccountDelete({ api, record });
         if (outcome === "ok") {
           processed += 1;
         } else if (outcome === "failed") {

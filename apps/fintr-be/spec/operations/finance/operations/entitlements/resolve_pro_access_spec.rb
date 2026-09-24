@@ -26,6 +26,7 @@ RSpec.describe Finance::Operations::Entitlements::ResolveProAccess, type: :opera
       "ai_chat",
       "bulk_ai_receipt_scanning",
       "tag_images",
+      "split_with_people",
     )
   end
 
@@ -85,6 +86,39 @@ RSpec.describe Finance::Operations::Entitlements::ResolveProAccess, type: :opera
     )
 
     expect(call_operation.value![:source]).to eq("revenuecat")
+  end
+
+  it "grants Pro from an unexpired complimentary year after the trial" do
+    user.update!(trial_ends_at: 1.day.ago)
+    grant = create(:pro_grant, user:, expires_at: 1.year.from_now)
+
+    result = call_operation.value!
+
+    expect(result[:pro]).to be(true)
+    expect(result[:source]).to eq("grant")
+    expect(result[:pro_expires_at]).to eq(grant.expires_at.iso8601)
+    expect(result[:grant_notice]).to eq(
+      pending: true,
+      expires_at: grant.expires_at.iso8601,
+    )
+  end
+
+  it "hides the thank-you after it has been seen" do
+    user.update!(trial_ends_at: 1.day.ago)
+    create(:pro_grant, user:, acknowledged_at: Time.current)
+
+    expect(call_operation.value![:grant_notice]).to be_nil
+    expect(call_operation.value![:source]).to eq("grant")
+  end
+
+  it "ignores an expired complimentary year" do
+    user.update!(trial_ends_at: 1.day.ago)
+    create(:pro_grant, user:, expires_at: 1.day.ago)
+
+    result = call_operation.value!
+
+    expect(result[:pro]).to be(false)
+    expect(result[:grant_notice]).to be_nil
   end
 
   it "ignores an expired RevenueCat entitlement" do

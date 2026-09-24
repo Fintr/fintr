@@ -29,6 +29,52 @@ const toCents = (amount: number): number => Math.round(amount * 100);
 
 const fromCents = (cents: number): number => Number((cents / 100).toFixed(2));
 
+const SHARE_MIN = 0.01;
+const PERCENT_MAX_HUNDREDTHS = 10_000;
+
+const toHundredths = (value: number): number => Math.round(value * 100);
+
+export const costShareEntryBounds = ({
+  mode,
+  totalAmount,
+  participants,
+  index,
+}: {
+  mode: CostShareMode;
+  totalAmount: number;
+  participants: CostShareParticipantInput[];
+  index: number;
+}): { min: number; max: number } => {
+  const othersHundredths = participants.reduce(
+    (sum, participant, participantIndex) => {
+      if (participantIndex === index) {
+        return sum;
+      }
+
+      const raw = mode === "percent" ? participant.percent : participant.amount;
+      if (raw == null || !Number.isFinite(raw) || raw <= 0) {
+        return sum;
+      }
+
+      return sum + toHundredths(raw);
+    },
+    0,
+  );
+
+  const capHundredths =
+    mode === "percent"
+      ? PERCENT_MAX_HUNDREDTHS
+      : Math.max(
+          0,
+          toHundredths(Number.isFinite(totalAmount) ? totalAmount : 0),
+        );
+
+  return {
+    min: SHARE_MIN,
+    max: Math.max(0, capHundredths - othersHundredths) / 100,
+  };
+};
+
 const normalizeName = (name: string): string => name.trim().toLowerCase();
 
 const firstDetailMessage = (details: FieldErrorMap): string =>
@@ -73,15 +119,50 @@ const collectInputErrors = (input: AllocateCostShareInput): FieldErrorMap => {
     if (input.mode === "amount") {
       if (!Number.isFinite(participant.amount) || (participant.amount ?? 0) <= 0) {
         details[`participants.${index}.amount`] = ["must be greater than 0"];
+      } else if (toCents(participant.amount ?? 0) > toCents(input.totalAmount)) {
+        details[`participants.${index}.amount`] = ["cannot be more than the total"];
       }
     }
 
     if (input.mode === "percent") {
-      if (!Number.isFinite(participant.percent) || (participant.percent ?? 0) <= 0) {
-        details[`participants.${index}.percent`] = ["must be greater than 0"];
+      const percent = participant.percent ?? Number.NaN;
+      if (!Number.isFinite(percent) || percent < SHARE_MIN) {
+        details[`participants.${index}.percent`] = ["must be at least 0.01"];
+      } else if (percent > 100) {
+        details[`participants.${index}.percent`] = ["cannot be more than 100"];
       }
     }
   });
+
+  if (input.mode === "percent" && !details.participants) {
+    const percentHundredths = input.participants.reduce((sum, participant) => {
+      const percent = participant.percent;
+      if (!Number.isFinite(percent)) {
+        return sum;
+      }
+
+      return sum + toHundredths(percent ?? 0);
+    }, 0);
+
+    if (percentHundredths > PERCENT_MAX_HUNDREDTHS) {
+      details.participants = ["Percents cannot total more than 100"];
+    }
+  }
+
+  if (input.mode === "amount" && !details.participants) {
+    const amountCents = input.participants.reduce((sum, participant) => {
+      const amount = participant.amount;
+      if (!Number.isFinite(amount) || (amount ?? 0) <= 0) {
+        return sum;
+      }
+
+      return sum + toCents(amount ?? 0);
+    }, 0);
+
+    if (amountCents > toCents(input.totalAmount)) {
+      details.participants = ["Amounts cannot be more than the total"];
+    }
+  }
 
   return details;
 };
@@ -135,17 +216,6 @@ const allocatePercent = (
     (sum, person) => sum + toCents(person.amount),
     0,
   );
-  const percentTotal = participants.reduce(
-    (sum, participant) => sum + (participant.percent ?? 0),
-    0,
-  );
-
-  if (percentTotal >= 100) {
-    validationFailure({
-      participants: ["Percents must leave a share for you"],
-    });
-  }
-
   return {
     yourShare: fromCents(totalCents - othersCents),
     participants: allocatedOthers,
@@ -168,9 +238,13 @@ export const allocateCostShare = (
         ? allocateAmount(totalCents, input.participants)
         : allocatePercent(totalCents, input.participants);
 
-  if (allocation.yourShare <= 0) {
+  if (allocation.yourShare < 0) {
     validationFailure({
-      participants: ["Your share must be greater than 0"],
+      participants: [
+        input.mode === "percent"
+          ? "Percents cannot total more than 100"
+          : "Amounts cannot be more than the total",
+      ],
     });
   }
 

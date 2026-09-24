@@ -934,7 +934,7 @@ const AccountDetailContent: React.FC<AccountDetailContentProps> = ({
           enabled={queryEnabled && !!account?.id}
         />
 
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex items-center gap-2 md:justify-end">
           <Button
             type="button"
             variant="outline"

@@ -58,12 +58,39 @@ export function shouldShowDashboardShellLoadingScreen(_params?: {
 export function shouldShowOfflineSyncScreen(params: {
   requiresOfflineReimport: boolean;
   offlineSyncStatus: "idle" | "checking" | "syncing" | "complete" | "error";
+  canRunOfflineSync?: boolean;
 }): boolean {
+  if (params.canRunOfflineSync === false) {
+    return false;
+  }
+
   if (!params.requiresOfflineReimport) {
     return false;
   }
 
   return params.offlineSyncStatus !== "complete";
+}
+
+/**
+ * Offline bootstrap must wait until setup has created accounts, categories,
+ * and budgets. Running it earlier caches an empty workspace as the local snapshot.
+ */
+export function shouldRunOfflineSync(params: {
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  isOnOnboardingPage: boolean;
+  isOnAdminPage: boolean;
+  onboardingStep: string | null;
+}): boolean {
+  if (!params.isAuthenticated || params.isAuthLoading) {
+    return false;
+  }
+
+  if (params.isOnOnboardingPage || params.isOnAdminPage) {
+    return false;
+  }
+
+  return params.onboardingStep === "completed";
 }
 
 export function isWorkspaceContextBlocking(params: {

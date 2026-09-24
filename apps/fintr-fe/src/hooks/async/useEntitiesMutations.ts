@@ -4,7 +4,6 @@ import { useAuthApi } from "@/hooks/useAuthApi";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { createEntityLocalFirst } from "@/services/entities/create-local-first";
 import {
-  createEntity,
   updateEntity,
   type CreateEntityType,
   type UpdateEntityType,
@@ -17,10 +16,6 @@ export const useEntitiesMutations = () => {
   const [spaceCode] = useLocalStorage("spaceCode", "");
 
   const createEntityMutation = async (entityData: CreateEntityType) => {
-    if (entityData.photo) {
-      return createEntity(api, entityData);
-    }
-
     const result = await createEntityLocalFirst(
       api,
       {

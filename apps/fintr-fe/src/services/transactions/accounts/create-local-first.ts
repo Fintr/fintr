@@ -10,6 +10,7 @@ import {
 import type { Account } from "@/types/accountTypes";
 
 import {
+  applyAccountsResponseToCaches,
   removeAccountFromCaches,
   replaceAccountIdInCaches,
   upsertAccountInCaches,
@@ -18,6 +19,7 @@ import {
   createAccount,
   type CreateAccountType,
 } from "./mutation";
+import { fetchAccounts } from "./queries";
 
 export type AccountCreateOutboxPayload = CreateAccountType & {
   localId: string;
@@ -180,6 +182,20 @@ export const createAccountLocalFirst = async (
           serverAccount: created,
           queryClient,
         });
+      }
+
+      try {
+        const accountsResponse = await fetchAccounts(api);
+        await applyAccountsResponseToCaches({
+          spaceId,
+          response: accountsResponse,
+          queryClient,
+        });
+      } catch (error) {
+        console.warn(
+          "[accounts] Failed to refresh local accounts after create",
+          error,
+        );
       }
 
       await removeOutboxRecord(clientMutationId);

@@ -36,9 +36,9 @@ function NavDrawerThemeToggle() {
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2"
       >
         {isDark ? (
-          <Moon className="h-4 w-4 shrink-0" aria-hidden />
+          <Moon className="h-4 w-4 mr-2 shrink-0" aria-hidden />
         ) : (
-          <Sun className="h-4 w-4 shrink-0" aria-hidden />
+          <Sun className="h-4 w-4 mr-2 shrink-0" aria-hidden />
         )}
         <span className="flex-1 text-left">{label}</span>
       </label>
@@ -129,7 +129,15 @@ const NavDrawer: React.FC<NavDrawerProps> = ({
               aria-expanded={true}
               aria-controls="account-menu"
             >
-              <User className="h-5 w-5 mr-2" />
+              {user?.picture ? (
+                <img
+                  src={user.picture}
+                  alt=""
+                  className="h-5 w-5 mr-2 rounded-full object-cover"
+                />
+              ) : (
+                <User className="h-5 w-5 mr-2" />
+              )}
               {user?.name || "User"}
             </button>
             

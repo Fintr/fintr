@@ -480,9 +480,11 @@ export const resolveAndroidNativeTopInsetPx = (
 export const MOBILE_STICKY_HEADER_CONTENT_CLASS = "px-4 py-2"
 
 /**
- * Title row block height for {@link MOBILE_STICKY_HEADER_CONTENT_CLASS}; keep in sync with spacer calc.
+ * Title row block height for {@link MOBILE_STICKY_HEADER_CONTENT_CLASS}.
+ * py-2 (16) + h-8 title row (32) + 1px bottom rule. Keep in sync with
+ * `.mobile-header-spacer` in globals.css.
  */
-export const MOBILE_STICKY_HEADER_BODY_HEIGHT_PX = 40
+export const MOBILE_STICKY_HEADER_BODY_HEIGHT_PX = 49
 
 /**
  * Calculate header spacer height for mobile (fixed header + scrollable body).

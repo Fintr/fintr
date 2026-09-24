@@ -221,7 +221,7 @@ ios-live:
 	@echo "🔄 Syncing Capacitor to iOS..."
 	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL) pnpm cap sync ios
 	@echo "📱 Starting iOS with livereload..."
-	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL) pnpm cap run ios --livereload --external
+	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL) pnpm cap run ios --live-reload
 
 ios-open:
 	@echo "🚀 Opening iOS project in Xcode..."

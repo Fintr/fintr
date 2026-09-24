@@ -25,8 +25,8 @@ module Ai
           params = validate(params:)
           user = find_user(params:)
           space = find_space(params:)
-          can_use_ai = validate_can_use_ai(user:, space:)
-          return Dry::Monads::Failure("Fintr Pro is required for this feature.") unless can_use_ai
+          can_use_ai = validate_can_use_ai(user:, space:, params:)
+          return Dry::Monads::Failure(can_use_ai) unless can_use_ai == true
 
           usage = create_usage(params:)
           result = block.call
@@ -47,12 +47,21 @@ module Ai
           Spaces::Space.find(params[:space_id])
         end
 
-        def validate_can_use_ai(user:, space:)
-          access = Finance::Operations::Entitlements::ResolveProAccess.new.call(
+        def validate_can_use_ai(user:, space:, params:)
+          if params[:ai_type] == "ai_chat"
+            allowance = EnforceMonthlyChatLimit.new.call(user_id: user.id)
+            return true if allowance.success?
+
+            return allowance.failure[:message]
+          end
+
+          allowed = Finance::ProGate.require!(
             user_id: user.id,
             space_id: space.id,
-          )
-          access.success? && access.value![:pro]
+          ).success?
+          return true if allowed
+
+          "Fintr Pro is required for this feature."
         end
 
         def create_usage(params:)

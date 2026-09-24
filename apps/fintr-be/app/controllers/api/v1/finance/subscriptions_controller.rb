@@ -24,15 +24,15 @@ module Api
 
           return render_unprocessable_content(details: operation.failure) unless operation.success?
 
-          subscriptions = operation.value!
-          if subscriptions.present?
-            serializer = subscriptions.map do |subscription|
-              ::Finance::SpaceSubscriptionSerializer.render_as_hash(subscription)
-            end
-            render_success(data: { subscriptions: serializer })
-          else
-            render_success(data: { subscriptions: [] })
+          subscriptions = Array(operation.value!).map do |subscription|
+            ::Finance::SpaceSubscriptionSerializer.render_as_hash(subscription)
           end
+          store_card = revenuecat_subscription_card
+          subscriptions << store_card if store_card
+          grant_card = pro_grant_subscription_card
+          subscriptions << grant_card if grant_card
+
+          render_success(data: { subscriptions: subscriptions })
         end
 
         def create
@@ -161,6 +161,29 @@ module Api
 
         def force_attempt_params
           params.permit(:billing_cycle_id)
+        end
+
+        def pro_grant_subscription_card
+          presented = ::Finance::Operations::ProGrants::PresentSubscription.new.call(
+            user_id: current_user.id,
+          )
+          return nil unless presented.success?
+
+          presented.value!
+        end
+
+        def revenuecat_subscription_card
+          synced = ::Finance::Operations::Revenuecat::SyncCustomer.new.call(
+            user_id: current_user.id,
+          )
+          return nil unless synced.success?
+
+          presented = ::Finance::Operations::Revenuecat::PresentSubscription.new.call(
+            user_id: current_user.id,
+          )
+          return nil unless presented.success?
+
+          presented.value!
         end
 
         def create_params

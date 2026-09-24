@@ -1,13 +1,12 @@
 import React, { useCallback, useRef, useState } from "react";
 import { Camera, Plus, Trash2 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { MerchantPicker } from "@/components/ui/merchant-picker";
 import { Button } from "@/components/ui/button";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useEntitiesMutations } from "@/hooks/async/useEntitiesMutations";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { createEntity } from "@/services/entities/mutation";
 import { fetchEntitiesLocalFirst } from "@/services/entities/queries";
 import { extractFieldErrors } from "@/utils/errorUtils";
 
@@ -72,7 +71,7 @@ const TransactionEntityField: React.FC<TransactionEntityFieldProps> = ({
   const copy = FIELD_COPY[kind];
   const { api } = useAuthApi();
   const [spaceCode] = useLocalStorage("spaceCode", "");
-  const queryClient = useQueryClient();
+  const { createEntity } = useEntitiesMutations();
   const [showCreationPanel, setShowCreationPanel] = useState(false);
   const [isCreatingEntity, setIsCreatingEntity] = useState(false);
   const [creationSeed, setCreationSeed] = useState("");
@@ -123,13 +122,12 @@ const TransactionEntityField: React.FC<TransactionEntityFieldProps> = ({
 
     setIsCreatingEntity(true);
     try {
-      const response = await createEntity(api, {
+      const response = await createEntity({
         fullName: trimmed,
         entityType: "transaction",
       });
 
       const createdEntityName = response?.data?.fullName || trimmed;
-      queryClient.invalidateQueries({ queryKey: ["entities"] });
       onChange(createdEntityName);
       toast.success(`${createdEntityName} saved.`);
       onSuccess?.();

@@ -26,6 +26,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ProTrialBadge } from "@/components/settings/pro-trial-badge";
 
 export default function BottomNavigation() {
   const routerPathname = usePathname();
@@ -101,24 +102,24 @@ export default function BottomNavigation() {
     cn(
       "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors",
       isActive
-        ? "text-primary dark:text-primary-dark-mode"
-        : "text-foreground/60 dark:text-muted-foreground",
+        ? "text-white dark:text-primary-dark-mode"
+        : "text-white/70 dark:text-muted-foreground",
     );
 
   const navIconClassName = (isActive: boolean) =>
     cn(
       "h-5 w-5",
       isActive
-        ? "text-primary dark:text-primary-dark-mode"
-        : "text-foreground/60 dark:text-muted-foreground",
+        ? "text-white dark:text-primary-dark-mode"
+        : "text-white/70 dark:text-muted-foreground",
     );
 
   const navLabelClassName = (isActive: boolean) =>
     cn(
       "w-full truncate text-center text-xs font-medium",
       isActive
-        ? "text-primary dark:text-primary-dark-mode"
-        : "text-foreground/60 dark:text-muted-foreground",
+        ? "text-white dark:text-primary-dark-mode"
+        : "text-white/70 dark:text-muted-foreground",
     );
 
   const handleReceiptSuccess = (suggestedTransactionPayload: any, receiptImage: File, draftId?: string) => {
@@ -154,7 +155,7 @@ export default function BottomNavigation() {
       <nav
         className={cn(
           "fixed left-0 right-0 z-50 md:hidden",
-          "border-t border-border/60 bg-card/95 backdrop-blur-md",
+          "border-t border-transparent bg-[#0d3557] dark:border-border/60 dark:bg-card/95 dark:backdrop-blur-md",
           "shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.35)]",
           isAndroidNative
             ? ""
@@ -206,7 +207,7 @@ export default function BottomNavigation() {
             <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  className="h-14 w-14 rounded-full border border-border bg-primary p-0 shadow-lg transition-all hover:bg-primary/90 dark:border-border/60"
+                  className="h-14 w-14 rounded-full border border-white/80 bg-[#0d3557] p-0 shadow-lg transition-all hover:bg-white/10 dark:border-border/60 dark:bg-primary dark:hover:bg-primary/90"
                   size="icon"
                   aria-label="Add Options"
                   data-tutorial-target="mobile-add-button"
@@ -232,7 +233,10 @@ export default function BottomNavigation() {
                   >
                     <MessageSquare className="h-5 w-5 shrink-0 text-primary" />
                     <div className="flex min-w-0 flex-col items-start gap-0.5 text-left">
-                      <span className="text-sm font-medium">Chat with AI</span>
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        Chat with AI
+                        <ProTrialBadge />
+                      </span>
                       <span className="text-[11px] leading-snug text-muted-foreground">
                         Ask about your spending, budgets, and finances
                       </span>
@@ -278,7 +282,10 @@ export default function BottomNavigation() {
                   >
                     <Camera className="h-5 w-5 shrink-0 text-primary" />
                     <div className="flex min-w-0 flex-col items-start gap-0.5 text-left">
-                      <span className="text-sm font-medium">Add Receipt</span>
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        Add Receipt
+                        <ProTrialBadge />
+                      </span>
                       <span className="text-[11px] leading-snug text-muted-foreground">
                         Snap or upload a receipt to auto-fill details
                       </span>
@@ -299,7 +306,9 @@ export default function BottomNavigation() {
             data-testid="mobile-nav-dashboard"
             className={navItemClassName(activeValue === "insights")}
           >
-            <BarChart3 className={navIconClassName(activeValue === "insights")} />
+            <span className="relative">
+              <BarChart3 className={navIconClassName(activeValue === "insights")} />
+            </span>
             <span className={navLabelClassName(activeValue === "insights")}>
               Dashboard
             </span>
@@ -310,6 +319,10 @@ export default function BottomNavigation() {
             href="/dashboard/app_settings"
             scroll={false}
             onPointerDown={() => setPendingTab("menu")}
+            onPointerUp={() => {
+              setPendingTab("menu");
+              commitDashboardClientNavigation("/dashboard/app_settings");
+            }}
             onClick={onTabClick("/dashboard/app_settings")}
             data-tutorial-target="mobile-menu-button"
             data-testid="mobile-nav-menu"

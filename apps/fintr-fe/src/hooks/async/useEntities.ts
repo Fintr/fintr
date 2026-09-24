@@ -11,6 +11,7 @@ import {
 import {
   filterCachedEntities,
   loadCachedEntitiesResponse,
+  mergePendingLocalEntities,
 } from "@/services/entities/local-cache";
 
 export type EntityTypeFilter = "loan" | "transaction";
@@ -68,7 +69,9 @@ export const useEntities = (
   });
 
   return {
-    entities: skipNetworkFetch ? filteredLocalEntities : (data ?? []),
+    entities: skipNetworkFetch
+      ? filteredLocalEntities
+      : mergePendingLocalEntities(filteredLocalEntities, data ?? []),
     isLoading: skipNetworkFetch
       ? localEntitiesQuery.isLoading
       : isLoading,

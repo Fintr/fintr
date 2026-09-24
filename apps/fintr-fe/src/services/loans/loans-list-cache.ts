@@ -11,6 +11,10 @@ export type UpsertLoanListOptions = {
   fallback?: InfiniteData<LoansPage> | undefined;
 };
 
+export const loansListQueryKey = (
+  spaceCode: string,
+): readonly ["loans", string] => ["loans", spaceCode];
+
 const emptyLoansPage = (loan: Loan): LoansPage => ({
   loans: [loan],
   nextPage: null,
@@ -78,16 +82,22 @@ const readLoansInfiniteFromQueryCaches = (
 ): {
   loans: InfiniteData<LoansPage> | undefined;
   local: InfiniteData<LoansPage> | undefined;
-} => ({
-  loans: queryClient.getQueryData<InfiniteData<LoansPage>>(["loans"]),
-  local: spaceCode
-    ? queryClient.getQueryData<InfiniteData<LoansPage>>([
-        "loans",
-        "local",
-        spaceCode,
-      ])
-    : undefined,
-});
+} => {
+  if (!spaceCode) {
+    return { loans: undefined, local: undefined };
+  }
+
+  return {
+    loans: queryClient.getQueryData<InfiniteData<LoansPage>>(
+      loansListQueryKey(spaceCode),
+    ),
+    local: queryClient.getQueryData<InfiniteData<LoansPage>>([
+      "loans",
+      "local",
+      spaceCode,
+    ]),
+  };
+};
 
 export const upsertLoanInQueryCaches = (
   queryClient: QueryClient,
@@ -101,20 +111,20 @@ export const upsertLoanInQueryCaches = (
   const { loans: loansData, local: localData } =
     readLoansInfiniteFromQueryCaches(queryClient, spaceCode);
 
-  const nextLoans = upsertLoanInInfiniteData(loansData, loan, {
-    seedListWhenEmpty,
-    fallback: localData,
-  });
-  if (nextLoans !== loansData) {
-    queryClient.setQueryData(["loans"], nextLoans);
-  }
-
   if (spaceCode) {
+    const nextLoans = upsertLoanInInfiniteData(loansData, loan, {
+      seedListWhenEmpty,
+      fallback: localData,
+    });
+    if (nextLoans) {
+      queryClient.setQueryData(loansListQueryKey(spaceCode), nextLoans);
+    }
+
     const nextLocal = upsertLoanInInfiniteData(localData, loan, {
       seedListWhenEmpty,
-      fallback: nextLoans ?? loansData,
+      fallback: nextLoans,
     });
-    if (nextLocal !== localData) {
+    if (nextLocal) {
       queryClient.setQueryData(["loans", "local", spaceCode], nextLocal);
     }
   }
@@ -150,15 +160,36 @@ export const removeLoanFromQueryCaches = (
     };
   };
 
-  queryClient.setQueryData<InfiniteData<LoansPage>>(["loans"], (current) =>
-    filterLoanFromInfinite(current),
-  );
+  const dropLoan = (key: readonly unknown[]) => {
+    queryClient.setQueryData<InfiniteData<LoansPage>>(key, (current) =>
+      filterLoanFromInfinite(current),
+    );
+  };
 
   if (spaceCode) {
-    queryClient.setQueryData<InfiniteData<LoansPage>>(
-      ["loans", "local", spaceCode],
-      (current) => filterLoanFromInfinite(current),
-    );
+    dropLoan(loansListQueryKey(spaceCode));
+    dropLoan(["loans", "local", spaceCode]);
+  } else {
+    for (const query of queryClient.getQueryCache().findAll({
+      queryKey: ["loans"],
+    })) {
+      const key = query.queryKey;
+      const isLegacyList = key.length === 1 && key[0] === "loans";
+      const isSpaceList =
+        key.length === 2 &&
+        key[0] === "loans" &&
+        typeof key[1] === "string" &&
+        key[1] !== "local";
+      const isLocalList =
+        key.length === 3 &&
+        key[0] === "loans" &&
+        key[1] === "local" &&
+        typeof key[2] === "string";
+
+      if (isLegacyList || isSpaceList || isLocalList) {
+        dropLoan(key);
+      }
+    }
   }
 
   queryClient.removeQueries({

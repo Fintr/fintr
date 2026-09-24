@@ -8,6 +8,7 @@ import useAuthApi from '@/hooks/useAuthApi';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { useProAccess } from '@/hooks/async/useProAccess';
 import { ProRequiredNotice } from '@/components/settings/pro-feature-gate';
+import { ProTrialBadge } from '@/components/settings/pro-trial-badge';
 import { useDashboardData } from '@/hooks/async/useDashboardData';
 import {
   isReceiptImageFile,
@@ -547,14 +548,19 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
     <CustomDialog 
       isOpen={isOpen}
       onClose={handleDialogClose}
-      title="Add Receipt"
+      title={
+        <>
+          Add Receipt
+          <ProTrialBadge />
+        </>
+      }
       fullScreen
       footer={previewFooter}
     >
-      <div className="flex min-h-0 flex-1 flex-col text-primary">
+      <div className="flex min-h-0 flex-1 flex-col text-primary md:flex-none">
         {isCameraActive ? (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="relative min-h-0 flex-1 bg-black">
+          <div className="flex min-h-0 flex-1 flex-col md:flex-none">
+            <div className="relative min-h-72 flex-1 bg-black md:h-80 md:flex-none">
               <video
                 ref={videoRef}
                 className="h-full w-full object-cover"
@@ -582,7 +588,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             </div>
           </div>
         ) : selectedImage ? (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col md:flex-none">
             <div className="shrink-0 px-4 pb-3 pt-2">
               {proAccessNotice}
             </div>
@@ -597,7 +603,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
               </div>
             )}
 
-            <div className="flex min-h-0 flex-1 items-center justify-center bg-muted/20 px-4 pb-4">
+            <div className="flex min-h-72 flex-1 items-center justify-center bg-muted/20 px-4 pb-4 md:h-80 md:flex-none">
               {isLoadingPreview ? (
                 <div className="text-center">
                   <Loader2 className="mx-auto mb-2 h-12 w-12 animate-spin text-primary" />
@@ -619,7 +625,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
             </div>
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6 md:flex-none">
             <div className="space-y-4 py-4">
               {proAccessNotice}
 
@@ -664,6 +670,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
                 variant="outline"
                 className="w-full"
                 onClick={handleCancel}
+                data-tutorial-target="close-add-receipt-modal"
               >
                 Cancel
               </Button>

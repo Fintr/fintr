@@ -28,10 +28,10 @@ const FloatingSelect = React.forwardRef<
           ref={ref}
           id={selectId}
           className={cn(
-            "flex items-center justify-between px-2.5 pb-2.5 pt-4 w-full text-sm text-primary bg-transparent rounded-lg border border-input",
-            "focus:outline-none focus:ring-0 focus:border-primary peer",
+            "peer flex h-[48px] min-h-[48px] w-full items-center justify-between rounded-lg border border-input bg-transparent px-2.5 pb-2.5 pt-4 text-sm text-foreground",
+            "dark:border-border dark:bg-input/30",
+            "focus:border-primary focus:outline-none focus:ring-0 dark:focus:border-primary-dark-mode",
             "transition-colors duration-200",
-            "min-h-[48px] h-[48px]", // Match FloatingInput height (48px)
             "[&>span]:text-left [&>span]:truncate [&>span]:leading-tight [&>span]:flex-1",
             "[&_svg]:opacity-50 [&_svg]:flex-shrink-0", // Style and position the dropdown arrow
             hasValue ? "[&>span]:opacity-100" : "[&>span]:opacity-0",
@@ -54,7 +54,7 @@ const FloatingSelect = React.forwardRef<
         htmlFor={selectId}
         className={cn(
           "absolute text-sm text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white dark:bg-card px-2",
-          "peer-focus:px-2 peer-focus:text-primary",
+          "peer-focus:px-2 peer-focus:text-primary dark:peer-focus:text-primary-dark-mode",
           "rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto start-1",
           hasValue
             ? "scale-75 -translate-y-4 top-2"

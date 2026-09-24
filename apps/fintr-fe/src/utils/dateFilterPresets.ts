@@ -18,6 +18,7 @@ export type DateFilterMainPresetId =
   | "this_week"
   | "last_week"
   | "last_2_weeks"
+  | "this_month"
   | "last_month"
   | "last_2_months"
   | "this_year"
@@ -89,6 +90,7 @@ export const DATE_FILTER_PRESETS: DateFilterPreset[] = [
   { id: "this_week", label: "This Week" },
   { id: "last_week", label: "Last Week" },
   { id: "last_2_weeks", label: "Last 2 Weeks" },
+  { id: "this_month", label: "This Month" },
   { id: "last_month", label: "Last Month" },
   { id: "last_2_months", label: "Last 2 Months" },
   { id: "this_year", label: "This Year" },
@@ -118,7 +120,8 @@ export const getDateFilterPresetLabel = (
   return preset?.label ?? presetId;
 };
 
-const WEEK_OPTIONS = { weekStartsOn: 0 as const };
+// ISO 8601 weeks run Monday through Sunday, matching Rails Date#all_week in AI chat.
+const WEEK_OPTIONS = { weekStartsOn: 1 as const };
 
 export const getPresetDateRange = (
   presetId: DateFilterPresetId,
@@ -146,6 +149,11 @@ export const getPresetDateRange = (
         endDate: formatYmd(endOfWeek(oneWeekAgo, WEEK_OPTIONS)),
       };
     }
+    case "this_month":
+      return {
+        startDate: formatYmd(startOfMonth(referenceDate)),
+        endDate: formatYmd(referenceDate),
+      };
     case "last_month": {
       const month = subMonths(referenceDate, 1);
       return {
@@ -209,6 +217,12 @@ export const matchPresetFromDateRange = (
   const allPresets = [...DATE_FILTER_PRESETS, ...DATE_FILTER_RELATIVE_PRESETS];
 
   for (const preset of allPresets) {
+    // This Month uses the same dates as the current Single Month filter
+    // (month start through today), so that range stays Single Month.
+    if (preset.id === "this_month") {
+      continue;
+    }
+
     const range = getPresetDateRange(preset.id, new Date(), options);
     if (range.startDate === startDate && range.endDate === endDate) {
       return preset.id;

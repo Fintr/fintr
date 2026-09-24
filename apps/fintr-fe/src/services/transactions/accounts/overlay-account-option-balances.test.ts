@@ -47,6 +47,46 @@ describe("overlayAccountOptionBalances", () => {
     ).toBe(16473.52);
   });
 
+  it("appends an account in another currency without changing existing option currencies", () => {
+    const overlaid = overlayAccountOptionBalances(
+      [
+        {
+          label: "Cash",
+          value: "Cash",
+          currency: "PHP",
+          accountCategory: "cash",
+          balance: "1000",
+        },
+      ],
+      [
+        {
+          id: "acc-cash",
+          name: "Cash",
+          balance: "1000",
+          balanceCurrency: "PHP",
+          accountCategory: "cash",
+        },
+        {
+          id: "acc-usd",
+          name: "USD Wallet",
+          balance: "50",
+          balanceCurrency: "USD",
+          accountCategory: "cash",
+        },
+      ],
+    );
+
+    expect(overlaid.find((option) => option.value === "Cash")?.currency).toBe(
+      "PHP",
+    );
+    expect(
+      overlaid.find((option) => option.value === "USD Wallet"),
+    ).toMatchObject({
+      currency: "USD",
+      balance: "50",
+    });
+  });
+
   it("returns the original options when no accounts are available", () => {
     const options = [
       {

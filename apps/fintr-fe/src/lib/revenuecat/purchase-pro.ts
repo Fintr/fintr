@@ -179,15 +179,28 @@ export async function presentProPaywall(appUserId: string): Promise<void> {
 }
 
 export async function presentProCustomerCenter(appUserId: string): Promise<void> {
+  await manageProSubscription(appUserId);
+}
+
+export async function manageProSubscription(
+  appUserId: string,
+  managementUrl?: string | null,
+): Promise<void> {
   const identified = await identifyRevenueCatUser(appUserId);
-  if (!identified) {
-    throw new Error(
-      "Subscription management in the store is available in the mobile app.",
-    );
+  if (identified) {
+    const { RevenueCatUI } = await import("@revenuecat/purchases-capacitor-ui");
+    await RevenueCatUI.presentCustomerCenter();
+    return;
   }
 
-  const { RevenueCatUI } = await import("@revenuecat/purchases-capacitor-ui");
-  await RevenueCatUI.presentCustomerCenter();
+  if (managementUrl) {
+    window.open(managementUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  throw new Error(
+    "Subscription management in the store is available in the mobile app.",
+  );
 }
 
 export async function purchaseProPlan(appUserId: string): Promise<void> {

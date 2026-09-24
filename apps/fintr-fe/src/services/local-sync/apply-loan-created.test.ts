@@ -106,7 +106,7 @@ describe("applyLoanCreated — optimistic reconcile", () => {
         .getQueryData<{ pages: Array<{ loans: Array<{ id: string }> }> }>(key)
         ?.pages.flatMap((page) => page.loans.map((loan) => loan.id));
 
-    expect(readLoanIds(["loans"])).toEqual([serverId]);
+    expect(readLoanIds(["loans", spaceId])).toEqual([serverId]);
     expect(readLoanIds(["loans", "local", spaceId])).toEqual([serverId]);
     expect(await loadCachedLoanSnapshot(spaceId, localId)).toBeUndefined();
     expect(await loadCachedLoanSnapshot(spaceId, serverId)).toMatchObject({

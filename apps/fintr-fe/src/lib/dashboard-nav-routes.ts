@@ -302,11 +302,11 @@ export function resolveDashboardClientNavigation(params: {
     return null;
   }
 
+  const pathname = new URL(href, params.origin).pathname;
+
   if (!interceptDashboardTabClick(params.event)) {
     return null;
   }
-
-  const pathname = new URL(href, params.origin).pathname;
 
   return {
     href,

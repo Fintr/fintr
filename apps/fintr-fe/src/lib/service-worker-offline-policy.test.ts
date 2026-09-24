@@ -118,6 +118,15 @@ describe("service worker offline policy", () => {
     expect(staticIdx).toBeLessThan(cacheIdx);
   });
 
+  it("does not treat a cached HTML document as the signup flight payload", () => {
+    expect(devWorkerSource).toContain("function isRscRequest");
+    expect(devWorkerSource).toContain("function isHtmlResponse");
+    expect(generatorSource).toContain("function isRscRequest");
+    expect(generatorSource).toContain("function isHtmlResponse");
+    expect(devWorkerSource).toContain("isRscRequest(request) && isHtmlResponse(byPath)");
+    expect(generatorSource).toContain("isRscRequest(request) && isHtmlResponse(byPath)");
+  });
+
   it("does not intercept the service worker script itself in sw-dev", () => {
     expect(devWorkerSource).toContain('url.pathname === "/sw-dev.js"');
     expect(devWorkerSource).toContain('url.pathname === "/sw.js"');

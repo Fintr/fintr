@@ -48,7 +48,13 @@ module Finance
 
         def resolve(user:, space:)
           revenuecat = user && Finance::RevenuecatCustomer.find_by(user_id: user.id)
-          source = access_source(user:, space:, revenuecat:)
+          grant = user && Finance::ProGrant.find_by(user_id: user.id)
+          source = access_source(
+            user:,
+            space:,
+            revenuecat:,
+            grant:,
+          )
 
           Success(
             pro: source != "none",
@@ -56,18 +62,39 @@ module Finance
             app_user_id: user&.id,
             trial_ends_at: user&.trial_ends_at&.iso8601,
             trial_days_remaining: user&.trial_days_remaining.to_i,
-            pro_expires_at: revenuecat&.pro_expires_at&.iso8601,
+            pro_expires_at: pro_expires_at(
+              source:,
+              revenuecat:,
+              grant:,
+            ),
+            grant_notice: grant_notice(grant:),
             features: Finance::ProFeatures::CATALOG,
           )
         end
 
-        def access_source(user:, space:, revenuecat:)
+        def access_source(user:, space:, revenuecat:, grant:)
           return "admin" if user&.has_role?(:admin)
           return "revenuecat" if revenuecat&.pro_current?
+          return "grant" if grant&.current?
           return "subscription" if space_has_pro_subscription?(space:)
           return "trial" if user&.trial_active?
 
           "none"
+        end
+
+        def pro_expires_at(source:, revenuecat:, grant:)
+          return grant.expires_at.iso8601 if source == "grant"
+
+          revenuecat&.pro_expires_at&.iso8601
+        end
+
+        def grant_notice(grant:)
+          return nil unless grant&.pending_notice?
+
+          {
+            pending: true,
+            expires_at: grant.expires_at.iso8601,
+          }
         end
 
         def space_has_pro_subscription?(space:)

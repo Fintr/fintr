@@ -21,6 +21,7 @@ import { accountOptionsAtom } from "@/atoms/dashboardAtoms";
 import { useTransactionCategories } from "@/hooks/async/useTransactionCategories";
 import { toast } from "sonner";
 import { useAuthApi } from "@/hooks/useAuthApi";
+import { useProAccess } from "@/hooks/async/useProAccess";
 import { extractFieldErrors } from "@/utils/errorUtils";
 import { FormError } from "@/components/ui/form-error";
 import { useNumberInput } from "@/hooks/useNumberInput";
@@ -308,6 +309,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   }, [accountOptions, defaultTransactionCurrency, isEditMode, initialData]);
 
   const { api } = useAuthApi();
+  const { data: proAccess } = useProAccess();
+  const hasPro = proAccess?.pro === true;
 
   // Local state for UI elements not directly part of the form data
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -1870,7 +1873,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           (participant) => participant.entityName.trim().length > 0,
         );
         const shouldSplit =
-          shouldShowExpenseCostShare({
+          hasPro
+          && shouldShowExpenseCostShare({
             isEditMode,
             scheduleType: formState.scheduleType,
           })
@@ -1883,7 +1887,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             participants: namedShareParticipants,
           });
           if (!allocation) {
-            toast.error("Add people and give each person a share less than the full bill.");
+            toast.error("Add people and a share that fits within the bill.");
             setIsSubmitting(false);
             return;
           }

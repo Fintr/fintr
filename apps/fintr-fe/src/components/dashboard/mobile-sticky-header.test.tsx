@@ -11,6 +11,20 @@ vi.mock("./detail-push-transition", () => ({
 }));
 
 const mockUsePlatformDetection = vi.fn();
+const proAccess = vi.hoisted(() => ({
+  source: "none" as "trial" | "none",
+}));
+
+vi.mock("@/hooks/async/useProAccess", () => ({
+  useProAccess: () => ({
+    data: {
+      pro: proAccess.source === "trial",
+      source: proAccess.source,
+      trialDaysRemaining: proAccess.source === "trial" ? 3 : 0,
+    },
+    isPending: false,
+  }),
+}));
 
 vi.mock("@/hooks/usePlatformDetection", () => ({
   usePlatformDetection: () => mockUsePlatformDetection(),
@@ -58,9 +72,43 @@ describe("shouldShowImmediateBackButton", () => {
   });
 });
 
+describe("MobileStickyHeader — trial Pro badge", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    proAccess.source = "trial";
+    mockUsePlatformDetection.mockReturnValue({
+      isAndroidNative: false,
+      isIOSNative: false,
+      isNative: false,
+      safeAreaInsetTop: 0,
+      safeAreaInsetBottom: 0,
+    });
+  });
+
+  it("leaves the Dashboard title free during a trial", async () => {
+    mockUsePathname.mockReturnValue("/dashboard/insights");
+
+    const MobileStickyHeader = (await import("./mobile-sticky-header")).default;
+    render(<MobileStickyHeader />);
+
+    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.queryByText("Pro")).not.toBeInTheDocument();
+  });
+
+  it("does not badge other pages", async () => {
+    mockUsePathname.mockReturnValue("/dashboard/");
+
+    const MobileStickyHeader = (await import("./mobile-sticky-header")).default;
+    render(<MobileStickyHeader />);
+
+    expect(screen.queryByText("Pro")).not.toBeInTheDocument();
+  });
+});
+
 describe("MobileStickyHeader — back button on category pages", () => {
   beforeEach(() => {
     vi.resetModules();
+    proAccess.source = "none";
     mockUsePlatformDetection.mockReturnValue({
       isAndroidNative: false,
       isIOSNative: false,

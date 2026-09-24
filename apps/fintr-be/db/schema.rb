@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_22_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -329,11 +329,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_22_190000) do
     t.index ["xendit_cycle_id"], name: "index_finance_payments_on_xendit_cycle_id", unique: true
   end
 
+  create_table "finance_pro_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "acknowledged_at"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.uuid "granted_by_id", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["granted_by_id"], name: "index_finance_pro_grants_on_granted_by_id"
+    t.index ["user_id"], name: "index_finance_pro_grants_on_user_id", unique: true
+  end
+
   create_table "finance_revenuecat_customers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "app_user_id", null: false
+    t.string "auto_renewal_status"
     t.datetime "created_at", null: false
+    t.datetime "current_period_ends_at"
+    t.boolean "gives_access", default: false, null: false
+    t.string "management_url"
     t.boolean "pro_active", default: false, null: false
     t.datetime "pro_expires_at"
+    t.string "product_identifier"
+    t.string "revenuecat_subscription_id"
+    t.datetime "starts_at"
+    t.string "store"
+    t.string "subscription_status"
     t.datetime "synced_at"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
@@ -919,6 +939,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_22_190000) do
   add_foreign_key "finance_billing_cycles", "finance_space_subscriptions", column: "space_subscription_id"
   add_foreign_key "finance_payments", "finance_billing_cycles", column: "biling_cycle_id"
   add_foreign_key "finance_payments", "finance_space_subscriptions", column: "space_subscription_id"
+  add_foreign_key "finance_pro_grants", "users"
+  add_foreign_key "finance_pro_grants", "users", column: "granted_by_id"
   add_foreign_key "finance_revenuecat_customers", "users"
   add_foreign_key "finance_space_subscriptions", "finance_sponsor_codes", column: "sponsor_code_id"
   add_foreign_key "finance_space_subscriptions", "finance_subscription_plans", column: "subscription_plan_id"

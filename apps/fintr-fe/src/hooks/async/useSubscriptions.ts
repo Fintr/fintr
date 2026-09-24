@@ -50,7 +50,7 @@ export const useCurrentSubscription = () => {
   const { data, isLoading, isError, error, refetch } = useQuery<SpaceSubscription[]>({
     queryKey: ["currentSubscription"],
     queryFn: () => fetchCurrentSubscription(api),
-    staleTime: 1 * 60 * 1000,
+    staleTime: 0,
     gcTime: 5 * 60 * 1000,
   });
 

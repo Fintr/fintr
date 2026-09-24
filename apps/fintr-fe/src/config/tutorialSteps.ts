@@ -16,6 +16,7 @@ export const desktopTutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial-target="expense-tab"]',
     position: 'bottom',
     waitForElement: true,
+    action: 'highlight-only',
   },
   {
     id: 'income-tab',
@@ -24,6 +25,7 @@ export const desktopTutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial-target="income-tab"]',
     position: 'bottom',
     waitForElement: true,
+    action: 'highlight-only',
   },
   {
     id: 'income-form',
@@ -56,6 +58,7 @@ export const desktopTutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial-target="transfer-tab"]',
     position: 'bottom',
     waitForElement: true,
+    action: 'highlight-only',
   },
   {
     id: 'loan-tab',
@@ -64,6 +67,7 @@ export const desktopTutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial-target="loan-tab"]',
     position: 'bottom',
     waitForElement: true,
+    action: 'highlight-only',
   },
   {
     id: 'transaction-close',
@@ -117,7 +121,7 @@ export const desktopTutorialSteps: TutorialStep[] = [
   {
     id: 'close-add-receipt-modal',
     title: 'Close Add Receipt Modal',
-    description: 'Click the "X" button to close the Add Receipt modal and return to the dashboard.',
+    description: 'Click "Cancel" to close the Add Receipt modal and return to the dashboard.',
     targetSelector: '[data-tutorial-target="close-add-receipt-modal"]',
     position: 'top',
     waitForElement: true,
@@ -185,6 +189,7 @@ export const mobileTutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial-target="expense-tab"]',
     position: 'bottom',
     waitForElement: true,
+    action: 'highlight-only',
   },
   {
     id: 'income-tab',
@@ -193,6 +198,7 @@ export const mobileTutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial-target="income-tab"]',
     position: 'bottom',
     waitForElement: true,
+    action: 'highlight-only',
   },
   {
     id: 'income-form',
@@ -225,6 +231,7 @@ export const mobileTutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial-target="transfer-tab"]',
     position: 'bottom',
     waitForElement: true,
+    action: 'highlight-only',
   },
   {
     id: 'loan-tab',
@@ -233,6 +240,7 @@ export const mobileTutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial-target="loan-tab"]',
     position: 'bottom',
     waitForElement: true,
+    action: 'highlight-only',
   },
   {
     id: 'close-modal-button',
@@ -304,7 +312,7 @@ export const mobileTutorialSteps: TutorialStep[] = [
   {
     id: 'close-add-receipt-modal',
     title: 'Close Add Receipt Modal',
-    description: 'Tap the "X" button to close the Add Receipt modal and return to the dashboard.',
+    description: 'Tap "Cancel" to close the Add Receipt modal and return to the dashboard.',
     targetSelector: '[data-tutorial-target="close-add-receipt-modal"]',
     position: 'top',
     waitForElement: true,
@@ -347,6 +355,19 @@ export const mobileTutorialSteps: TutorialStep[] = [
 ];
 
 const PHP_ONLY_STEP_IDS = ['deduct-taxes', 'deduct-contributions'];
+
+/** Tailwind `md`. At this width the bottom Menu tab is hidden. */
+export const DESKTOP_TOUR_MIN_WIDTH_PX = 768;
+
+/**
+ * Tour steps follow the layout. A wide window has no Menu button, so the
+ * desktop steps are the ones that can finish.
+ */
+export const resolveTutorialPlatform = (
+  viewportWidth: number,
+): 'desktop' | 'mobile' => {
+  return viewportWidth >= DESKTOP_TOUR_MIN_WIDTH_PX ? 'desktop' : 'mobile';
+};
 
 export const getTutorialConfig = (platform: 'desktop' | 'mobile', currency?: string): TutorialConfig => {
   const allSteps = platform === 'desktop' ? desktopTutorialSteps : mobileTutorialSteps;

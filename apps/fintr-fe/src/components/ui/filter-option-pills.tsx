@@ -1,6 +1,19 @@
 "use client";
 
+import {
+  useRef,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import { cn } from "@/lib/utils";
+
+const TOUCH_TAP_MOVE_THRESHOLD_PX = 10;
+
+type TouchPoint = {
+  value: string;
+  x: number;
+  y: number;
+};
 
 export type FilterOptionPill = {
   value: string;
@@ -26,6 +39,74 @@ export const FilterOptionPills = ({
   id,
   scrollable = false,
 }: FilterOptionPillsProps) => {
+  const touchPointRef = useRef<TouchPoint | null>(null);
+  const ignoreClickRef = useRef(false);
+
+  const handlePointerDown = (
+    optionValue: string,
+    event: PointerEvent<HTMLButtonElement>,
+  ) => {
+    ignoreClickRef.current = false;
+
+    if (event.pointerType === "mouse") {
+      if (scrollable) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    touchPointRef.current = {
+      value: optionValue,
+      x: event.clientX,
+      y: event.clientY,
+    };
+  };
+
+  const handlePointerUp = (
+    optionValue: string,
+    event: PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (event.pointerType === "mouse") {
+      return;
+    }
+
+    const start = touchPointRef.current;
+    touchPointRef.current = null;
+    if (!start || start.value !== optionValue) {
+      return;
+    }
+
+    const movedX = Math.abs(event.clientX - start.x);
+    const movedY = Math.abs(event.clientY - start.y);
+    if (
+      movedX > TOUCH_TAP_MOVE_THRESHOLD_PX
+      || movedY > TOUCH_TAP_MOVE_THRESHOLD_PX
+    ) {
+      return;
+    }
+
+    ignoreClickRef.current = true;
+    onChange(optionValue);
+  };
+
+  const handleClick = (
+    optionValue: string,
+    event: MouseEvent<HTMLButtonElement>,
+  ) => {
+    if (event.detail === 0) {
+      ignoreClickRef.current = false;
+      onChange(optionValue);
+      return;
+    }
+
+    if (ignoreClickRef.current) {
+      ignoreClickRef.current = false;
+      return;
+    }
+
+    onChange(optionValue);
+  };
+
   return (
     <div
       id={id}
@@ -33,7 +114,9 @@ export const FilterOptionPills = ({
       aria-label={ariaLabel}
       className={cn(
         "flex gap-2",
-        scrollable ? "flex-nowrap overflow-x-auto pb-1" : "flex-wrap",
+        scrollable
+          ? "flex-nowrap overflow-x-auto pb-1 touch-manipulation"
+          : "flex-wrap",
         className,
       )}
     >
@@ -46,16 +129,14 @@ export const FilterOptionPills = ({
             type="button"
             role="radio"
             aria-checked={isSelected}
-            onClick={() => onChange(option.value)}
-            onMouseDown={
-              scrollable
-                ? (event) => {
-                    event.preventDefault();
-                  }
-                : undefined
-            }
+            onPointerDown={(event) => handlePointerDown(option.value, event)}
+            onPointerUp={(event) => handlePointerUp(option.value, event)}
+            onPointerCancel={() => {
+              touchPointRef.current = null;
+            }}
+            onClick={(event) => handleClick(option.value, event)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+              "cursor-pointer touch-manipulation rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
               scrollable && "shrink-0 whitespace-nowrap",
               isSelected
