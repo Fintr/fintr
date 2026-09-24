@@ -10,20 +10,17 @@
 
 # Dependencies (if any at root)
 node_modules/
-browser-outputs/
+/browser-outputs/
+/browser-outputs/**
 test-results/
 playwright-mcp/
 .playwright-mcp/
 
 personal/**/*
 
-*.png
-
-# Bundled frontend illustrations served from public/
-!apps/fintr-fe/public/tags/*.png
-!apps/fintr-fe/public/profiles/*.png
-!apps/fintr-fe/public/badges/*.png
-!apps/fintr-fe/public/pro-grant-thank-you.png
+# Loose screenshots dropped next to the repo or the frontend app, not nested assets.
+/*.png
+apps/fintr-fe/*.png
 
 # Local git worktrees (see .worktrees/)
 .worktrees/
