@@ -42,7 +42,7 @@ vi.mock("@/components/ui/dialog", () => ({
 
 describe("ImageLightbox", () => {
   const s3Image = {
-    url: "https://s3.ap-southeast-1.amazonaws.com/fintr-production/test-image.jpg",
+    url: "https://storage.googleapis.com/fintr-production/test-image.jpg",
     filename: "receipt.jpg",
     contentType: "image/jpeg",
     byteSize: 1024,

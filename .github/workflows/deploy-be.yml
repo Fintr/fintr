@@ -112,8 +112,8 @@ jobs:
           LLM_AGENT_MODEL: ${{ vars.LLM_AGENT_MODEL }}
           LLM_AGENT_PROVIDER: ${{ vars.LLM_AGENT_PROVIDER }}
           AI_VISION_MODEL: ${{ vars.AI_VISION_MODEL }}
-          AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ vars.AWS_SECRET_ACCESS_KEY }}
+          GCS_PROJECT: ${{ vars.GCS_PROJECT }}
+          GCS_CREDENTIALS: ${{ secrets.GCS_CREDENTIALS }}
           M2M_AUTH0_CLIENT_ID: ${{ vars.M2M_AUTH0_CLIENT_ID }}
           M2M_AUTH0_CLIENT_SECRET: ${{ vars.M2M_AUTH0_CLIENT_SECRET }}
           M2M_AUTH0_DOMAIN: ${{ vars.M2M_AUTH0_DOMAIN }}
@@ -162,8 +162,8 @@ jobs:
           write_env LLM_AGENT_MODEL "$LLM_AGENT_MODEL"
           write_env LLM_AGENT_PROVIDER "$LLM_AGENT_PROVIDER"
           write_env AI_VISION_MODEL "$AI_VISION_MODEL"
-          write_env AWS_ACCESS_KEY_ID "$AWS_ACCESS_KEY_ID"
-          write_env AWS_SECRET_ACCESS_KEY "$AWS_SECRET_ACCESS_KEY"
+          write_env GCS_PROJECT "$GCS_PROJECT"
+          write_env GCS_CREDENTIALS "$GCS_CREDENTIALS"
           write_env M2M_AUTH0_CLIENT_ID "$M2M_AUTH0_CLIENT_ID"
           write_env M2M_AUTH0_CLIENT_SECRET "$M2M_AUTH0_CLIENT_SECRET"
           write_env M2M_AUTH0_DOMAIN "$M2M_AUTH0_DOMAIN"

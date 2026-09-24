@@ -9,13 +9,20 @@ module Utils
         return attach_existing_file(active_storage_relation, file_id) if file_id.present?
 
         params = {
-          io: file,
+          io: io_for_upload(file),
           filename: file.original_filename,
           content_type: file.content_type,
           key: "spaces/#{space_id}/#{SecureRandom.uuid}-#{file.original_filename}",
           identify: false
         }
         active_storage_relation.attach(params)
+      end
+
+      # Cloud Storage accepts an IO, StringIO, or Tempfile, not an uploaded-file wrapper.
+      def io_for_upload(file)
+        io = file.respond_to?(:tempfile) ? file.tempfile : file
+        io.rewind if io.respond_to?(:rewind)
+        io
       end
 
       def attach_existing_file(active_storage_relation, file_id)
