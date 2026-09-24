@@ -23,6 +23,7 @@ personal/**/*
 !apps/fintr-fe/public/tags/*.png
 !apps/fintr-fe/public/profiles/*.png
 !apps/fintr-fe/public/badges/*.png
+!apps/fintr-fe/public/pro-grant-thank-you.png
 
 # Local git worktrees (see .worktrees/)
 .worktrees/
