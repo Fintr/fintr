@@ -278,6 +278,10 @@ export const upsertIndexTransactionsIntoQueryCaches = (
     spaceId,
     transactions,
   });
+  patchHomeRecentTransactionCaches(queryClient, {
+    spaceId,
+    transactions,
+  });
   patchRecurringSeriesQueryCaches(queryClient, {
     spaceId,
     transactions,
@@ -338,6 +342,101 @@ export const patchRecurringSeriesQueryCaches = (
     }
 
     queryClient.setQueryData(queryKey, Array.from(byId.values()));
+  }
+};
+
+const isHomeRecentTransactionsQuery = (
+  key: readonly unknown[],
+  spaceId: string,
+): boolean =>
+  key[0] === "home"
+  && key[1] === "recent-transactions"
+  && key[2] === "local"
+  && key[3] === spaceId;
+
+const homeRecentQueryEntries = (
+  queryClient: QueryClient,
+  spaceId: string,
+) =>
+  queryClient.getQueriesData<IndexTransaction[]>({
+    predicate: (query) =>
+      isHomeRecentTransactionsQuery(query.queryKey, spaceId),
+  });
+
+/**
+ * Home recent transactions is a mounted IndexedDB snapshot with infinite
+ * stale time. Local-first creates must insert into it or the row stays hidden
+ * until a full reload.
+ */
+const patchHomeRecentTransactionCaches = (
+  queryClient: QueryClient,
+  params: {
+    spaceId: string;
+    transactions: IndexTransaction[];
+  },
+): void => {
+  const { spaceId, transactions } = params;
+  if (!spaceId || transactions.length === 0) {
+    return;
+  }
+
+  for (const [queryKey, old] of homeRecentQueryEntries(queryClient, spaceId)) {
+    if (!Array.isArray(old)) {
+      continue;
+    }
+
+    let rows = old;
+    for (const row of transactions) {
+      rows = upsertSortedTransactions(rows, row).rows;
+    }
+
+    queryClient.setQueryData(queryKey, rows);
+  }
+};
+
+const replaceIdInHomeRecentTransactionCaches = (
+  queryClient: QueryClient,
+  params: {
+    spaceId: string;
+    previousId: string;
+    nextId: string;
+  },
+): void => {
+  const { spaceId, previousId, nextId } = params;
+
+  for (const [queryKey, old] of homeRecentQueryEntries(queryClient, spaceId)) {
+    queryClient.setQueryData(
+      queryKey,
+      renameIdInCachedValue(old, previousId, nextId),
+    );
+  }
+};
+
+export const removeFromHomeRecentTransactionCaches = (
+  queryClient: QueryClient,
+  params: {
+    spaceId: string;
+    removedIds: string[];
+  },
+): void => {
+  const { spaceId, removedIds } = params;
+  if (!spaceId || removedIds.length === 0) {
+    return;
+  }
+
+  const idSet = new Set(removedIds);
+
+  for (const [queryKey, old] of homeRecentQueryEntries(queryClient, spaceId)) {
+    if (!Array.isArray(old)) {
+      continue;
+    }
+
+    const next = old.filter((row) => !idSet.has(row.id));
+    if (next.length === old.length) {
+      continue;
+    }
+
+    queryClient.setQueryData(queryKey, next);
   }
 };
 
@@ -490,4 +589,10 @@ export const replaceIndexTransactionIdInQueryCaches = (
       renameIdInCachedValue(old, previousId, nextId),
     );
   }
+
+  replaceIdInHomeRecentTransactionCaches(queryClient, {
+    spaceId,
+    previousId,
+    nextId,
+  });
 };

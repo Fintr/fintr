@@ -22,6 +22,10 @@ vi.mock("@/hooks/useAuthApi", () => ({
   }),
 }));
 
+vi.mock("@/lib/space-sync-feature-flag", () => ({
+  isSpaceSyncPullEnabled: () => true,
+}));
+
 vi.mock("@/services/achievements/api", () => ({
   achievementsApi: {
     getProfile: (...args: unknown[]) => getProfile(...args),
@@ -100,5 +104,52 @@ describe("useGamificationProfile", () => {
     });
 
     expect(getProfile).not.toHaveBeenCalled();
+  });
+
+  it("refetches while online so existing users receive unearned badges", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      writable: true,
+      value: true,
+    });
+    await cacheGamificationProfile(sampleProfile());
+    getProfile.mockResolvedValue({
+      data: {
+        data: {
+          ...sampleProfile(),
+          achievements: [
+            {
+              key: "penny_pioneer",
+              title: "Penny Pioneer",
+              description: "Logged your first income or expense.",
+              xpReward: 40,
+              rarity: "common",
+              kind: "collectible",
+              category: "transactions",
+              position: 1,
+              imageKey: "penny_pioneer",
+              unlockEvent: "transaction_created",
+              earned: false,
+              earnedAt: null,
+              spaceId: null,
+            },
+          ],
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useGamificationProfile(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(getProfile).toHaveBeenCalled();
+      expect(result.current.data?.achievements).toEqual([
+        expect.objectContaining({
+          key: "penny_pioneer",
+          earned: false,
+        }),
+      ]);
+    });
   });
 });

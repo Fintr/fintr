@@ -394,4 +394,22 @@ describe("removeIndexTransactionsFromQueryCaches", () => {
     const next = queryClient.getQueryData<Array<{ id: string }>>(recurringKey);
     expect(next?.map((row) => row.id)).toEqual(["keep-1"]);
   });
+
+  it("removes a row from the home recent-transactions cache", () => {
+    const queryClient = new QueryClient();
+    const homeKey = ["home", "recent-transactions", "local", "space-a"] as const;
+
+    queryClient.setQueryData(homeKey, [
+      { ...baseExpense, id: "keep-1", date: "2026-09-20" },
+      { ...baseExpense, id: "receipt-1", date: "2026-09-25" },
+    ]);
+
+    removeIndexTransactionsFromQueryCaches(queryClient, {
+      spaceId: "space-a",
+      removedIds: ["receipt-1"],
+    });
+
+    const next = queryClient.getQueryData<Array<{ id: string }>>(homeKey);
+    expect(next?.map((row) => row.id)).toEqual(["keep-1"]);
+  });
 });

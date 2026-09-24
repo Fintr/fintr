@@ -3,7 +3,8 @@
 module Achievements
   module Operations
     # Grants achievements existing users already qualify for (historical activity).
-    # Idempotent: skips when +backfilled_at+ is set; safe to call from ShowProfile.
+    # Re-checks on every call so a previous +backfilled_at+ does not skip new
+    # catalog entries or space history that was missed the first time.
     class BackfillUser < Dry::Operation
       class Contract < Dry::Validation::Contract
         params do
@@ -14,6 +15,7 @@ module Achievements
 
       def call(params)
         params = step validate(params:)
+        step sync_catalog
         step backfill(params:)
       end
 
@@ -26,17 +28,18 @@ module Achievements
         Success(result.to_h)
       end
 
+      def sync_catalog
+        Achievements::Catalog.sync!
+        Success(true)
+      end
+
       def backfill(params:)
         user_id = params[:user_id]
         stats = Achievements::UserGamificationStat.find_or_initialize_by(user_id:)
         stats.xp ||= 0
         stats.level ||= 1
 
-        space_ids = Spaces::SpaceUser
-                      .where(user_id:)
-                      .where.not(user_id: nil)
-                      .distinct
-                      .pluck(:space_id)
+        space_ids = space_ids_for(user_id:)
 
         unlocked = []
 
@@ -64,6 +67,12 @@ module Achievements
         stats.save!
 
         Success(unlocked)
+      end
+
+      def space_ids_for(user_id:)
+        member_ids = Spaces::SpaceUser.where(user_id:).distinct.pluck(:space_id)
+        owned_ids = Spaces::Space.where(owner_id: user_id).pluck(:id)
+        (member_ids + owned_ids).uniq
       end
 
       def already_unlocked?(user_id:, achievement:)

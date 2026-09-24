@@ -11,6 +11,17 @@ RSpec.describe Achievements::Operations::ShowProfile, type: :operation do
   end
 
   describe "#call" do
+    it "includes badges the user has not earned yet" do
+      result = described_class.new.call(
+        user_id: user.id,
+        space_id: space.id,
+      )
+
+      expect(result).to be_success
+      unearned = result.value![:achievements].reject { |row| row[:earned] }
+      expect(unearned.map { |row| row[:achievement].key }).to include("penny_pioneer")
+    end
+
     it "returns the Rookie Tracker title at level 1" do
       result = described_class.new.call(
         user_id: user.id,
