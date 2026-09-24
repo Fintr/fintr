@@ -6,6 +6,7 @@ import { resetLocalDbForTests } from "@/lib/local-db";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 
 import {
+  mergeCacheRowsMissingFromPage,
   mergePendingLocalIndexRowsIntoPage,
   upsertLocalIndexTransaction,
 } from "./local-cache";
@@ -60,5 +61,55 @@ describe("mergePendingLocalIndexRowsIntoPage", () => {
       "local:cid:fee",
       "server-xfer",
     ]);
+  });
+});
+
+describe("mergeCacheRowsMissingFromPage", () => {
+  it("keeps a receipt expense that a slower list read did not include", () => {
+    const merged = mergeCacheRowsMissingFromPage(
+      {
+        transactions: [
+          {
+            id: "older",
+            date: "2026-09-20",
+            description: "Older",
+            amount: 20,
+            amountCurrency: "PHP",
+            categoryName: "Food",
+            fromAccountName: "Cash",
+            toAccountName: "",
+            type: CombinedTransactionTypeEnum.EXPENSE,
+            inSeries: false,
+            hasImage: false,
+          },
+        ],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 1,
+        totals: null,
+      },
+      [
+        {
+          id: "local:receipt",
+          date: "2026-09-25",
+          description: "Grocery",
+          amount: 87,
+          amountCurrency: "PHP",
+          categoryName: "Food",
+          fromAccountName: "Cash",
+          toAccountName: "",
+          type: CombinedTransactionTypeEnum.EXPENSE,
+          inSeries: false,
+          hasImage: true,
+        },
+      ],
+      "[]|2026-09-01|2026-09-30||||||[]|[]|all",
+    );
+
+    expect(merged.transactions.map((row) => row.id)).toEqual([
+      "local:receipt",
+      "older",
+    ]);
+    expect(merged.totalCount).toBe(2);
   });
 });

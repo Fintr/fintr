@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -21,5 +22,21 @@ describe("Landing navbar authenticated CTA", () => {
     expect(dashboardLink).toHaveAttribute("href", DEFAULT_AUTHENTICATED_PATH);
     expect(dashboardLink).toHaveAttribute("href", "/dashboard/home");
     expect(dashboardLink).not.toHaveAttribute("href", "/dashboard");
+  });
+
+  it("loads the dashboard with a document navigation", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", {
+      ...window.location,
+      assign,
+    });
+
+    const Navbar = (await import("./nav-bar")).default;
+    render(<Navbar />);
+
+    await userEvent.click(screen.getByRole("link", { name: "Dashboard" }));
+
+    expect(assign).toHaveBeenCalledWith(DEFAULT_AUTHENTICATED_PATH);
+    vi.unstubAllGlobals();
   });
 });

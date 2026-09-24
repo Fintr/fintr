@@ -579,4 +579,56 @@ describe("upsertIndexTransactionsIntoQueryCaches", () => {
     expect(next?.[0]?.amount).toBe(12_500);
     expect(next?.[0]?.installmentTotal).toBe(300_000);
   });
+
+  it("inserts a new expense into the home recent-transactions cache", () => {
+    const queryClient = new QueryClient();
+    const spaceId = "space-a";
+    const homeKey = ["home", "recent-transactions", "local", spaceId] as const;
+
+    queryClient.setQueryData(homeKey, [
+      {
+        ...baseRow,
+        id: "older",
+        date: "2026-09-20",
+      },
+    ]);
+
+    upsertIndexTransactionsIntoQueryCaches(queryClient, {
+      spaceId,
+      transactions: [
+        {
+          ...baseRow,
+          id: "receipt-1",
+          date: "2026-09-25",
+          description: "Grocery",
+        },
+      ],
+    });
+
+    const next = queryClient.getQueryData<Array<{ id: string }>>(homeKey);
+    expect(next?.map((row) => row.id)).toEqual(["receipt-1", "older"]);
+  });
+
+  it("renames a local id in the home recent-transactions cache", () => {
+    const queryClient = new QueryClient();
+    const spaceId = "space-a";
+    const homeKey = ["home", "recent-transactions", "local", spaceId] as const;
+
+    queryClient.setQueryData(homeKey, [
+      {
+        ...baseRow,
+        id: "local:cid",
+        date: "2026-09-25",
+      },
+    ]);
+
+    replaceIndexTransactionIdInQueryCaches(queryClient, {
+      spaceId,
+      previousId: "local:cid",
+      nextId: "server-1",
+    });
+
+    const next = queryClient.getQueryData<Array<{ id: string }>>(homeKey);
+    expect(next?.map((row) => row.id)).toEqual(["server-1"]);
+  });
 });

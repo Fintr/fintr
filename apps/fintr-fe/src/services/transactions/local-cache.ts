@@ -1083,6 +1083,52 @@ export const insertTransactionNewestFirst = (
 };
 
 /**
+ * Keep rows already painted in the list when a slower IndexedDB read returns
+ * without them. Receipt saves patch the cache first; an in-flight page read
+ * must not replace that page and hide the new expense.
+ */
+export const mergeCacheRowsMissingFromPage = (
+  page: TransactionsPage,
+  cachedRows: IndexTransaction[],
+  filterKey?: string,
+): TransactionsPage => {
+  if (!page || cachedRows.length === 0) {
+    return page;
+  }
+
+  const listFilter = filterKey
+    ? parseTransactionListFilterFromFilterKey(filterKey)
+    : null;
+  const presentIds = new Set(page.transactions.map((row) => row.id));
+  let nextRows = page.transactions;
+  let added = 0;
+
+  for (const row of cachedRows) {
+    if (!row?.id || presentIds.has(row.id)) {
+      continue;
+    }
+
+    if (listFilter && !transactionMatchesListFilter(row, listFilter)) {
+      continue;
+    }
+
+    nextRows = insertTransactionNewestFirst(nextRows, row);
+    presentIds.add(row.id);
+    added += 1;
+  }
+
+  if (added === 0) {
+    return page;
+  }
+
+  return {
+    ...page,
+    transactions: nextRows,
+    totalCount: Math.max(page.totalCount ?? 0, 0) + added,
+  };
+};
+
+/**
  * Re-attach never-synced `local:` rows (income/expense/transfer + fees) after a
  * network page fetch so a refetch cannot wipe optimistic creates.
  */

@@ -84,12 +84,16 @@ export default function Navbar() {
               Team
             </Link>
             {isAuthenticated ? (
-              <Link
+              <a
                 href={DEFAULT_AUTHENTICATED_PATH}
+                onClick={(event) => {
+                  event.preventDefault();
+                  window.location.assign(DEFAULT_AUTHENTICATED_PATH);
+                }}
                 className="bg-[#0A2540] text-white px-4 sm:px-5 py-2 rounded-lg font-semibold text-[13px] sm:text-[14px] transition-opacity hover:opacity-90 inline-flex items-center justify-center no-underline"
               >
                 Dashboard
-              </Link>
+              </a>
             ) : (
               <div className="flex items-center gap-2 pr-6 md:pr-0">
                 <AppStoreBadge

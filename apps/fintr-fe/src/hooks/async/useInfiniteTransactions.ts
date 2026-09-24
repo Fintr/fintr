@@ -5,6 +5,7 @@ import {
   loadAllTypeCachedRowsForFilterKey,
   loadCachedTransactionsInfiniteData,
   loadCachedTransactionsPageAt,
+  mergeCacheRowsMissingFromPage,
   mergeFetchedTransactionsIntoAllTimeCache,
   mergePendingLocalIndexRowsIntoPage,
 } from "@/services/transactions/local-cache";
@@ -229,7 +230,21 @@ export const useInfiniteTransactions = ({
         );
 
         if (localPage) {
-          return localPage;
+          if (pageParam !== 1) {
+            return localPage;
+          }
+
+          const cached = queryClient.getQueryData<
+            InfiniteData<TransactionsPage, number>
+          >(queryKey);
+          const cachedRows =
+            cached?.pages.flatMap((page) => page.transactions ?? []) ?? [];
+
+          return mergeCacheRowsMissingFromPage(
+            localPage,
+            cachedRows,
+            activeFilterKey,
+          );
         }
 
         if (pageParam === 1) {

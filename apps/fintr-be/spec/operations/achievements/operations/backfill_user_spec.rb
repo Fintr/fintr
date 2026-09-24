@@ -64,6 +64,42 @@ RSpec.describe Achievements::Operations::BackfillUser, type: :operation do
       end
     end
 
+    context "when the space already has activity logged by someone else" do
+      let(:collaborator) { create(:user) }
+
+      before do
+        create(:expense_transaction, user: collaborator, space:)
+      end
+
+      it "unlocks badges from that space history" do
+        result = described_class.new.call(user_id: user.id)
+
+        expect(result).to be_success
+        keys = result.value!.map { |ua| ua.achievement.key }
+        expect(keys).to include("penny_pioneer")
+      end
+    end
+
+    context "when backfill was already marked complete" do
+      before do
+        create(:expense_transaction, user:, space:)
+        Achievements::UserGamificationStat.create!(
+          user_id: user.id,
+          xp: 0,
+          level: 1,
+          backfilled_at: 1.day.ago,
+        )
+      end
+
+      it "still grants badges the user already qualifies for" do
+        result = described_class.new.call(user_id: user.id)
+
+        expect(result).to be_success
+        keys = result.value!.map { |ua| ua.achievement.key }
+        expect(keys).to include("penny_pioneer")
+      end
+    end
+
     context "when the user has no qualifying history" do
       it "marks backfill complete without unlocks" do
         result = described_class.new.call(user_id: user.id)

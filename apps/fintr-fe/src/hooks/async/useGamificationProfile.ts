@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuthApi } from "@/hooks/useAuthApi";
-import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
+import { useBrowserOnline } from "@/hooks/useOfflineReadMode";
 import { achievementsApi } from "@/services/achievements/api";
 import {
   cacheGamificationProfile,
@@ -17,6 +17,7 @@ import type { GamificationProfile } from "@/types/badgeTypes";
 export const useGamificationProfile = () => {
   const { api } = useAuthApi();
   const queryClient = useQueryClient();
+  const isOnline = useBrowserOnline();
 
   const localQuery = useQuery({
     queryKey: GAMIFICATION_PROFILE_LOCAL_QUERY_KEY,
@@ -24,8 +25,6 @@ export const useGamificationProfile = () => {
     staleTime: Infinity,
     networkMode: "always",
   });
-
-  const skipNetworkFetch = useSkipCachedNetworkFetch(localQuery);
 
   const networkQuery = useQuery({
     queryKey: GAMIFICATION_PROFILE_QUERY_KEY,
@@ -44,20 +43,20 @@ export const useGamificationProfile = () => {
       );
       return profile;
     },
-    enabled: !skipNetworkFetch,
+    enabled: isOnline,
     placeholderData: localQuery.data ?? undefined,
-    retry: skipNetworkFetch ? false : 2,
-    refetchOnMount: skipNetworkFetch ? false : "always",
-    staleTime: skipNetworkFetch ? Infinity : 0,
+    retry: isOnline ? 2 : false,
+    refetchOnMount: isOnline ? "always" : false,
+    staleTime: isOnline ? 0 : Infinity,
   });
 
-  const data: GamificationProfile | undefined | null = skipNetworkFetch
-    ? (localQuery.data ?? networkQuery.data)
-    : (networkQuery.data ?? localQuery.data);
+  const data: GamificationProfile | undefined | null = isOnline
+    ? (networkQuery.data ?? localQuery.data)
+    : (localQuery.data ?? networkQuery.data);
 
   return {
     ...networkQuery,
     data: data ?? undefined,
-    isLoading: skipNetworkFetch ? localQuery.isPending : networkQuery.isPending,
+    isLoading: data ? false : (isOnline ? networkQuery.isPending : localQuery.isPending),
   };
 };

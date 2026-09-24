@@ -5,6 +5,7 @@ import { computeLocalTransactionTotals } from "@/services/transactions/local-cac
 import {
   parseTransactionListFilterFromQueryKey,
   patchRecurringSeriesQueryCaches,
+  removeFromHomeRecentTransactionCaches,
   transactionMatchesListFilter,
   type IndexTransactionWithCategoryIds,
 } from "@/services/transactions/upsert-into-query-caches";
@@ -281,6 +282,10 @@ export const removeIndexTransactionsFromQueryCaches = (
   );
 
   removeFromDashboardTransactionCaches(queryClient, {
+    spaceId,
+    removedIds: Array.from(idSet),
+  });
+  removeFromHomeRecentTransactionCaches(queryClient, {
     spaceId,
     removedIds: Array.from(idSet),
   });
