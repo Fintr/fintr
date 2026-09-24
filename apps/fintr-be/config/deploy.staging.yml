@@ -180,8 +180,10 @@ accessories:
       memory: 1g
       cpus: 0.5
       network: 'private'
-# Rails can take 60–90s+ to boot on constrained hosts; deploy fails only after this many seconds without a passing healthcheck.
-deploy_timeout: 30
+# Rails boots twice in the entrypoint (migrate, UUID check), then Thruster starts
+# before Puma is listening on 3000. Kamal health-checks that port and fails the
+# deploy if it is not healthy within this window.
+deploy_timeout: 120
 boot:
   limit: 1     # Deploy one container at a time
   wait: 5      # Seconds between rolling batches (was 10)
