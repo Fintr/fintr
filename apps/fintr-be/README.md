@@ -76,7 +76,21 @@ To download the dump it's a series of steps.
 5. Run `scp -i <fintr.pem> ec2-user@<ec2-host-address>:/home/ec2-user/staging.dump .`
 
 ## Handling .env files
-Since we're using kamal, handling `.env` files is a little bit more primitive. We have local copies of the `.env.production` and `.env.staging`. Kamal will look at those `.env` files for reference and use those for production. Please coordinate with all other team members if you wish to update `.env.production` and `.env.staging`.
+Local Kamal deploys read `apps/fintr-be/.env.production` and `.env.staging`. GitHub Actions does not upload those files. `.github/workflows/deploy-be.yml` rebuilds `.env.production` on the runner from the **`fintr / production`** GitHub Environment, then Kamal injects that into the container.
+
+A value that exists only in the local `.env.production` is not on the server after a CI deploy. Add it in GitHub (Settings → Environments → `fintr / production`) and redeploy.
+
+### Cloud Storage (`GCS_PROJECT`, `GCS_CREDENTIALS`)
+Active Storage reads these at boot (`config/storage.yml`). If they are missing, production falls back to the VM compute service account, which cannot write receipt images.
+
+| Name | GitHub | Where |
+| --- | --- | --- |
+| `GCS_CREDENTIALS` | Environment **secret** | `fintr / production` |
+| `GCS_PROJECT` | Environment **variable** | `fintr / production` |
+
+`GCS_CREDENTIALS` is the service-account JSON key (raw JSON or base64). `GCS_PROJECT` is the GCP project id. The production bucket is `fintr-production`. That service account needs permission to create and read objects in that bucket (Storage Admin is enough).
+
+Keep the same values in local `.env.production` for laptop deploys. Changing only the local file does not update production.
 
 ## Production deploy (Kamal)
 
@@ -89,7 +103,9 @@ Production API and frontend run on the same host (`api.fintr.ai` / `fintr.ai`). 
 | API | `config/deploy.yml` | `./bin/kamal deploy` (from `apps/fintr-be`) |
 | Frontend | `config/deploy.fe.yml` | `./bin/deploy-fe` |
 
-Secrets: **`.kamal/secrets`** and local **`.env.production`** (API + `apps/fintr-fe/.env.production` for web/Kamal; Capacitor uses `apps/fintr-fe/.env.mobile.production`). CI frontend deploy: `.github/workflows/deploy-fe.yml` on push to `main`.
+Secrets: **`.kamal/secrets`** names what Kamal injects. Values for a CI deploy come from the **`fintr / production`** GitHub Environment, not from the gitignored local `.env.production`. See [Handling .env files](#handling-env-files), including `GCS_CREDENTIALS` and `GCS_PROJECT`.
+
+Local API env: `apps/fintr-be/.env.production`. Frontend: `apps/fintr-fe/.env.production` for web/Kamal; Capacitor uses `apps/fintr-fe/.env.mobile.production`. CI frontend deploy: `.github/workflows/deploy-fe.yml` on push to `main`.
 
 Staging continues to use `config/deploy.staging.yml` (separate host).
 

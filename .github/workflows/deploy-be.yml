@@ -106,7 +106,7 @@ jobs:
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           OPENAI_API_KEY: ${{ vars.OPENAI_API_KEY }}
           OPENROUTER_API_KEY: ${{ vars.OPENROUTER_API_KEY }}
-          GEMINI_API_KEY: ${{ vars.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AI_VISION_PROVIDER: ${{ vars.AI_VISION_PROVIDER }}
           LLM_DEFAULT_MODEL: ${{ vars.LLM_DEFAULT_MODEL }}
           LLM_AGENT_MODEL: ${{ vars.LLM_AGENT_MODEL }}
