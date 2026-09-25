@@ -30,7 +30,13 @@ describe("AppCarouselSection", () => {
       screen.getByRole("heading", { name: "See Fintr in Action" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByAltText("Track expenses easily with Fintr"),
+      screen.getByAltText("Snap a receipt and Fintr reads it"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText("Split a bill and see who owes you"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText("Ask Fintr about your own money"),
     ).toBeInTheDocument();
 
     rerender(<AppCarouselSection />);
