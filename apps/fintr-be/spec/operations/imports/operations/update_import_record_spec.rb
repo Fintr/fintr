@@ -41,7 +41,8 @@ RSpec.describe Imports::Operations::UpdateImportRecord, type: :operation do
       description: "Updated description",
       amount: 150.0,
       type: "income",
-      category: "Salary"
+      category: "Salary",
+      merchant: "Acme Corp"
     }
   end
 
@@ -132,6 +133,7 @@ RSpec.describe Imports::Operations::UpdateImportRecord, type: :operation do
           expect(import_record.edited_data["amount"]).to eq("150.0")
           expect(import_record.edited_data["type"]).to eq("income")
           expect(import_record.edited_data["category"]).to eq("Salary")
+          expect(import_record.edited_data["merchant"]).to eq("Acme Corp")
         end
 
         it "preserves original data fields not being updated" do

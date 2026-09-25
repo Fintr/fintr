@@ -233,6 +233,53 @@ RSpec.describe Imports::Operations::ImportSingleRecord do
         end
       end
 
+      context "when the row includes a merchant" do
+        let(:import_record) do
+          create(
+            :import_record,
+            :failed,
+            import: import,
+            row_number: 1,
+            original_data: {
+              "date" => "2024-01-15",
+              "amount" => 100.0,
+              "type" => "expense",
+              "category" => "Groceries",
+              "description" => "Test expense",
+              "merchant" => "SM"
+            }
+          )
+        end
+
+        it "passes the merchant as the transaction entity name" do
+          expect(Transactions::Operations::CreateTransaction).to receive(:new).and_wrap_original do |method, *args|
+            op = method.call(*args)
+            allow(op).to receive(:call) do |params|
+              expect(params[:entity_name]).to eq("SM")
+              Success(
+                create(
+                  :expense_transaction,
+                  space: space,
+                  user: user,
+                  account: account,
+                  category: category
+                )
+              )
+            end
+            op
+          end
+
+          call_operation
+        end
+
+        it "tracks the new merchant for revert" do
+          expect { call_operation }.to change(Entities::Entity, :count).by(1)
+            .and change {
+              import.import_records.where(record_type: "Entities::Entity").count
+            }.by(1)
+        end
+      end
+
       context "when using edited_data" do
         subject(:call_operation) { operation.call({ import_record: import_record_with_edited_data }) }
 

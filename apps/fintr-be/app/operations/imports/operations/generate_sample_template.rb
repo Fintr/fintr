@@ -69,9 +69,10 @@ module Imports
         Failure(error: "Failed to generate template: #{e.message}")
       end
 
+      HEADERS = ["date", "description", "amount", "type", "category", "merchant"].freeze
+
       def add_headers(worksheet:)
-        headers = ["date", "description", "amount", "type", "category"]
-        worksheet.append_row(headers)
+        worksheet.append_row(HEADERS)
         Success(true)
       end
 
@@ -95,35 +96,40 @@ module Imports
             "Salary Payment",
             "50000.00",
             "income",
-            income_categories.first
+            income_categories.first,
+            "Acme Corp"
           ],
           [
             (Date.today - 1.day).strftime("%Y-%m-%d"),
             "SM groceries",
             "2500.75",
             "expense",
-            expense_categories.first
+            expense_categories.first,
+            "SM"
           ],
           [
             (Date.today - 2.days).strftime("%Y-%m-%d"),
             "Netflix Subscription",
             "549.99",
             "expense",
-            expense_categories.last || "Subscriptions"
+            expense_categories.last || "Subscriptions",
+            "Netflix"
           ],
           [
             (Date.today - 3.days).strftime("%Y-%m-%d"),
             "Coffee Shop",
             "125.50",
             "expense",
-            expense_categories.first
+            expense_categories.first,
+            "Coffee Shop"
           ],
           [
             (Date.today - 4.days).strftime("%Y-%m-%d"),
             "Freelance Project",
             "15000.25",
             "income",
-            income_categories.last || "Freelance"
+            income_categories.last || "Freelance",
+            "Northwind"
           ]
         ]
 

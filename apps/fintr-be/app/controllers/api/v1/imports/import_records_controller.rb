@@ -78,7 +78,14 @@ module Api
         end
 
         def update_params
-          params.permit(:date, :description, :amount, :type, :category)
+          params.permit(
+            :date,
+            :description,
+            :amount,
+            :type,
+            :category,
+            :merchant
+          )
         end
       end
     end
