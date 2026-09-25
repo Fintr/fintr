@@ -157,10 +157,15 @@ describe("fetchAttachmentBlob", () => {
     );
   });
 
-  it("does not retry the public proxy or hit S3 after the API proxy fails", async () => {
-    const fetchMock = vi.fn();
+  it("downloads the public file after the API proxy fails", async () => {
+    const blob = new Blob(["public"], { type: "image/jpeg" });
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      blob: async () => blob,
+    }));
     vi.stubGlobal("fetch", fetchMock);
 
+    const fileUrl = "https://storage.googleapis.com/fintr-dev/a.jpg";
     const api = {
       get: vi.fn(async () => {
         throw Object.assign(new Error("Unauthorized"), {
@@ -169,13 +174,10 @@ describe("fetchAttachmentBlob", () => {
       }),
     };
 
-    const result = await fetchAttachmentBlob(
-      "https://s3.ap-southeast-1.amazonaws.com/fintr-development/a.jpg",
-      api as never,
-    );
+    const result = await fetchAttachmentBlob(fileUrl, api as never);
 
-    expect(result).toBeNull();
+    expect(result).toBe(blob);
     expect(api.get).toHaveBeenCalledOnce();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(fileUrl);
   });
 });

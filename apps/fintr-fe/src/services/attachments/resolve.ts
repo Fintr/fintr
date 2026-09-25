@@ -159,7 +159,6 @@ export const resolveAttachmentsForTransaction = async (params: {
     spaceId,
     transactionId,
     type,
-    preferLocal,
     listRow,
     api,
   } = params;
@@ -214,7 +213,7 @@ export const resolveAttachmentsForTransaction = async (params: {
   };
 
   let remoteFiles = await loadDetailFiles(true);
-  if (remoteFiles.length === 0 && !preferLocal) {
+  if (remoteFiles.length === 0 && api) {
     remoteFiles = await loadDetailFiles(false);
   }
 
@@ -228,7 +227,7 @@ export const resolveAttachmentsForTransaction = async (params: {
     ownerIds.push(listRow.activitableId);
   }
 
-  if (!preferLocal && api) {
+  if (api) {
     const stored = await cacheRemoteFilesForOwners({
       spaceId,
       ownerType,
