@@ -626,7 +626,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6 md:flex-none">
-            <div className="space-y-4 py-4">
+            <div className="flex min-h-0 flex-1 flex-col justify-center space-y-4 py-4 md:flex-none md:justify-start">
               {proAccessNotice}
 
               <div data-tutorial-target="add-receipt-modal">
@@ -665,7 +665,7 @@ const AddReceiptDialog: React.FC<AddReceiptDialogProps> = ({ isOpen, onClose, on
               </div>
             </div>
 
-            <div className="mt-auto border-t pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <div className="shrink-0 border-t pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
               <Button
                 variant="outline"
                 className="w-full"

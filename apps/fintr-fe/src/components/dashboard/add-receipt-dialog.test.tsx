@@ -64,4 +64,20 @@ describe("AddReceiptDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
     expect(screen.getByText("Pro")).toBeInTheDocument();
   });
+
+  it("centers take photo and upload file in the mobile empty state", () => {
+    render(
+      <AddReceiptDialog
+        isOpen
+        onClose={vi.fn()}
+      />,
+    );
+
+    const actions = screen
+      .getByRole("button", { name: "Take Photo" })
+      .closest("[data-tutorial-target='add-receipt-modal']");
+    const actionRegion = actions?.parentElement;
+
+    expect(actionRegion).toHaveClass("flex-1", "justify-center", "md:justify-start");
+  });
 });
