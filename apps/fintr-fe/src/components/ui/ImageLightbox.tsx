@@ -16,6 +16,7 @@ import { AuthStorage } from '@/lib/auth-storage';
 import { downloadBlobAsFile } from '@/lib/download-blob';
 import { downloadPublicFileCopy } from '@/services/attachments/download-remote';
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
+import { normalizeAttachmentStorageUrl } from '@/services/attachments/storage-url';
 
 const ALLOWED_STORAGE_PREFIXES = [
   'https://storage.googleapis.com/fintr-production/',
@@ -426,7 +427,8 @@ export default function ImageLightbox({
 
     const backendUrl = getPublicBackendUrl() ?? process.env.NEXT_PUBLIC_BE_URL;
     const token = AuthStorage.getAccessToken();
-    const isStorageUrl = ALLOWED_STORAGE_PREFIXES.some((prefix) => currentImage.url.startsWith(prefix));
+    const storageUrl = normalizeAttachmentStorageUrl(currentImage.url);
+    const isStorageUrl = ALLOWED_STORAGE_PREFIXES.some((prefix) => storageUrl.startsWith(prefix));
     const canUseProxy = Boolean(backendUrl && token && isStorageUrl);
 
     console.log('[ImageLightbox] canUseProxy:', canUseProxy, { backendUrl: !!backendUrl, token: !!token, isStorageUrl });
@@ -436,10 +438,15 @@ export default function ImageLightbox({
         console.log('[ImageLightbox] Proxy download prerequisites not met:', { backendUrl: !!backendUrl, token: !!token, isStorageUrl });
         return false;
       }
-      const proxyUrl = `${backendUrl}/api/v1/attachments/download?url=${encodeURIComponent(currentImage.url)}`;
+      const proxyUrl = `${backendUrl}/api/v1/attachments/download?url=${encodeURIComponent(storageUrl)}`;
       console.log('[ImageLightbox] Proxy URL:', proxyUrl);
+      const spaceCode =
+        typeof localStorage === "undefined" ? null : localStorage.getItem("spaceCode");
       const response = await fetch(proxyUrl, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(spaceCode ? { "X-Space-Code": spaceCode } : {}),
+        },
       });
       console.log('[ImageLightbox] Proxy response status:', response.status);
       if (!response.ok) {
@@ -469,7 +476,7 @@ export default function ImageLightbox({
 
     try {
       console.log('[ImageLightbox] Attempting direct S3 download...');
-      const response = await fetch(currentImage.url, {
+      const response = await fetch(storageUrl, {
         mode: 'cors',
         credentials: 'omit',
       });
@@ -505,7 +512,7 @@ export default function ImageLightbox({
       await new Promise<void>((resolve, reject) => {
         img.onload = () => resolve();
         img.onerror = reject;
-        img.src = currentImage.url;
+        img.src = storageUrl;
       });
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
@@ -548,6 +555,9 @@ export default function ImageLightbox({
 
   const viewerImages = displayImages.length > 0 ? displayImages : images;
   const currentImage = viewerImages[currentIndex] ?? images[currentIndex];
+  const imageUrl = currentImage
+    ? normalizeAttachmentStorageUrl(currentImage.url)
+    : "";
 
   // Determine thumbnail position based on device and orientation
   const showThumbnailsOnSide = !isMobile || !isPortrait;
@@ -739,7 +749,7 @@ export default function ImageLightbox({
         >
           <img
             ref={imageRef}
-            src={currentImage.url}
+            src={imageUrl}
             alt={currentImage.filename || `Image ${currentIndex + 1}`}
             className="max-w-full max-h-full object-contain select-none"
             style={{
@@ -838,7 +848,7 @@ export default function ImageLightbox({
               variant="outline"
               onClick={() => {
                 setShowDownloadErrorDialog(false);
-                if (currentImage?.url) window.open(currentImage.url, '_blank');
+                if (imageUrl) window.open(imageUrl, '_blank');
               }}
             >
               Open in new tab

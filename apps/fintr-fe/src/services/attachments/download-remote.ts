@@ -8,6 +8,7 @@ import {
   putLocalAttachment,
 } from "./local-store";
 import type { RemoteFileAttachment } from "./remote-files";
+import { normalizeAttachmentStorageUrl } from "./storage-url";
 import type {
   AttachmentOwnerType,
   LocalAttachmentRecord,
@@ -35,14 +36,15 @@ export async function fetchAttachmentBlob(
   url: string,
   api?: AxiosInstance | null,
 ): Promise<Blob | null> {
-  if (!url) {
+  const storageUrl = normalizeAttachmentStorageUrl(url);
+  if (!storageUrl) {
     return null;
   }
 
   if (api) {
     try {
       const response = await api.get<Blob>(ATTACHMENTS_DOWNLOAD_PATH, {
-        params: { url },
+        params: { url: storageUrl },
         responseType: "blob",
         timeout: ATTACHMENT_DOWNLOAD_TIMEOUT_MS,
       });
@@ -54,30 +56,26 @@ export async function fetchAttachmentBlob(
 
   const backendUrl = getPublicBackendUrl() ?? process.env.NEXT_PUBLIC_BE_URL;
   const token = AuthStorage.getAccessToken();
-  if (backendUrl && token) {
-    try {
-      const proxyUrl =
-        `${backendUrl.replace(/\/$/, "")}/api/v1/attachments/download`
-        + `?url=${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const blob = await response.blob();
-        if (blob.size > 0 && !blobLooksLikeJsonError(blob)) {
-          return blob;
-        }
-      }
-    } catch {
-      // Fall through to a direct fetch.
-    }
+  const spaceCode =
+    typeof localStorage === "undefined" ? null : localStorage.getItem("spaceCode");
+  if (!backendUrl || !token || !spaceCode) {
+    return null;
   }
 
   try {
-    const response = await fetch(url);
+    const proxyUrl =
+      `${backendUrl.replace(/\/$/, "")}/api/v1/attachments/download`
+      + `?url=${encodeURIComponent(storageUrl)}`;
+    const response = await fetch(proxyUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Space-Code": spaceCode,
+      },
+    });
     if (!response.ok) {
       return null;
     }
+
     const blob = await response.blob();
     if (blob.size > 0 && !blobLooksLikeJsonError(blob)) {
       return blob;
@@ -163,7 +161,7 @@ export async function cacheRemoteFilesForOwner(params: {
         file: storedBlob,
         filename: file.filename,
         source: "remote_download",
-        remoteUrl: file.url,
+        remoteUrl: normalizeAttachmentStorageUrl(file.url),
         serverFileId: file.id,
       });
     } catch (error) {

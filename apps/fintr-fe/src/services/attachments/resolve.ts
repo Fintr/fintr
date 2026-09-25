@@ -11,10 +11,7 @@ import {
   loadLocalAttachmentFile,
 } from "./local-store";
 import type { LocalAttachmentRecord } from "./types";
-import {
-  extractRemoteFiles,
-  type RemoteFileAttachment,
-} from "./remote-files";
+import { extractRemoteFiles } from "./remote-files";
 import { markExistingLocalAttachment } from "@/utils/fileUtils";
 
 export type ResolvedAttachmentView = {
@@ -103,21 +100,6 @@ const recordsToResolved = async (
   };
 };
 
-const remoteFilesToResolved = (
-  files: RemoteFileAttachment[],
-): ResolvedAttachmentsResult => ({
-  images: files
-    .filter((file) => typeof file.url === "string" && file.url.length > 0)
-    .map((file) => ({
-      url: file.url!,
-      fileUrl: file.url,
-      filename: file.filename,
-      contentType: file.contentType,
-      byteSize: file.byteSize,
-    })),
-  revoke: () => {},
-});
-
 const listLocalAttachmentRows = async (params: {
   spaceId: string;
   type: CombinedTransactionTypeEnum;
@@ -175,7 +157,7 @@ export const resolveAttachmentsForTransaction = async (params: {
   });
 
   if (localRows.length > 0) {
-    return recordsToResolved(localRows);
+    return await recordsToResolved(localRows);
   }
 
   const loadDetailFiles = async (useLocalOnly: boolean) => {
@@ -217,7 +199,7 @@ export const resolveAttachmentsForTransaction = async (params: {
     remoteFiles = await loadDetailFiles(false);
   }
 
-  if (remoteFiles.length === 0) {
+  if (remoteFiles.length === 0 || !api) {
     return emptyResult();
   }
 
@@ -227,21 +209,19 @@ export const resolveAttachmentsForTransaction = async (params: {
     ownerIds.push(listRow.activitableId);
   }
 
-  if (api) {
-    const stored = await cacheRemoteFilesForOwners({
-      spaceId,
-      ownerType,
-      ownerIds,
-      files: remoteFiles,
-      api,
-    });
+  const stored = await cacheRemoteFilesForOwners({
+    spaceId,
+    ownerType,
+    ownerIds,
+    files: remoteFiles,
+    api,
+  });
 
-    if (stored.length > 0) {
-      return recordsToResolved(stored);
-    }
+  if (stored.length === 0) {
+    return emptyResult();
   }
 
-  return remoteFilesToResolved(remoteFiles);
+  return await recordsToResolved(stored);
 };
 
 export const resolveEditAttachmentFile = async (params: {

@@ -24,15 +24,10 @@ describe("cacheRemoteFilesForOwner", () => {
   });
 
   it("downloads a remote file and stores the blob in IndexedDB", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        new Response(new Blob(["receipt-bytes"], { type: "image/jpeg" }), {
-          status: 200,
-          headers: { "Content-Type": "image/jpeg" },
-        }),
-      ),
-    );
+    const blob = new Blob(["receipt-bytes"], { type: "image/jpeg" });
+    const api = {
+      get: vi.fn(async () => ({ data: blob })),
+    };
 
     const rows = await cacheRemoteFilesForOwner({
       spaceId: "space-a",
@@ -41,17 +36,26 @@ describe("cacheRemoteFilesForOwner", () => {
       files: [
         {
           id: "file-1",
-          url: "https://s3.ap-southeast-1.amazonaws.com/fintr-development/receipt.jpg",
+          url: "https://storage.googleapis.com/fintr-dev/spaces/space-a/receipt.jpg",
           filename: "receipt.jpg",
           contentType: "image/jpeg",
         },
       ],
+      api: api as never,
     });
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.filename).toBe("receipt.jpg");
     expect(rows[0]?.source).toBe("remote_download");
     expect(rows[0]?.remoteUrl).toContain("fintr-development");
+    expect(api.get).toHaveBeenCalledWith(
+      "/attachments/download",
+      expect.objectContaining({
+        params: {
+          url: "https://storage.googleapis.com/fintr-development/spaces/space-a/receipt.jpg",
+        },
+      }),
+    );
 
     const stored = await listAttachmentsForOwner({
       spaceId: "space-a",
@@ -92,15 +96,10 @@ describe("cacheRemoteFilesForOwner", () => {
   });
 
   it("copies a downloaded blob onto a second owner id without re-fetching", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        new Response(new Blob(["receipt-bytes"], { type: "image/jpeg" }), {
-          status: 200,
-          headers: { "Content-Type": "image/jpeg" },
-        }),
-      ),
-    );
+    const blob = new Blob(["receipt-bytes"], { type: "image/jpeg" });
+    const api = {
+      get: vi.fn(async () => ({ data: blob })),
+    };
 
     const rows = await cacheRemoteFilesForOwners({
       spaceId: "space-a",
@@ -108,15 +107,16 @@ describe("cacheRemoteFilesForOwner", () => {
       ownerIds: ["xfer-row", "xfer-activitable"],
       files: [
         {
-          url: "https://s3.ap-southeast-1.amazonaws.com/fintr-development/receipt.jpg",
+          url: "https://storage.googleapis.com/fintr-dev/spaces/space-a/receipt.jpg",
           filename: "receipt.jpg",
           contentType: "image/jpeg",
         },
       ],
+      api: api as never,
     });
 
     expect(rows).toHaveLength(1);
-    expect(fetch).toHaveBeenCalledOnce();
+    expect(api.get).toHaveBeenCalledOnce();
 
     const second = await listAttachmentsForOwner({
       spaceId: "space-a",

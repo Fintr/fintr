@@ -26,7 +26,7 @@ local:
 
   gcs_project = ENV["GCS_PROJECT"].to_s.strip
   gcs_project = gcs_credentials["project_id"] if gcs_project.empty? && gcs_credentials
-  gcs_bucket = Rails.env == "development" ? "fintr-dev" : "fintr-#{Rails.env}"
+  gcs_bucket = "fintr-#{Rails.env}"
 %>
 google:
   service: GCS

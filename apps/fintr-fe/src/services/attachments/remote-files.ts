@@ -1,3 +1,5 @@
+import { normalizeAttachmentStorageUrl } from "./storage-url";
+
 export type RemoteFileAttachment = {
   id?: string;
   url?: string;
@@ -35,7 +37,7 @@ export const extractRemoteFiles = (detail: unknown): RemoteFileAttachment[] => {
         return null;
       }
 
-      const url = stringValue(raw.url);
+      const url = normalizeAttachmentStorageUrl(stringValue(raw.url));
       if (!url) {
         return null;
       }

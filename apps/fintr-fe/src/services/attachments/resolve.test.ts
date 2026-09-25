@@ -173,24 +173,18 @@ describe("attachments resolve", () => {
     result.revoke();
   });
 
-  it("downloads the public file when the local copy is missing", async () => {
+  it("downloads through the API when the local copy is missing", async () => {
     const fileUrl =
-      "https://storage.googleapis.com/fintr-dev/receipt.jpg";
-    vi.mocked(resolveTransactionDetail).mockImplementation(async (params) => {
-      if (params.preferLocal) {
-        return { files: [] };
-      }
-
-      return {
-        files: [
-          {
-            id: "file-1",
-            url: fileUrl,
-            filename: "receipt.jpg",
-            contentType: "image/jpeg",
-          },
-        ],
-      };
+      "https://storage.googleapis.com/fintr-dev/spaces/space-a/receipt.jpg";
+    vi.mocked(resolveTransactionDetail).mockResolvedValue({
+      files: [
+        {
+          id: "file-1",
+          url: fileUrl,
+          filename: "receipt.jpg",
+          contentType: "image/jpeg",
+        },
+      ],
     });
     const blob = new Blob(["receipt-bytes"], { type: "image/jpeg" });
     const api = {
@@ -207,7 +201,7 @@ describe("attachments resolve", () => {
 
     expect(result.images).toHaveLength(1);
     expect(result.images[0]?.url).toMatch(/^blob:/);
-    expect(result.images[0]?.fileUrl).toBe(fileUrl);
+    expect(result.images[0]?.url).not.toBe(fileUrl);
     expect(api.get).toHaveBeenCalled();
     const stored = await listAttachmentsForOwner({
       spaceId: "space-a",
