@@ -723,7 +723,7 @@ const InsightsTab = ({ isActive = true }: { isActive?: boolean }) => {
   };
 
   return (
-    <div className="space-y-6 pb-6 md:space-y-8">
+    <div className="space-y-6 pb-[140px] md:space-y-8 md:pb-6">
         <FilterSheet
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
