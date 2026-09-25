@@ -4,10 +4,12 @@ import React from "react";
 import { Store } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { downloadPublicFileCopy } from "@/services/attachments/download-remote";
 
 type MerchantAvatarProps = {
   name?: string | null;
   photoUrl?: string | null;
+  fileUrl?: string | null;
   size?: number;
   className?: string;
 };
@@ -27,16 +29,19 @@ const getInitials = (name?: string | null): string | null => {
 export function MerchantAvatar({
   name,
   photoUrl,
+  fileUrl,
   size = 40,
   className,
 }: MerchantAvatarProps) {
+  const [src, setSrc] = React.useState(photoUrl);
   const [imageFailed, setImageFailed] = React.useState(false);
   const initials = getInitials(name);
-  const showImage = Boolean(photoUrl) && !imageFailed;
+  const showImage = Boolean(src) && !imageFailed;
 
   React.useEffect(() => {
+    setSrc(photoUrl);
     setImageFailed(false);
-  }, [photoUrl]);
+  }, [photoUrl, fileUrl]);
 
   return (
     <div
@@ -49,10 +54,23 @@ export function MerchantAvatar({
     >
       {showImage ? (
         <img
-          src={photoUrl ?? undefined}
+          src={src ?? undefined}
           alt=""
           className="h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
+          onError={() => {
+            if (!fileUrl || src === fileUrl) {
+              setImageFailed(true);
+              return;
+            }
+
+            void downloadPublicFileCopy(fileUrl).then((downloaded) => {
+              if (downloaded) {
+                setSrc(downloaded);
+                return;
+              }
+              setImageFailed(true);
+            });
+          }}
         />
       ) : initials ? (
         <span

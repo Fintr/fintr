@@ -49,12 +49,17 @@ export const LoanProfilesSection = ({ loans }: LoanProfilesSectionProps) => {
   );
 
   const photoByName = React.useMemo(() => {
-    const map = new Map<string, { id: string; photoUrl?: string | null }>();
+    const map = new Map<string, {
+      id: string;
+      photoUrl?: string | null;
+      fileUrl?: string | null;
+    }>();
 
     for (const entity of entities) {
       map.set(entity.fullName.trim().toLowerCase(), {
         id: entity.id,
         photoUrl: entity.photoUrl,
+        fileUrl: entity.photoFileUrl,
       });
     }
 
@@ -117,6 +122,7 @@ export const LoanProfilesSection = ({ loans }: LoanProfilesSectionProps) => {
               <MerchantAvatar
                 name={profile.entityName}
                 photoUrl={matched?.photoUrl}
+                fileUrl={matched?.fileUrl}
                 size={44}
               />
               <div className="min-w-0 w-full">

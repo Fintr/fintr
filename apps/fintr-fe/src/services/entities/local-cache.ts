@@ -1,3 +1,4 @@
+import { listAttachmentsForOwner } from "@/services/attachments/local-store";
 import {
   getLocalResponseSnapshot,
   putLocalResponseSnapshot,
@@ -37,6 +38,8 @@ export const normalizeEntityRecord = (
       | "transaction",
     photoUrl:
       (entity.photoUrl ?? entity.photo_url ?? null) as string | null | undefined,
+    photoFileUrl:
+      typeof entity.photoFileUrl === "string" ? entity.photoFileUrl : undefined,
   };
 
   if (identifiers) {
@@ -166,6 +169,71 @@ export const cacheEntitiesResponse = async (
   }
 };
 
+const entityPhotoObjectUrls = new Map<string, string>();
+
+const localEntityPhoto = async (
+  spaceCode: string,
+  entity: EntityRecord,
+): Promise<{
+  photoUrl: string | null | undefined;
+  photoFileUrl?: string | null;
+}> => {
+  const photoUrl = entity.photoUrl;
+  const storedFileUrl = entity.photoFileUrl ?? (
+    photoUrl && !photoUrl.startsWith("blob:") ? photoUrl : undefined
+  );
+
+  if (!photoUrl || photoUrl.startsWith("blob:")) {
+    return {
+      photoUrl,
+      photoFileUrl: storedFileUrl,
+    };
+  }
+
+  const cacheKey = `${spaceCode}:${entity.id}`;
+  const cachedUrl = entityPhotoObjectUrls.get(cacheKey);
+  if (cachedUrl) {
+    return {
+      photoUrl: cachedUrl,
+      photoFileUrl: storedFileUrl,
+    };
+  }
+
+  const rows = await listAttachmentsForOwner({
+    spaceId: spaceCode,
+    ownerType: "entity",
+    ownerId: entity.id,
+  });
+  const record = rows[0];
+  if (!record) {
+    return {
+      photoUrl,
+      photoFileUrl: storedFileUrl,
+    };
+  }
+
+  try {
+    const contentType = record.contentType || record.blob.type || "image/jpeg";
+    const blob =
+      typeof record.blob.arrayBuffer === "function"
+        ? new Blob([await record.blob.arrayBuffer()], { type: contentType })
+        : typeof record.blob.slice === "function"
+          ? record.blob.slice(0, record.blob.size, contentType)
+          : record.blob;
+    const url = URL.createObjectURL(blob);
+    entityPhotoObjectUrls.set(cacheKey, url);
+    return {
+      photoUrl: url,
+      photoFileUrl: storedFileUrl,
+    };
+  } catch {
+    return {
+      photoUrl,
+      photoFileUrl: storedFileUrl,
+    };
+  }
+};
+
 export const loadCachedEntitiesResponse = async (
   spaceCode: string,
 ): Promise<EntityRecord[] | undefined> => {
@@ -181,7 +249,16 @@ export const loadCachedEntitiesResponse = async (
       return undefined;
     }
 
-    return cached;
+    return Promise.all(
+      cached.map(async (entity) => {
+        const photo = await localEntityPhoto(spaceCode, entity);
+        return {
+          ...entity,
+          photoUrl: photo.photoUrl,
+          photoFileUrl: photo.photoFileUrl,
+        };
+      }),
+    );
   } catch (error) {
     console.warn("[local-db] Failed to load cached entities", error);
     return undefined;

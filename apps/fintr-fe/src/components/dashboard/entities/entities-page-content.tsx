@@ -198,6 +198,7 @@ export function EntitiesPageContent() {
                       <MerchantAvatar
                         name={entity.fullName}
                         photoUrl={entity.photoUrl}
+                        fileUrl={entity.photoFileUrl}
                         size={44}
                       />
                       <div className="min-w-0 flex-1">

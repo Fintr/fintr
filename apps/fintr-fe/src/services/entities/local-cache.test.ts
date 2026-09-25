@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { resetLocalDbForTests } from "@/lib/local-db";
+import { putLocalAttachment } from "@/services/attachments/local-store";
 
 import { putSpaceTransactions } from "@/lib/local-db/transactions";
 import { cacheLoansAllPages } from "@/services/loans/local-cache";
@@ -54,6 +55,65 @@ describe("entities local cache", () => {
       "Store",
       "Merchant1",
     ]);
+  });
+
+  it("shows a stored entity photo when the remote url is unavailable", async () => {
+    if (typeof URL.createObjectURL !== "function") {
+      URL.createObjectURL = () => "blob:entity-photo";
+    }
+
+    await putLocalAttachment({
+      spaceId: "SPACE_1",
+      ownerType: "entity",
+      ownerId: "entity-store",
+      file: new File(["photo"], "photo.jpg", { type: "image/jpeg" }),
+    });
+    await cacheEntitiesResponse("SPACE_1", [
+      {
+        id: "entity-store",
+        fullName: "Store",
+        entityType: "transaction",
+        photoUrl: "https://storage.googleapis.com/fintr-dev/photo.jpg",
+      },
+    ]);
+
+    const cached = await loadCachedEntitiesResponse("SPACE_1");
+
+    expect(cached?.[0]?.photoUrl).toMatch(/^blob:/);
+    expect(cached?.[0]?.photoFileUrl).toBe(
+      "https://storage.googleapis.com/fintr-dev/photo.jpg",
+    );
+  });
+
+  it("keeps the file url when the local photo copy cannot be created", async () => {
+    const fileUrl = "https://storage.googleapis.com/fintr-dev/photo.jpg";
+    const createObjectURL = URL.createObjectURL;
+    URL.createObjectURL = () => {
+      throw new Error("copy failed");
+    };
+
+    await putLocalAttachment({
+      spaceId: "SPACE_1",
+      ownerType: "entity",
+      ownerId: "entity-copy-fail",
+      file: new File(["photo"], "photo.jpg", { type: "image/jpeg" }),
+    });
+    await cacheEntitiesResponse("SPACE_1", [
+      {
+        id: "entity-copy-fail",
+        fullName: "Store",
+        entityType: "transaction",
+        photoUrl: fileUrl,
+      },
+    ]);
+
+    try {
+      const cached = await loadCachedEntitiesResponse("SPACE_1");
+      expect(cached?.[0]?.photoUrl).toBe(fileUrl);
+      expect(cached?.[0]?.photoFileUrl).toBe(fileUrl);
+    } finally {
+      URL.createObjectURL = createObjectURL;
+    }
   });
 
   it("caches and filters entities by type and search", async () => {

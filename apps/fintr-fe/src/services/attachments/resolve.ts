@@ -10,6 +10,7 @@ import {
   listAttachmentsForOwner,
   loadLocalAttachmentFile,
 } from "./local-store";
+import type { LocalAttachmentRecord } from "./types";
 import {
   extractRemoteFiles,
   type RemoteFileAttachment,
@@ -18,6 +19,7 @@ import { markExistingLocalAttachment } from "@/utils/fileUtils";
 
 export type ResolvedAttachmentView = {
   url: string;
+  fileUrl?: string;
   filename?: string;
   contentType?: string;
   byteSize?: number;
@@ -33,29 +35,71 @@ const emptyResult = (): ResolvedAttachmentsResult => ({
   revoke: () => {},
 });
 
-const recordsToResolved = (
-  records: LocalAttachmentRecord[],
-): ResolvedAttachmentsResult => {
-  const objectUrls: string[] = [];
-  const images = records.map((record) => {
-    const url = URL.createObjectURL(record.blob);
-    objectUrls.push(url);
+const objectUrlsByKey = new Map<string, string>();
 
-    return {
+const cloneAttachmentBlob = async (
+  blob: Blob,
+  contentType: string,
+): Promise<Blob> => {
+  if (typeof blob.arrayBuffer === "function") {
+    const bytes = await blob.arrayBuffer();
+    return new Blob([bytes], { type: contentType });
+  }
+
+  if (typeof blob.slice === "function") {
+    return blob.slice(0, blob.size, contentType);
+  }
+
+  return blob;
+};
+
+const stableObjectUrl = async (
+  record: LocalAttachmentRecord,
+): Promise<string> => {
+  const cached = objectUrlsByKey.get(record.key);
+  if (cached) {
+    return cached;
+  }
+
+  const contentType =
+    record.contentType
+    || record.blob.type
+    || "application/octet-stream";
+  const blob = await cloneAttachmentBlob(record.blob, contentType);
+  const url = URL.createObjectURL(blob);
+  objectUrlsByKey.set(record.key, url);
+  return url;
+};
+
+const recordsToResolved = async (
+  records: LocalAttachmentRecord[],
+): Promise<ResolvedAttachmentsResult> => {
+  const images: ResolvedAttachmentView[] = [];
+
+  for (const record of records) {
+    let url = record.remoteUrl;
+    try {
+      url = await stableObjectUrl(record);
+    } catch {
+      url = record.remoteUrl;
+    }
+
+    if (!url) {
+      continue;
+    }
+
+    images.push({
       url,
+      fileUrl: record.remoteUrl,
       filename: record.filename,
       contentType: record.contentType,
       byteSize: record.byteSize,
-    };
-  });
+    });
+  }
 
   return {
     images,
-    revoke: () => {
-      for (const url of objectUrls) {
-        URL.revokeObjectURL(url);
-      }
-    },
+    revoke: () => {},
   };
 };
 
@@ -66,6 +110,7 @@ const remoteFilesToResolved = (
     .filter((file) => typeof file.url === "string" && file.url.length > 0)
     .map((file) => ({
       url: file.url!,
+      fileUrl: file.url,
       filename: file.filename,
       contentType: file.contentType,
       byteSize: file.byteSize,

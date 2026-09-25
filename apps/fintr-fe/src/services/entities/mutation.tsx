@@ -16,6 +16,7 @@ export interface EntityRecord {
   fullName: string;
   entityType: 'loan' | 'transaction';
   photoUrl?: string | null;
+  photoFileUrl?: string | null;
   identifiers?: EntityIdentifier[];
 }
 

@@ -1,4 +1,8 @@
-export type AttachmentOwnerType = "transaction" | "transfer" | "loan";
+export type AttachmentOwnerType =
+  | "transaction"
+  | "transfer"
+  | "loan"
+  | "entity";
 
 export type AttachmentSource = "local_create" | "remote_download";
 

@@ -113,6 +113,7 @@ const LoanEntityField: React.FC<LoanEntityFieldProps> = ({
             id: entity.id,
             fullName: entity.fullName || "",
             photoUrl: entity.photoUrl,
+            fileUrl: entity.photoFileUrl,
           }));
       } catch (error: unknown) {
         const err = error as { error?: { message?: string }; status?: number };

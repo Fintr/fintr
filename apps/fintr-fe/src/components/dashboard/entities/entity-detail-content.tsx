@@ -145,6 +145,7 @@ export function EntityDetailContent({ entityId }: EntityDetailContentProps) {
           <MerchantAvatar
             name={entity.fullName}
             photoUrl={entity.photoUrl}
+            fileUrl={entity.photoFileUrl}
             size={56}
           />
           <div className="min-w-0 flex-1">
