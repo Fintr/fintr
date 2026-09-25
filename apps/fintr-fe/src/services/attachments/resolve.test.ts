@@ -173,19 +173,28 @@ describe("attachments resolve", () => {
     result.revoke();
   });
 
-  it("does not download remote files when preferLocal is true", async () => {
-    vi.mocked(resolveTransactionDetail).mockResolvedValue({
-      files: [
-        {
-          id: "file-1",
-          url: "https://s3.ap-southeast-1.amazonaws.com/fintr-development/receipt.jpg",
-          filename: "receipt.jpg",
-          contentType: "image/jpeg",
-        },
-      ],
+  it("downloads the public file when the local copy is missing", async () => {
+    const fileUrl =
+      "https://storage.googleapis.com/fintr-dev/receipt.jpg";
+    vi.mocked(resolveTransactionDetail).mockImplementation(async (params) => {
+      if (params.preferLocal) {
+        return { files: [] };
+      }
+
+      return {
+        files: [
+          {
+            id: "file-1",
+            url: fileUrl,
+            filename: "receipt.jpg",
+            contentType: "image/jpeg",
+          },
+        ],
+      };
     });
+    const blob = new Blob(["receipt-bytes"], { type: "image/jpeg" });
     const api = {
-      get: vi.fn(async () => ({ data: new Blob() })),
+      get: vi.fn(async () => ({ data: blob })),
     };
 
     const result = await resolveAttachmentsForTransaction({
@@ -197,12 +206,14 @@ describe("attachments resolve", () => {
     });
 
     expect(result.images).toHaveLength(1);
-    expect(result.images[0]?.url).toBe(
-      "https://s3.ap-southeast-1.amazonaws.com/fintr-development/receipt.jpg",
-    );
-    expect(api.get).not.toHaveBeenCalled();
-    expect(resolveTransactionDetail).toHaveBeenCalledWith(
-      expect.objectContaining({ preferLocal: true }),
-    );
+    expect(result.images[0]?.url).toMatch(/^blob:/);
+    expect(result.images[0]?.fileUrl).toBe(fileUrl);
+    expect(api.get).toHaveBeenCalled();
+    const stored = await listAttachmentsForOwner({
+      spaceId: "space-a",
+      ownerType: "transaction",
+      ownerId: "server-tx-1",
+    });
+    expect(stored).toHaveLength(1);
   });
 });

@@ -48,7 +48,7 @@ export async function fetchAttachmentBlob(
       });
       return blobFromProxyResponse(response.data);
     } catch {
-      return null;
+      // The attachment proxy can fail while the bucket file is still public.
     }
   }
 
