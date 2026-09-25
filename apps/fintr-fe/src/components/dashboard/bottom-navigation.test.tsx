@@ -27,8 +27,12 @@ vi.mock("@/hooks/usePlatformDetection", () => ({
   usePlatformDetection: () => mockUsePlatformDetection(),
 }));
 
+const mockPathname = vi.hoisted(() => ({
+  value: "/dashboard/",
+}));
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard/",
+  usePathname: () => mockPathname.value,
   useRouter: () => ({ prefetch: vi.fn() }),
 }));
 
@@ -57,6 +61,7 @@ const webPlatform = {
 describe("BottomNavigation — iOS native safe area", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPathname.value = "/dashboard/";
     proAccess.source = "none";
     mockUsePlatformDetection.mockReturnValue(webPlatform);
     (global as any).resetDocumentClassList?.();
@@ -202,11 +207,54 @@ describe("BottomNavigation — light mode bar", () => {
   });
 });
 
+describe("BottomNavigation — leaving admin", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPathname.value = "/admin/users";
+    proAccess.source = "none";
+    mockUsePlatformDetection.mockReturnValue(webPlatform);
+    window.history.replaceState({}, "", "/admin/users");
+  });
+
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("does not swallow home, transactions, dashboard, or menu taps", async () => {
+    const pushState = vi.spyOn(window.history, "pushState");
+    const BottomNavigation = (await import("./bottom-navigation")).default;
+    render(<BottomNavigation />);
+
+    for (const name of ["Home", "Transactions", "Dashboard", "Menu"]) {
+      const link = screen.getByRole("link", { name });
+      fireEvent.pointerDown(link);
+      fireEvent.pointerUp(link);
+      fireEvent.click(link);
+    }
+
+    expect(pushState).not.toHaveBeenCalled();
+    pushState.mockRestore();
+  });
+});
+
 describe("BottomNavigation — fast tab switching", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPathname.value = "/dashboard/";
     proAccess.source = "none";
     mockUsePlatformDetection.mockReturnValue(webPlatform);
+    window.history.replaceState({}, "", "/dashboard/");
+  });
+
+  it("still commits a tab change inside the dashboard shell", async () => {
+    const pushState = vi.spyOn(window.history, "pushState");
+    const BottomNavigation = (await import("./bottom-navigation")).default;
+    render(<BottomNavigation />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Home" }));
+
+    expect(pushState).toHaveBeenCalledWith({}, "", "/dashboard/home");
+    pushState.mockRestore();
   });
 
   it("does not mount add/chat overlays until they are opened", async () => {

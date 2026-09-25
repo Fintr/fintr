@@ -11,6 +11,7 @@ import {
   resetDashboardCommittedPathname,
   resolveDashboardClientNavigation,
   resolveDashboardClientRouteKey,
+  resolveDashboardShellExitHref,
   resolveInternalDashboardHref,
   resolveVisibleDashboardBottomTab,
   toMobileBottomNavTab,
@@ -220,6 +221,56 @@ describe("resolveInternalDashboardHref", () => {
     ).toBeNull();
     expect(resolveInternalDashboardHref("/auth", origin)).toBeNull();
     expect(resolveInternalDashboardHref("#section", origin)).toBeNull();
+  });
+});
+
+describe("resolveDashboardShellExitHref", () => {
+  const origin = "http://localhost:5173";
+
+  it("takes Admin and Support out of the dashboard shell", () => {
+    const adminEvent = {
+      button: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    };
+    const supportEvent = {
+      button: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    };
+
+    expect(
+      resolveDashboardShellExitHref({
+        href: "/admin",
+        origin,
+        event: adminEvent,
+      }),
+    ).toBe("/admin");
+    expect(
+      resolveDashboardShellExitHref({
+        href: "/crm/requests",
+        origin,
+        event: supportEvent,
+      }),
+    ).toBe("/crm/requests");
+    expect(adminEvent.preventDefault).toHaveBeenCalled();
+    expect(supportEvent.preventDefault).toHaveBeenCalled();
+  });
+
+  it("leaves dashboard links to the client navigator", () => {
+    const event = {
+      button: 0,
+      preventDefault: vi.fn(),
+    };
+
+    expect(
+      resolveDashboardShellExitHref({
+        href: "/dashboard/app_settings",
+        origin,
+        event,
+      }),
+    ).toBeNull();
+    expect(event.preventDefault).not.toHaveBeenCalled();
   });
 });
 
