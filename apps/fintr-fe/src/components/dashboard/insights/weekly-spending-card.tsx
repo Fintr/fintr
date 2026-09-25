@@ -44,7 +44,7 @@ export const WeeklySpendingCard = ({
   const hasSpending = data.some((entry) => entry.amount > 0);
 
   return (
-    <Card className="mx-4 border border-border/50 bg-card shadow-none md:mx-0">
+    <Card className="mx-4 pb-2 border border-border/50 bg-card shadow-none md:mx-0">
       <CardHeader className="px-4 sm:px-6">
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
@@ -54,7 +54,7 @@ export const WeeklySpendingCard = ({
         <CardDescription>Your daily expenses this week</CardDescription>
       </CardHeader>
 
-      <CardContent className="px-4 pb-6 sm:px-6">
+      <CardContent className="px-4 sm:px-6">
         <ProFeatureGate featureName="Weekly Spending">
         {isLoading ? (
           <div className="flex justify-center py-10">
