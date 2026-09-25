@@ -88,6 +88,7 @@ const TransactionEntityField: React.FC<TransactionEntityFieldProps> = ({
           id: entity.id,
           fullName: entity.fullName || "",
           photoUrl: entity.photoUrl,
+          fileUrl: entity.photoFileUrl,
         }));
       } catch (error: unknown) {
         const err = error as { error?: { message?: string }; status?: number };

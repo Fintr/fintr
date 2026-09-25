@@ -52,7 +52,7 @@ describe("prefetchRemoteAttachmentsForTransactions", () => {
     cacheRemoteFilesForOwners.mockResolvedValue([]);
   });
 
-  it("stops after consecutive download failures instead of walking every receipt", async () => {
+  it("downloads every receipt even after consecutive failures", async () => {
     const transactions = Array.from({ length: 8 }, (_, index) =>
       imageTransaction(`tx-${index}`),
     );
@@ -63,6 +63,6 @@ describe("prefetchRemoteAttachmentsForTransactions", () => {
       transactions,
     });
 
-    expect(fetchTransactionById).toHaveBeenCalledTimes(5);
+    expect(fetchTransactionById).toHaveBeenCalledTimes(8);
   });
 });

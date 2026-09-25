@@ -127,6 +127,7 @@ export function MerchantPicker({
       <MerchantAvatar
         name={selectedMerchant.fullName}
         photoUrl={selectedMerchant.photoUrl}
+        fileUrl={selectedMerchant.fileUrl}
         size={20}
       />
       <span className="truncate">{selectedMerchant.fullName}</span>

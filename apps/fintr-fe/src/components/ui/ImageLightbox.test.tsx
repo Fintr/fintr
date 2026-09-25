@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react"
 import ImageLightbox from "./ImageLightbox"
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
@@ -268,6 +268,94 @@ describe("ImageLightbox", () => {
     await waitFor(() => {
       expect(screen.getByText("image1.jpg")).toBeInTheDocument()
     })
+  })
+
+  it("downloads the public file when the local copy fails", async () => {
+    const fileUrl = "https://storage.googleapis.com/fintr-dev/receipt-copy-fail.jpg"
+    const createObjectURL = URL.createObjectURL
+    const revokeObjectURL = URL.revokeObjectURL
+    URL.createObjectURL = () => "blob:downloaded-copy"
+    URL.revokeObjectURL = () => {}
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith("blob:")) {
+        return Promise.reject(new Error("copy failed"))
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        blob: () => Promise.resolve(new Blob(["receipt"], { type: "image/jpeg" })),
+      })
+    }) as unknown as typeof fetch
+
+    renderLightbox({
+      images: [
+        {
+          url: "blob:local-copy",
+          fileUrl,
+          filename: "receipt.jpg",
+        },
+      ],
+    })
+
+    try {
+      await waitFor(() => {
+        expect(screen.getByAltText("receipt.jpg")).toHaveAttribute(
+          "src",
+          "blob:downloaded-copy",
+        )
+      })
+      expect(global.fetch).toHaveBeenCalledWith(fileUrl)
+    } finally {
+      cleanup()
+      URL.createObjectURL = createObjectURL
+      URL.revokeObjectURL = revokeObjectURL
+    }
+  })
+
+  it("downloads the public file when the copied image fails to load", async () => {
+    const fileUrl = "https://storage.googleapis.com/fintr-dev/receipt-decode-fail.jpg"
+    const createObjectURL = URL.createObjectURL
+    const revokeObjectURL = URL.revokeObjectURL
+    let copies = 0
+    URL.createObjectURL = () => {
+      copies += 1
+      return copies === 1 ? "blob:viewer-copy" : "blob:downloaded-copy"
+    }
+    URL.revokeObjectURL = () => {}
+
+    renderLightbox({
+      images: [
+        {
+          url: "blob:local-copy",
+          fileUrl,
+          filename: "receipt.jpg",
+        },
+      ],
+    })
+
+    try {
+      await waitFor(() => {
+        expect(screen.getByAltText("receipt.jpg")).toHaveAttribute(
+          "src",
+          "blob:viewer-copy",
+        )
+      })
+
+      fireEvent.error(screen.getByAltText("receipt.jpg"))
+
+      await waitFor(() => {
+        expect(screen.getByAltText("receipt.jpg")).toHaveAttribute(
+          "src",
+          "blob:downloaded-copy",
+        )
+      })
+      expect(global.fetch).toHaveBeenCalledWith(fileUrl)
+    } finally {
+      cleanup()
+      URL.createObjectURL = createObjectURL
+      URL.revokeObjectURL = revokeObjectURL
+    }
   })
 
   it("does not render when isOpen is false", () => {

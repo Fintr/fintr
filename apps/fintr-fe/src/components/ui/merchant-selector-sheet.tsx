@@ -24,6 +24,7 @@ export type MerchantOption = {
   id: string;
   fullName: string;
   photoUrl?: string | null;
+  fileUrl?: string | null;
 };
 
 const bottomSheetClassName = cn(
@@ -240,6 +241,7 @@ function MerchantSelectorContent({
                     <MerchantAvatar
                       name={merchant.fullName}
                       photoUrl={merchant.photoUrl}
+                      fileUrl={merchant.fileUrl}
                       size={40}
                     />
 

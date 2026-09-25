@@ -66,7 +66,51 @@ describe("attachments resolve", () => {
     expect(result.images).toHaveLength(1);
     expect(result.images[0]?.url).toMatch(/^blob:/);
     expect(result.images[0]?.filename).toBe("receipt.jpg");
+    const previewUrl = result.images[0]?.url;
     result.revoke();
+
+    const again = await resolveAttachmentsForTransaction({
+      spaceId: "space-a",
+      transactionId: "local:cid-1",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      preferLocal: true,
+    });
+
+    expect(again.images[0]?.url).toBe(previewUrl);
+  });
+
+  it("uses the file url when the local copy cannot be created", async () => {
+    const file = new File(["receipt"], "receipt.jpg", {
+      type: "image/jpeg",
+    });
+    const fileUrl = "https://storage.googleapis.com/fintr-dev/receipt.jpg";
+
+    await putLocalAttachment({
+      spaceId: "space-a",
+      ownerType: "transaction",
+      ownerId: "local:cid-file-url",
+      file,
+      remoteUrl: fileUrl,
+    });
+
+    const createObjectURL = URL.createObjectURL;
+    URL.createObjectURL = () => {
+      throw new Error("copy failed");
+    };
+
+    try {
+      const result = await resolveAttachmentsForTransaction({
+        spaceId: "space-a",
+        transactionId: "local:cid-file-url",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        preferLocal: true,
+      });
+
+      expect(result.images[0]?.url).toBe(fileUrl);
+      expect(result.images[0]?.fileUrl).toBe(fileUrl);
+    } finally {
+      URL.createObjectURL = createObjectURL;
+    }
   });
 
   it("loads edit attachment file from local store", async () => {

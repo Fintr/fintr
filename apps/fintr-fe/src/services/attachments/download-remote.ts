@@ -89,6 +89,39 @@ export async function fetchAttachmentBlob(
   return null;
 }
 
+const publicFileCopies = new Map<string, string>();
+
+export async function downloadPublicFileCopy(
+  fileUrl: string,
+): Promise<string | null> {
+  if (!fileUrl || fileUrl.startsWith("blob:")) {
+    return null;
+  }
+
+  const cached = publicFileCopies.get(fileUrl);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      return null;
+    }
+
+    const blob = await response.blob();
+    if (blob.size === 0 || blobLooksLikeJsonError(blob)) {
+      return null;
+    }
+
+    const url = URL.createObjectURL(blob);
+    publicFileCopies.set(fileUrl, url);
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 export async function cacheRemoteFilesForOwner(params: {
   spaceId: string;
   ownerType: AttachmentOwnerType;

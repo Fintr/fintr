@@ -1,12 +1,13 @@
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import { CategoryTypeEnum } from "@/types/categoryTypes";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
 import { TransactionDetailContent } from "./transaction-detail-content";
 
 const mockPush = vi.fn();
@@ -289,5 +290,51 @@ describe("TransactionDetailContent", () => {
     expect(mockRequestExit).toHaveBeenCalled();
     expect(mockBack).toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("downloads the public file when the receipt copy fails", async () => {
+    const fileUrl = "https://storage.googleapis.com/fintr-dev/receipt-detail.jpg";
+    const createObjectURL = URL.createObjectURL;
+    URL.createObjectURL = () => "blob:downloaded-receipt";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        blob: async () => new Blob(["receipt"], { type: "image/jpeg" }),
+      })),
+    );
+    vi.mocked(resolveAttachmentsForTransaction).mockResolvedValue({
+      images: [
+        {
+          url: "blob:receipt",
+          fileUrl,
+          filename: "receipt.jpg",
+          contentType: "image/jpeg",
+        },
+      ],
+      revoke: () => undefined,
+    });
+
+    renderView();
+
+    try {
+      const button = await screen.findByRole("button", { name: "View attached image" });
+      const image = button.querySelector("img");
+      expect(image).toHaveAttribute("src", "blob:receipt");
+
+      fireEvent.error(image!);
+
+      await waitFor(() => {
+        expect(image).toHaveAttribute("src", "blob:downloaded-receipt");
+      });
+      expect(fetch).toHaveBeenCalledWith(fileUrl);
+    } finally {
+      URL.createObjectURL = createObjectURL;
+      vi.unstubAllGlobals();
+      vi.mocked(resolveAttachmentsForTransaction).mockResolvedValue({
+        images: [],
+        revoke: () => undefined,
+      });
+    }
   });
 });

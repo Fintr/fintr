@@ -32,6 +32,7 @@ import {
 } from "@/services/transactions/categories/local-cache";
 import {
   cacheEntitiesResponse,
+  loadCachedEntitiesResponse,
 } from "@/services/entities/local-cache";
 import {
   cacheTransactionTagsResponse,
@@ -80,6 +81,8 @@ import {
 } from "@/services/transactions/offline-fx-backfill";
 import {
   cacheTransactionDetailsFromIndexPages,
+  prefetchEntityPhotos,
+  prefetchLoanFiles,
   prefetchRemoteAttachmentsForTransactions,
   prefetchTransactionDetailsForOfflineFx,
 } from "./cache-bootstrap-details";
@@ -478,17 +481,54 @@ const applyBootstrapTier2 = async (params: {
     }
   }
 
-  void prefetchRemoteAttachmentsForTransactions({
-    api,
-    spaceId: spaceCode,
-    transactions: flatTransactions,
-  }).catch((error) => {
+  try {
+    await prefetchRemoteAttachmentsForTransactions({
+      api,
+      spaceId: spaceCode,
+      transactions: flatTransactions,
+    });
+  } catch (error) {
     console.warn(
       "[attachments] Background prefetch failed",
       spaceCode,
       error,
     );
-  });
+  }
+
+  try {
+    await prefetchLoanFiles({
+      api,
+      spaceId: spaceCode,
+      loans: bundle.loans ?? [],
+    });
+  } catch (error) {
+    console.warn(
+      "[attachments] Loan file prefetch failed",
+      spaceCode,
+      error,
+    );
+  }
+
+  try {
+    await prefetchEntityPhotos({
+      api,
+      spaceId: spaceCode,
+      entities: bundle.entities ?? [],
+    });
+    const entitiesWithLocalPhotos = await loadCachedEntitiesResponse(spaceCode);
+    if (entitiesWithLocalPhotos) {
+      queryClient.setQueryData(
+        ["entities", "local", spaceCode],
+        entitiesWithLocalPhotos,
+      );
+    }
+  } catch (error) {
+    console.warn(
+      "[attachments] Entity photo prefetch failed",
+      spaceCode,
+      error,
+    );
+  }
 };
 
 export const bootstrapSpaceV2 = async (

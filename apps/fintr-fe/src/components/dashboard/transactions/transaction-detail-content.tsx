@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDetailPushExit } from "@/components/dashboard/detail-push-transition";
@@ -29,6 +29,7 @@ import { useSpaceContext } from "@/hooks/useSpaceContext";
 import { cn } from "@/lib/utils";
 import type { Account } from "@/types/accountTypes";
 import { findCategoryTreeOptionForTransaction } from "@/types/categoryTreeTypes";
+import { downloadPublicFileCopy } from "@/services/attachments/download-remote";
 import { resolveAttachmentsForTransaction } from "@/services/attachments/resolve";
 import { loadLocalIndexTransactionById } from "@/services/transactions/local-cache";
 import { resolveTransactionDetail } from "@/services/transactions/detail-local";
@@ -305,13 +306,6 @@ export function TransactionDetailContent({
     networkMode: "always",
   });
 
-  useEffect(() => {
-    const current = attachmentsQuery.data;
-    return () => {
-      current?.revoke();
-    };
-  }, [attachmentsQuery.data]);
-
   const attachmentImages = useMemo(
     () =>
       (attachmentsQuery.data?.images ?? []).filter((image) =>
@@ -320,6 +314,9 @@ export function TransactionDetailContent({
     [attachmentsQuery.data],
   );
   const attachmentFiles = attachmentsQuery.data?.images ?? [];
+  const [downloadedReceiptUrl, setDownloadedReceiptUrl] = useState<string | null>(null);
+  const receiptImage = attachmentImages[0];
+  const receiptSrc = downloadedReceiptUrl ?? receiptImage?.url;
 
   const money = useMemo(() => {
     if (!transaction) {
@@ -538,6 +535,7 @@ export function TransactionDetailContent({
                 <MerchantAvatar
                   name={transaction.entityName}
                   photoUrl={merchant?.photoUrl}
+                  fileUrl={merchant?.photoFileUrl}
                   size={32}
                 />
               }
@@ -632,9 +630,20 @@ export function TransactionDetailContent({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={attachmentImages[0]!.url}
+              src={receiptSrc}
               alt=""
               className="pointer-events-none h-full w-full min-h-full min-w-full object-cover object-[50%_28%]"
+              onError={() => {
+                if (!receiptImage?.fileUrl || downloadedReceiptUrl) {
+                  return;
+                }
+
+                void downloadPublicFileCopy(receiptImage.fileUrl).then((downloaded) => {
+                  if (downloaded) {
+                    setDownloadedReceiptUrl(downloaded);
+                  }
+                });
+              }}
             />
           </button>
         ) : attachmentFiles.length > 0 ? (

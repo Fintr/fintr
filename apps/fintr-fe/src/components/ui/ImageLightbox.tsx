@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { AuthStorage } from '@/lib/auth-storage';
 import { downloadBlobAsFile } from '@/lib/download-blob';
+import { downloadPublicFileCopy } from '@/services/attachments/download-remote';
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
 
 const ALLOWED_STORAGE_PREFIXES = [
@@ -25,6 +26,7 @@ const ALLOWED_STORAGE_PREFIXES = [
 
 interface ImageData {
   url: string;
+  fileUrl?: string;
   filename?: string;
   contentType?: string;
   byteSize?: number;
@@ -55,6 +57,10 @@ export default function ImageLightbox({
   const [isMobile, setIsMobile] = useState(false);
   const [lastTouchDistance, setLastTouchDistance] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [displayImages, setDisplayImages] = useState(images);
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
+  const sourceKey = images.map((image) => image.url).join("|");
   const [showDownloadErrorDialog, setShowDownloadErrorDialog] = useState(false);
   const historyPushedRef = useRef(false);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -63,6 +69,68 @@ export default function ImageLightbox({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDisplayImages(images);
+      return;
+    }
+
+    let cancelled = false;
+    const copies: string[] = [];
+    setDisplayImages(imagesRef.current);
+
+    void (async () => {
+      const next = await Promise.all(
+        imagesRef.current.map(async (image) => {
+          if (!image.url.startsWith("blob:")) {
+            return image;
+          }
+
+          try {
+            const response = await fetch(image.url);
+            if (!response.ok) {
+              throw new Error("Image copy failed");
+            }
+            const blob = await response.blob();
+            if (blob.size === 0) {
+              throw new Error("Image copy was empty");
+            }
+            const url = URL.createObjectURL(blob);
+            copies.push(url);
+            return {
+              ...image,
+              url,
+            };
+          } catch {
+            const downloaded = image.fileUrl
+              ? await downloadPublicFileCopy(image.fileUrl)
+              : null;
+            if (downloaded) {
+              return {
+                ...image,
+                url: downloaded,
+              };
+            }
+            return image;
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setDisplayImages(next);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      for (const url of copies) {
+        if (typeof URL.revokeObjectURL === "function") {
+          URL.revokeObjectURL(url);
+        }
+      }
+    };
+  }, [isOpen, sourceKey]);
 
   useEffect(() => {
     setCurrentIndex(initialIndex);
@@ -84,6 +152,29 @@ export default function ImageLightbox({
       window.removeEventListener('orientationchange', checkOrientation);
     };
   }, []);
+
+  const fallBackToFileUrl = (image: ImageData) => {
+    if (!image.fileUrl || image.url === image.fileUrl) {
+      return;
+    }
+
+    void downloadPublicFileCopy(image.fileUrl).then((downloaded) => {
+      if (!downloaded) {
+        return;
+      }
+
+      setDisplayImages((current) =>
+        current.map((item) =>
+          item.url === image.url
+            ? {
+                ...item,
+                url: downloaded,
+              }
+            : item,
+        ),
+      );
+    });
+  };
 
   const resetZoom = () => {
     setScale(1);
@@ -455,7 +546,8 @@ export default function ImageLightbox({
 
   if (!isOpen || !images.length || !mounted) return null;
 
-  const currentImage = images[currentIndex];
+  const viewerImages = displayImages.length > 0 ? displayImages : images;
+  const currentImage = viewerImages[currentIndex] ?? images[currentIndex];
 
   // Determine thumbnail position based on device and orientation
   const showThumbnailsOnSide = !isMobile || !isPortrait;
@@ -497,13 +589,13 @@ export default function ImageLightbox({
       }}
     >
       {/* Thumbnail sidebar for desktop and mobile landscape */}
-      {showThumbnailsOnSide && images.length > 1 && (
+      {showThumbnailsOnSide && viewerImages.length > 1 && (
         <div 
           className="w-20 md:w-32 bg-black/50 p-2 overflow-y-auto flex-shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="space-y-2">
-            {images.map((image, index) => (
+            {viewerImages.map((image, index) => (
               <button
                 key={index}
                 onClick={(e) => {
@@ -520,6 +612,7 @@ export default function ImageLightbox({
                   src={image.url}
                   alt={`Thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
+                  onError={() => fallBackToFileUrl(image)}
                 />
               </button>
             ))}
@@ -594,7 +687,7 @@ export default function ImageLightbox({
         </div>
 
         {/* Navigation arrows */}
-        {images.length > 1 && (
+        {viewerImages.length > 1 && (
           <>
             <Button
               type="button"
@@ -655,17 +748,18 @@ export default function ImageLightbox({
               cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
             }}
             draggable={false}
+            onError={() => fallBackToFileUrl(currentImage)}
           />
         </div>
 
         {/* Bottom thumbnail strip for mobile portrait */}
-        {showThumbnailsOnBottom && images.length > 1 && (
+        {showThumbnailsOnBottom && viewerImages.length > 1 && (
           <div 
             className="absolute bottom-0 left-0 right-0 h-20 p-4 bg-black/50 flex items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex gap-2 overflow-x-auto justify-center w-full">
-              {images.map((image, index) => (
+              {viewerImages.map((image, index) => (
                 <button
                   key={index}
                   onClick={(e) => {
@@ -682,6 +776,7 @@ export default function ImageLightbox({
                     src={image.url}
                     alt={`Thumbnail ${index + 1}`}
                     className="w-full h-full object-cover"
+                    onError={() => fallBackToFileUrl(image)}
                   />
                 </button>
               ))}
@@ -700,9 +795,9 @@ export default function ImageLightbox({
             <p className="text-sm font-medium">
               {currentImage.filename || `Image ${currentIndex + 1}`}
             </p>
-            {images.length > 1 && (
+            {viewerImages.length > 1 && (
               <p className="text-xs text-gray-300">
-                {currentIndex + 1} of {images.length}
+                {currentIndex + 1} of {viewerImages.length}
               </p>
             )}
             {scale !== 1 && (

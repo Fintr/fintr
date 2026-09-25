@@ -208,6 +208,11 @@ export function EntityEditDialog({
                 <MerchantAvatar
                   name={fullName}
                   photoUrl={photoPreviewUrl}
+                  fileUrl={
+                    photoPreviewUrl === entity.photoUrl
+                      ? entity.photoFileUrl
+                      : undefined
+                  }
                   size={64}
                 />
                 <div className="flex min-w-0 flex-1 flex-wrap gap-2">
