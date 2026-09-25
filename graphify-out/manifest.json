@@ -4725,9 +4725,9 @@
     "semantic_hash": "967f9bec73da9e2fa5179849db39afc3"
   },
   "apps/fintr-fe/src/components/dashboard/tabs/insights-tab.tsx": {
-    "mtime": 1790325942.835665,
-    "ast_hash": "0911b30f064d61a5af0fffe9dd504300",
-    "semantic_hash": "0911b30f064d61a5af0fffe9dd504300"
+    "mtime": 1790334902.5610485,
+    "ast_hash": "e18f536e30cd30fe8277f1f9817d26c0",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/tabs/investments-tab.tsx": {
     "mtime": 1782142971.4898427,
@@ -4855,7 +4855,7 @@
     "semantic_hash": "9629185b1f83ae75aa7b3d6b2dfb0834"
   },
   "apps/fintr-fe/src/components/landing-page/app-carousel-section.tsx": {
-    "mtime": 1790334823.2039022,
+    "mtime": 1790334935.140851,
     "ast_hash": "54613001a91288e5660df679fdd39656",
     "semantic_hash": "54613001a91288e5660df679fdd39656"
   },
@@ -8145,9 +8145,9 @@
     "semantic_hash": "56ff26de779c116047a8e3fc162de383"
   },
   "apps/fintr-fe/src/components/dashboard/insights/weekly-spending-card.tsx": {
-    "mtime": 1790325942.8352575,
-    "ast_hash": "88b453987d824b2787d086fef0f6cf41",
-    "semantic_hash": "88b453987d824b2787d086fef0f6cf41"
+    "mtime": 1790334902.560317,
+    "ast_hash": "4cd4042752e5ce4124c5bbea3fabb1dd",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/tabs/home/home-exchange-rates-section.tsx": {
     "mtime": 1790246815.4156325,
@@ -11050,7 +11050,7 @@
     "semantic_hash": "5605c6e0f10f4a1d13e6c1e7a4def26a"
   },
   "apps/fintr-fe/src/components/landing-page/app-carousel-section.test.tsx": {
-    "mtime": 1790334823.2033384,
+    "mtime": 1790334935.1410017,
     "ast_hash": "f32ff4d5564d04986dabbd89af4cad67",
     "semantic_hash": "f32ff4d5564d04986dabbd89af4cad67"
   },
@@ -11877,16 +11877,6 @@
   "apps/fintr-fe/src/components/badges/badge-shelf.test.tsx": {
     "mtime": 1790272924.9217072,
     "ast_hash": "1c15b1834e6a51e574fb4042612eeb6e",
-    "semantic_hash": ""
-  },
-  "apps/fintr-fe/scripts/capture-harbor-light.mjs": {
-    "mtime": 1790333637.2862186,
-    "ast_hash": "735f9810ec2acbccded6f65d5068f8d7",
-    "semantic_hash": ""
-  },
-  "apps/fintr-fe/scripts/capture-harbor-screenshots.mjs": {
-    "mtime": 1790333594.3484612,
-    "ast_hash": "58766aba122e94a41df3bede9e73106a",
     "semantic_hash": ""
   }
 }
