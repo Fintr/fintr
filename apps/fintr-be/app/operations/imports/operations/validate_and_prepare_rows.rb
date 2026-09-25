@@ -71,7 +71,8 @@ module Imports
           description: row[1]&.to_s&.strip,
           amount: row[2]&.to_i,
           type: row[3]&.to_s&.strip&.downcase,
-          category: row[4]&.to_s&.strip
+          category: row[4]&.to_s&.strip,
+          merchant: row[5]&.to_s&.strip.presence
         }
       end
 

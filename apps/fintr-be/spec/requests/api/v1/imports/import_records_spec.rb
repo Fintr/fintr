@@ -237,7 +237,8 @@ RSpec.describe 'Api::V1::Imports::ImportRecords', type: :request do
         description: 'Updated transaction',
         amount: 150.00,
         type: 'expense',
-        category: 'Groceries'
+        category: 'Groceries',
+        merchant: 'SM'
       }
     end
 
@@ -284,6 +285,7 @@ RSpec.describe 'Api::V1::Imports::ImportRecords', type: :request do
           expect(params[:amount]).to eq('150.0')
           expect(params[:type]).to eq('expense')
           expect(params[:category]).to eq('Groceries')
+          expect(params[:merchant]).to eq('SM')
         end
       end
 

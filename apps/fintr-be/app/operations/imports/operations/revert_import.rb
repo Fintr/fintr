@@ -31,9 +31,10 @@ module Imports
         transaction do
           result          = step revert_transaction_records(import:)
           category_result = step revert_category_records(import:)
+          entity_result   = step revert_entity_records(import:)
           _               = step update_import_status(import:)
 
-          merge_results(result, category_result)
+          merge_results(result, category_result, entity_result)
         end
       end
 
@@ -42,7 +43,7 @@ module Imports
       def revert_transaction_records(import:)
         # Exclude category records - they're handled separately in revert_category_records
         successful_records = import.import_records.successful
-                                    .where.not(record_type: "Transactions::Category")
+                                    .where.not(record_type: ["Transactions::Category", "Entities::Entity"])
         reverted_count = 0
         errors = []
 
@@ -102,26 +103,69 @@ module Imports
         end
       end
 
+      def revert_entity_records(import:)
+        entity_records = import.import_records.successful.where(record_type: "Entities::Entity")
+        deleted_count = 0
+        errors = []
+
+        entity_records.find_each do |import_record|
+          result = destroy_entity_if_safe(import_record:)
+          if result.success?
+            deleted_count += 1
+          else
+            errors << result.failure[:error]
+          end
+        end
+
+        Success({ deleted_count: deleted_count, errors: errors })
+      end
+
+      def destroy_entity_if_safe(import_record:)
+        entity = import_record.record
+        return Success(true) unless entity
+
+        if entity.transactions.empty? && entity.loans.empty?
+          entity.destroy
+          import_record.destroy
+          Success(true)
+        else
+          Failure(error: "Merchant '#{entity.full_name}' cannot be deleted: has existing transactions")
+        end
+      end
+
       def update_import_status(import:)
         import.update!(status: "reverted")
         Success(true)
       end
 
-      def merge_results(transaction_result, category_result)
-        all_errors = transaction_result[:errors] + category_result[:errors]
+      def merge_results(transaction_result, category_result, entity_result = { deleted_count: 0, errors: [] })
+        all_errors = transaction_result[:errors] + category_result[:errors] + entity_result[:errors]
         reverted_count = transaction_result[:reverted_count]
         deleted_categories_count = category_result[:deleted_count]
+        deleted_merchants_count = entity_result[:deleted_count]
 
         message_parts = []
         message_parts << "#{reverted_count} transaction#{'s' unless reverted_count == 1}" if reverted_count > 0
         message_parts << "#{deleted_categories_count} categor#{deleted_categories_count == 1 ? 'y' : 'ies'}" if deleted_categories_count > 0
+        message_parts << "#{deleted_merchants_count} merchant#{'s' unless deleted_merchants_count == 1}" if deleted_merchants_count > 0
 
         if all_errors.any?
           message = message_parts.any? ? "Import reverted: #{message_parts.join(' and ')} deleted with #{all_errors.length} warning#{'s' unless all_errors.length == 1}" : "Import reverted with #{all_errors.length} warning#{'s' unless all_errors.length == 1}"
-          { message: message, warnings: all_errors, reverted_count: reverted_count, deleted_categories_count: deleted_categories_count }
+          {
+            message: message,
+            warnings: all_errors,
+            reverted_count: reverted_count,
+            deleted_categories_count: deleted_categories_count,
+            deleted_merchants_count: deleted_merchants_count
+          }
         else
           message = message_parts.any? ? "Import reverted successfully: #{message_parts.join(' and ')} deleted" : "Import reverted successfully"
-          { message: message, reverted_count: reverted_count, deleted_categories_count: deleted_categories_count }
+          {
+            message: message,
+            reverted_count: reverted_count,
+            deleted_categories_count: deleted_categories_count,
+            deleted_merchants_count: deleted_merchants_count
+          }
         end
       end
     end

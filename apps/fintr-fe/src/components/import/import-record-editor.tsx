@@ -15,6 +15,7 @@ import { useTransactionCategories } from "@/hooks/async/useTransactionCategories
 import { numberFormatting } from '@/lib/utils';
 import { format } from 'date-fns';
 import GridPicker from '@/components/dashboard/forms/GridPicker';
+import TransactionEntityField from '@/components/dashboard/forms/TransactionEntityField';
 import { CategoryTypeEnum } from '@/types/categoryTypes';
 
 interface ImportRecordEditorProps {
@@ -26,6 +27,7 @@ interface ImportRecordEditorProps {
     amount?: string | number;
     type?: string;
     category?: string;
+    merchant?: string;
   };
   errors?: string[];
   onCancel: () => void;
@@ -71,6 +73,7 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
     amount: initialData.amount?.toString() || '',
     type: initialData.type || 'expense',
     category: initialData.category || '',
+    merchant: initialData.merchant || '',
   });
 
   // Update formData.date when selectedDate changes
@@ -176,6 +179,7 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
           amount: cleanAmount,
           type: formData.type as 'income' | 'expense',
           category: formData.category,
+          merchant: formData.merchant.trim(),
         },
       });
     } catch (error) {
@@ -302,6 +306,15 @@ export const ImportRecordEditor: React.FC<ImportRecordEditorProps> = ({
           {validationErrors.amount && (
             <p className="text-sm text-red-900">{validationErrors.amount}</p>
           )}
+        </div>
+
+        <div className="space-y-2 col-span-2">
+          <TransactionEntityField
+            id="merchant"
+            kind={formData.type === 'income' ? 'payer' : 'merchant'}
+            value={formData.merchant}
+            onChange={(merchant) => setFormData({ ...formData, merchant })}
+          />
         </div>
 
         <div className="space-y-2">

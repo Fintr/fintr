@@ -12,6 +12,7 @@ module Imports
           optional(:amount).value(:decimal)
           optional(:type).value(:string, included_in?: %w[income expense])
           optional(:category).value(:string)
+          optional(:merchant).maybe(:string)
         end
       end
 
@@ -61,6 +62,12 @@ module Imports
         edited_data[:amount] = params[:amount] if params[:amount].present?
         edited_data[:type] = params[:type]&.downcase if params[:type].present?
         edited_data[:category] = params[:category] if params[:category].present?
+        if params.key?(:merchant)
+          merchant = params[:merchant].to_s.strip
+          edited_data.delete("merchant")
+          edited_data.delete(:merchant)
+          edited_data[:merchant] = merchant if merchant.present?
+        end
 
         Success(edited_data)
       end

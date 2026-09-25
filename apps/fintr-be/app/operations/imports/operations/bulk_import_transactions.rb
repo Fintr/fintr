@@ -14,6 +14,7 @@ module Imports
               optional(:description).value(:string)
               required(:category).value(:string)
               required(:date).value(:string, format?: /\A\d{4}-\d{2}-\d{2}\z/)
+              optional(:merchant).maybe(:string)
             end
             required(:category).value(type?: Transactions::Category)
             required(:parsed_date).value(:date)
@@ -168,11 +169,13 @@ module Imports
 
       def prepare_transactions(validated_rows:, import:, import_account:)
         transactions_to_create = []
+        merchant_map = merchant_map_for(import:, validated_rows:)
 
         validated_rows.each do |row_info|
           row_data = row_info[:row_data]
           category = row_info[:category]
           parsed_date = row_info[:parsed_date]
+          entity = merchant_map[row_data[:merchant].to_s.strip.presence]
 
           # Determine transaction type based on category
           transaction_type = category.income? ? Transactions::Income : Transactions::Expense
@@ -188,6 +191,7 @@ module Imports
             account_id: import_account.id,
             date: parsed_date,
             description: row_data[:description],
+            entity_id: entity&.id,
             amount_cents: amount_cents,
             amount_currency: currency,
             balance_cents: 0, # Will be calculated later
@@ -235,7 +239,8 @@ module Imports
               account_id: t.account_id,
               date: t.date,
               description: t.description,
-              amount_cents: t.amount_cents
+              amount_cents: t.amount_cents,
+              entity_id: t.entity_id
             )
             imported_transactions_map[key] = imported if imported
           end
@@ -248,7 +253,19 @@ module Imports
       end
 
       def build_transaction_key(transaction)
-        "#{transaction.user_id}:#{transaction.space_id}:#{transaction.category_id}:#{transaction.account_id}:#{transaction.date}:#{transaction.description}:#{transaction.amount_cents}"
+        "#{transaction.user_id}:#{transaction.space_id}:#{transaction.category_id}:#{transaction.account_id}:#{transaction.date}:#{transaction.description}:#{transaction.amount_cents}:#{transaction.entity_id}"
+      end
+
+      def merchant_map_for(import:, validated_rows:)
+        names = validated_rows.filter_map { |row| row.dig(:row_data, :merchant) }
+        result = Merchants::ResolveMerchants.new.call(
+          space_id: import.space_id.to_s,
+          import: import,
+          names: names
+        )
+        return result.value! if result.success?
+
+        raise StandardError, "Failed to resolve import merchants: #{result.failure}"
       end
     end
   end

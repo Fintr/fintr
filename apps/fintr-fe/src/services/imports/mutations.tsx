@@ -23,6 +23,7 @@ export interface UpdateImportRecordParams {
     amount?: number;
     type?: 'income' | 'expense';
     category?: string;
+    merchant?: string;
   };
 }
 

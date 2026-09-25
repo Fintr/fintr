@@ -224,6 +224,12 @@ RSpec.describe Imports::Operations::GenerateSampleTemplate, type: :operation do
 
         expect(result).to be_success
       end
+
+      it "includes merchant in the template headers" do
+        expect(described_class::HEADERS).to eq(
+          ["date", "description", "amount", "type", "category", "merchant"]
+        )
+      end
     end
 
     describe "#add_sample_rows" do
@@ -290,6 +296,14 @@ RSpec.describe Imports::Operations::GenerateSampleTemplate, type: :operation do
           rows.each do |row|
             expect(row[0]).to match(/\d{4}-\d{2}-\d{2}/)
           end
+        end
+
+        it "includes a merchant on each sample row" do
+          result = operation.send(:generate_sample_rows, space: space)
+
+          rows = result.value!
+          expect(rows.map(&:length).uniq).to eq([6])
+          expect(rows.map { |row| row[5] }).to include("SM", "Acme Corp")
         end
 
         it "includes income and expense types" do

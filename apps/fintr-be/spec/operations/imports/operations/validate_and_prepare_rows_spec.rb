@@ -265,6 +265,20 @@ RSpec.describe Imports::Operations::ValidateAndPrepareRows, type: :operation do
 
         expect(result[:amount]).to eq(100)
       end
+
+      it "parses an optional merchant column" do
+        row = ["2024-01-01", "Test description", "100", "income", "Salary", "  Acme Corp  "]
+        result = operation.send(:parse_row_data, row)
+
+        expect(result[:merchant]).to eq("Acme Corp")
+      end
+
+      it "leaves merchant blank when the column is missing" do
+        row = ["2024-01-01", "Test description", "100", "income", "Salary"]
+        result = operation.send(:parse_row_data, row)
+
+        expect(result[:merchant]).to be_nil
+      end
     end
 
     describe "#validate_row" do

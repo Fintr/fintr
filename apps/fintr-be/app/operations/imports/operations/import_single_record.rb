@@ -24,6 +24,7 @@ module Imports
           required(:type).filled(:string, included_in?: %w[income expense])
           required(:category).filled(:string)
           optional(:description).value(:string)
+          optional(:merchant).maybe(:string)
         end
 
 
@@ -66,6 +67,10 @@ module Imports
                                   }
                                 )
           category         = category_data[:category]
+          _                = step resolve_merchant(
+                                  import_record: import_record,
+                                  row_data: row_data
+                                )
 
           transaction      = step create_transaction(
                                 user_id: import_record.import.user_id,
@@ -110,8 +115,17 @@ module Imports
           amount: validated_data[:amount],
           type: validated_data[:type].to_s.downcase,
           category: validated_data[:category].to_s,
-          description: validated_data[:description].to_s
-        })
+          description: validated_data[:description].to_s,
+          merchant: validated_data[:merchant].to_s.strip.presence
+        }.compact)
+      end
+
+      def resolve_merchant(import_record:, row_data:)
+        Merchants::ResolveMerchants.new.call(
+          space_id: import_record.import.space_id.to_s,
+          import: import_record.import,
+          names: [row_data[:merchant].to_s]
+        )
       end
 
       def get_or_create_import_account(space_id:)
@@ -143,6 +157,8 @@ module Imports
           schedule_type: "one_time",
           skip_calculation: true
         }
+        merchant_name = row_data[:merchant].to_s.strip
+        transaction_params[:entity_name] = merchant_name if merchant_name.present?
 
         result = Transactions::Operations::CreateTransaction.new.call(transaction_params)
         return result unless result.success?

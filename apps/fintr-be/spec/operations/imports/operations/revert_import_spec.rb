@@ -324,6 +324,44 @@ RSpec.describe Imports::Operations::RevertImport, type: :operation do
       end
     end
 
+    context "when import created a merchant" do
+      let(:account) { create(:account, space: space) }
+      let(:transaction) { create(:expense_transaction, space: space, account: account) }
+      let(:merchant) do
+        create(:entity, space: space, entity_type: "transaction", full_name: "SM")
+      end
+      let(:import) do
+        create(:import, user: user, space: space, status: "completed")
+      end
+
+      before do
+        transaction.update!(entity: merchant)
+        create(
+          :import_record,
+          import: import,
+          status: :success,
+          record_id: transaction.id,
+          record_type: transaction.class.name
+        )
+        create(
+          :import_record,
+          import: import,
+          status: :success,
+          record_id: merchant.id,
+          record_type: "Entities::Entity",
+          row_number: 0
+        )
+      end
+
+      it "deletes the merchant after the imported transaction is removed" do
+        result = operation.call(valid_params)
+
+        expect(result).to be_success
+        expect(result.value![:deleted_merchants_count]).to eq(1)
+        expect { merchant.reload }.to raise_error(ActiveRecord::RecordNotFound)
+      end
+    end
+
     context "when import has only transaction records" do
       let(:account) { create(:account, space: space) }
       let(:transaction) { create(:expense_transaction, space: space, account: account) }

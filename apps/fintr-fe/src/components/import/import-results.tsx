@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useImport, useRevertImport, useImportRecords } from '@/hooks/async/useImport';
-import { CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, Edit, Calendar, Tag, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, RotateCcw, Loader2, Edit, Calendar, Tag, Store, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImportRecordEditor } from './import-record-editor';
 import { formatCurrency } from '@/lib/utils';
@@ -373,6 +373,12 @@ export const ImportResults: React.FC<ImportResultsProps> = ({ importId, onRevert
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3 flex-shrink-0" />
                                   {new Date(record.importData?.date || record.originalData?.date).toLocaleDateString()}
+                                </span>
+                              )}
+                              {(record.importData?.merchant || record.originalData?.merchant) && (
+                                <span className="flex items-center gap-1 truncate" title={record.importData?.merchant || record.originalData?.merchant}>
+                                  <Store className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate max-w-[120px]">{record.importData?.merchant || record.originalData?.merchant}</span>
                                 </span>
                               )}
                               {(record.importData?.category || record.originalData?.category) && (

@@ -247,6 +247,48 @@ RSpec.describe Imports::Operations::BulkImportTransactions do
         expect(transaction.balance_state).to eq('calculated')
         expect(transaction.schedule_type).to eq('one_time')
       end
+
+      it 'assigns a merchant when the row includes one' do
+        row = validated_rows.first.merge(
+          row_data: validated_rows.first[:row_data].merge(merchant: 'Acme Corp')
+        )
+        operation.call(valid_params.merge(validated_rows: [row]))
+
+        transaction = Transactions::Income.last
+        expect(transaction.entity_name).to eq('Acme Corp')
+      end
+
+      it 'tracks a newly created merchant so the import can be reverted' do
+        row = validated_rows.first.merge(
+          row_data: validated_rows.first[:row_data].merge(merchant: 'Acme Corp')
+        )
+
+        expect {
+          operation.call(valid_params.merge(validated_rows: [row]))
+        }.to change(Entities::Entity, :count).by(1)
+          .and change(Imports::ImportRecord, :count).by(2)
+      end
+
+      it 'reuses an existing merchant' do
+        create(:entity, space: space, entity_type: 'transaction', full_name: 'Acme Corp')
+        row = validated_rows.first.merge(
+          row_data: validated_rows.first[:row_data].merge(merchant: 'Acme Corp')
+        )
+
+        expect {
+          operation.call(valid_params.merge(validated_rows: [row]))
+        }.not_to change(Entities::Entity, :count)
+      end
+
+      it 'links the imported transaction to the existing merchant' do
+        create(:entity, space: space, entity_type: 'transaction', full_name: 'Acme Corp')
+        row = validated_rows.first.merge(
+          row_data: validated_rows.first[:row_data].merge(merchant: 'Acme Corp')
+        )
+        operation.call(valid_params.merge(validated_rows: [row]))
+
+        expect(Transactions::Income.last.entity.full_name).to eq('Acme Corp')
+      end
     end
 
     context 'when importing multiple rows successfully' do
