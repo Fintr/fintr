@@ -350,9 +350,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return storedApiToken;
       }
 
-      return null;
+      return AuthStorage.getAccessToken();
     } catch (error) {
-      return null;
+      return AuthStorage.getAccessToken();
     }
   }, [tokens, logout]);
 

@@ -49,6 +49,26 @@ describe("extractRemoteFiles", () => {
     ]);
   });
 
+  it("rewrites the legacy development bucket", () => {
+    expect(
+      extractRemoteFiles({
+        files: [
+          {
+            url: "https://storage.googleapis.com/fintr-dev/spaces/space-a/receipt.jpg",
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        id: undefined,
+        url: "https://storage.googleapis.com/fintr-development/spaces/space-a/receipt.jpg",
+        filename: undefined,
+        contentType: undefined,
+        byteSize: undefined,
+      },
+    ]);
+  });
+
   it("drops files without a url", () => {
     expect(
       extractRemoteFiles({

@@ -59,5 +59,44 @@ RSpec.describe "Api::V1::Attachments", type: :request do
         expect(response).to have_http_status(:forbidden)
       end
     end
+
+    context "when the file belongs to another space" do
+      let!(:other_space) { create(:personal_space) }
+      let(:other_key) { "spaces/#{other_space.id}/receipt.jpg" }
+
+      before do
+        ActiveStorage::Blob.create_and_upload!(
+          io: StringIO.new("other-receipt"),
+          filename: "receipt.jpg",
+          content_type: "image/jpeg",
+          key: other_key
+        )
+
+        get "/api/v1/attachments/download",
+            params: {
+              url: "https://storage.googleapis.com/fintr-dev/#{other_key}"
+            },
+            headers:
+      end
+
+      it "returns forbidden" do
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "does not return the other space file" do
+        expect(response.body).not_to eq("other-receipt")
+      end
+    end
+
+    context "when the request is not signed in" do
+      before do
+        get "/api/v1/attachments/download",
+            params: { url: download_url }
+      end
+
+      it "returns unauthorized" do
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
   end
 end
