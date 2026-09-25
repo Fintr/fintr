@@ -249,7 +249,7 @@ export function commitDashboardClientNavigation(
   emitCommittedDashboardPathname();
 }
 
-export function resolveInternalDashboardHref(
+function resolveSameOriginHref(
   href: string | null | undefined,
   origin: string,
 ): string | null {
@@ -272,14 +272,64 @@ export function resolveInternalDashboardHref(
       return null;
     }
 
-    if (!url.pathname.startsWith("/dashboard")) {
-      return null;
-    }
-
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return null;
   }
+}
+
+export function resolveInternalDashboardHref(
+  href: string | null | undefined,
+  origin: string,
+): string | null {
+  const resolved = resolveSameOriginHref(href, origin);
+  if (!resolved) {
+    return null;
+  }
+
+  const pathname = new URL(resolved, origin).pathname;
+  if (!pathname.startsWith("/dashboard")) {
+    return null;
+  }
+
+  return resolved;
+}
+
+const DASHBOARD_SHELL_EXIT_PREFIXES = ["/admin", "/crm"] as const;
+
+export function resolveDashboardShellExitHref(params: {
+  href: string | null | undefined;
+  origin: string;
+  target?: string | null;
+  download?: boolean;
+  event: DashboardTabClickEvent;
+}): string | null {
+  if (params.download) {
+    return null;
+  }
+
+  if (params.target && params.target !== "_self") {
+    return null;
+  }
+
+  const href = resolveSameOriginHref(params.href, params.origin);
+  if (!href) {
+    return null;
+  }
+
+  const pathname = new URL(href, params.origin).pathname;
+  const leavesShell = DASHBOARD_SHELL_EXIT_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+  if (!leavesShell) {
+    return null;
+  }
+
+  if (!interceptDashboardTabClick(params.event)) {
+    return null;
+  }
+
+  return href;
 }
 
 export function resolveDashboardClientNavigation(params: {

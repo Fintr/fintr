@@ -60,6 +60,8 @@ describe("dashboard layout tab switching", () => {
 
   it("captures every in-app dashboard link click, not only the tab bar", () => {
     expect(dashboardLayoutSource).toContain("resolveDashboardClientNavigation");
+    expect(dashboardLayoutSource).toContain("resolveDashboardShellExitHref");
+    expect(dashboardLayoutSource).toContain("window.location.assign");
     expect(dashboardLayoutSource).toContain('addEventListener("click"');
     expect(dashboardLayoutSource).toContain("DashboardClientRoute");
   });

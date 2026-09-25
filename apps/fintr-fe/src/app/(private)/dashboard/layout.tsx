@@ -50,6 +50,7 @@ import {
   commitDashboardClientNavigation,
   interceptDashboardTabClick,
   resolveDashboardClientNavigation,
+  resolveDashboardShellExitHref,
   syncDashboardCommittedPathnameFromLocation,
 } from "@/lib/dashboard-nav-routes";
 import { rememberDetailHref } from "@/utils/detailSearchParam";
@@ -134,18 +135,28 @@ export default function Layout({
         download: anchor.hasAttribute("download"),
         event,
       });
-      if (!navigation) {
+      if (navigation) {
+        if (navigation.tab) {
+          setPendingTab(navigation.tab);
+        } else {
+          setPendingTab(null);
+        }
+
+        rememberDetailHref(navigation.href);
+        commitDashboardClientNavigation(navigation.href);
         return;
       }
 
-      if (navigation.tab) {
-        setPendingTab(navigation.tab);
-      } else {
-        setPendingTab(null);
+      const exitHref = resolveDashboardShellExitHref({
+        href: anchor.getAttribute("href"),
+        origin: window.location.origin,
+        target: anchor.getAttribute("target"),
+        download: anchor.hasAttribute("download"),
+        event,
+      });
+      if (exitHref) {
+        window.location.assign(exitHref);
       }
-
-      rememberDetailHref(navigation.href);
-      commitDashboardClientNavigation(navigation.href);
     };
 
     document.addEventListener("click", onClick, true);

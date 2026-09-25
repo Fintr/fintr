@@ -12,6 +12,7 @@ import EnhancedAiChatModal from "@/components/ai-chat/enhanced-ai-chat-modal";
 import { usePlatformDetection } from "@/hooks/usePlatformDetection";
 import { usePrefetchDashboardNavRoutes } from "@/hooks/usePrefetchDashboardNavRoutes";
 import { calculateNavBottomOffset } from "@/lib/platform-detection";
+import { isDashboardShellRoute } from "@/lib/dashboard-shell-route";
 import { pendingDashboardBottomTabAtom } from "@/atoms/dashboardBottomTabAtoms";
 import {
   commitDashboardClientNavigation,
@@ -36,7 +37,12 @@ export default function BottomNavigation() {
     () => null,
   );
   const pathname = committedPathname ?? routerPathname;
+  const usesDashboardClientNavigation = isDashboardShellRoute(routerPathname);
   const onTabClick = (href: string) => (event: React.MouseEvent) => {
+    if (!usesDashboardClientNavigation) {
+      return;
+    }
+
     if (!interceptDashboardTabClick(event)) {
       return;
     }
@@ -321,6 +327,10 @@ export default function BottomNavigation() {
             onPointerDown={() => setPendingTab("menu")}
             onPointerUp={() => {
               setPendingTab("menu");
+              if (!usesDashboardClientNavigation) {
+                return;
+              }
+
               commitDashboardClientNavigation("/dashboard/app_settings");
             }}
             onClick={onTabClick("/dashboard/app_settings")}
