@@ -376,4 +376,19 @@ describe("ImageLightbox", () => {
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it("closes when the browser back button pops history", async () => {
+    const onClose = vi.fn()
+    renderLightbox({ onClose })
+
+    await waitFor(() => {
+      expect(screen.getByText("receipt.jpg")).toBeInTheDocument()
+    })
+
+    expect(window.history.state?.__fintrImageLightbox).toBe(true)
+
+    window.dispatchEvent(new PopStateEvent("popstate", { state: null }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

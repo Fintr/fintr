@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useCloseOnPopStateWhenOpen } from '@/hooks/useCloseOnPopStateWhenOpen';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,8 @@ import { downloadBlobAsFile } from '@/lib/download-blob';
 import { downloadPublicFileCopy } from '@/services/attachments/download-remote';
 import { getPublicBackendUrl } from '@/lib/public-backend-url';
 import { normalizeAttachmentStorageUrl } from '@/services/attachments/storage-url';
+
+const IMAGE_LIGHTBOX_HISTORY_KEY = "__fintrImageLightbox";
 
 const ALLOWED_STORAGE_PREFIXES = [
   'https://storage.googleapis.com/fintr-production/',
@@ -46,7 +49,6 @@ export default function ImageLightbox({
   isOpen,
   initialIndex,
   onClose,
-  openedFromModal = false
 }: ImageLightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [scale, setScale] = useState(1);
@@ -63,7 +65,6 @@ export default function ImageLightbox({
   imagesRef.current = images;
   const sourceKey = images.map((image) => image.url).join("|");
   const [showDownloadErrorDialog, setShowDownloadErrorDialog] = useState(false);
-  const historyPushedRef = useRef(false);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -279,6 +280,18 @@ export default function ImageLightbox({
     setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
   }, [images.length]);
 
+  const handleHistoryOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  }, [onClose]);
+
+  useCloseOnPopStateWhenOpen(
+    isOpen,
+    handleHistoryOpenChange,
+    IMAGE_LIGHTBOX_HISTORY_KEY,
+  );
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -299,18 +312,11 @@ export default function ImageLightbox({
 
   useEffect(() => {
     if (!isOpen) {
-      historyPushedRef.current = false;
       return;
     }
 
     const handleCustomClose = () => {
       onClose();
-    };
-
-    const handlePopState = (e: PopStateEvent) => {
-      if (historyPushedRef.current) {
-        onClose();
-      }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -346,7 +352,6 @@ export default function ImageLightbox({
 
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('lightbox-close', handleCustomClose);
-    window.addEventListener('popstate', handlePopState);
     
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -356,32 +361,15 @@ export default function ImageLightbox({
       document.body.style.height = '100%';
     }
 
-    if (openedFromModal && isMobile) {
-      setTimeout(() => {
-        if (isOpen) {
-          window.history.pushState({ modalOpen: true, lightboxOpen: true }, "");
-          historyPushedRef.current = true;
-        }
-      }, 0);
-    }
-
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('lightbox-close', handleCustomClose);
-      window.removeEventListener('popstate', handlePopState);
       document.body.style.overflow = 'unset';
       document.body.style.position = 'unset';
       document.body.style.width = 'unset';
       document.body.style.height = 'unset';
-      
-      if (openedFromModal && isMobile && historyPushedRef.current) {
-        historyPushedRef.current = false;
-        if (window.history.state?.lightboxOpen) {
-          window.history.back();
-        }
-      }
     };
-  }, [isOpen, currentIndex, openedFromModal, isMobile, onClose, navigateNext, navigatePrevious]);
+  }, [isOpen, currentIndex, onClose, navigateNext, navigatePrevious]);
 
   const handleDownload = async () => {
     const currentImage = images[currentIndex];
