@@ -19,6 +19,7 @@ import {
 } from "@/components/dashboard/insights/summary-stat-tile";
 import { cn, formatCurrency, getProgressColor } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
+import { BudgetTotalSpentInfo } from "./budget-total-spent-info";
 import { NewBudgetDialog } from "./new-budget-dialog";
 import { EditBudgetDialog } from "./edit-budget-dialog";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -45,9 +46,11 @@ import { usePresetDateRangeOptions } from "@/hooks/usePresetDateRangeOptions";
 import { useAuthApi } from "@/hooks/useAuthApi";
 import { useSpaceContext } from "@/hooks/useSpaceContext";
 
-interface BudgetsTabProps {}
+interface BudgetsTabProps {
+  isActive?: boolean;
+}
 
-const BudgetsTab = ({}: BudgetsTabProps) => {
+const BudgetsTab = ({ isActive = true }: BudgetsTabProps) => {
   // Budget state
   const [filtersOpen, setFiltersOpen] = useState(false);
   
@@ -185,7 +188,7 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
     updateBudgetMutation,
     createBudgetMutation,
     deleteBudgetMutation
-  } = useBudgetsData(appliedStartDate, appliedEndDate);
+  } = useBudgetsData(appliedStartDate, appliedEndDate, isActive);
 
   // Calculate budget stats
   const budgetSummary = budgetsData?.summary;
@@ -454,9 +457,12 @@ const BudgetsTab = ({}: BudgetsTabProps) => {
                   </div>
                 </div>
                 <div className={statTileSurfaceClassName}>
-                  <h4 className="text-sm font-medium text-primary/70 mb-1">
-                    Total Spent
-                  </h4>
+                  <div className="mb-1 flex items-center gap-1">
+                    <h4 className="text-sm font-medium text-primary/70">
+                      Total Spent
+                    </h4>
+                    <BudgetTotalSpentInfo />
+                  </div>
                   <div className="flex items-center">
                     <div className="text-2xl font-bold text-primary">
                       {formatCurrency(totalSpent, spaceCurrency)}

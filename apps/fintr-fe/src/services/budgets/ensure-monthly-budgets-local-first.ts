@@ -3,6 +3,7 @@ import type { AxiosInstance } from "axios";
 
 import {
   enqueueOutboxRecord,
+  getLocalDb,
   OUTBOX_COMMAND_BUDGET_CREATE,
 } from "@/lib/local-db";
 import { listSpaceTransactionsInDateRange } from "@/lib/local-db/transactions";
@@ -57,6 +58,27 @@ const unchangedResult = (
   };
   result.syncPromise = Promise.resolve(result);
   return result;
+};
+
+const queuedBudgetCreateLocalIds = async (
+  spaceCode: string,
+): Promise<Set<string>> => {
+  const rows = await getLocalDb()
+    .outbox
+    .where("spaceId")
+    .equals(spaceCode)
+    .toArray();
+
+  return new Set(
+    rows
+      .filter((row) => row.commandType === OUTBOX_COMMAND_BUDGET_CREATE)
+      .filter((row) => row.status === "pending" || row.status === "syncing")
+      .map((row) => {
+        const payload = row.payload as { localId?: string };
+        return String(payload.localId ?? "");
+      })
+      .filter((localId) => localId.length > 0),
+  );
 };
 
 const newClientMutationId = (): string => {
@@ -316,11 +338,16 @@ const ensureMonthlyBudgetsForRange = async (
     queryClient,
   });
 
-  if (creates.length === 0) {
+  const queuedLocalIds = await queuedBudgetCreateLocalIds(spaceCode);
+  const pendingCreates = creates.filter(
+    (create) => !queuedLocalIds.has(create.localId),
+  );
+
+  if (pendingCreates.length === 0) {
     return unchangedResult(nextPage, false);
   }
 
-  for (const create of creates) {
+  for (const create of pendingCreates) {
     const clientMutationId = newClientMutationId();
     await enqueueOutboxRecord({
       spaceId: spaceCode,

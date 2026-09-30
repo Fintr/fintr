@@ -1385,9 +1385,9 @@
     "semantic_hash": "16bc4d03f04c720dfc11b1ba66c63c93"
   },
   "apps/fintr-be/app/operations/budgets/operations/build_monthly_budget_rows.rb": {
-    "mtime": 1782142646.1681404,
-    "ast_hash": "73e2f294ce86de89697542287c80f78e",
-    "semantic_hash": "73e2f294ce86de89697542287c80f78e"
+    "mtime": 1790739142.5733168,
+    "ast_hash": "39397e11d61034566bebacfb538ab311",
+    "semantic_hash": ""
   },
   "apps/fintr-be/app/operations/budgets/operations/create_budget.rb": {
     "mtime": 1790246815.236771,
@@ -1745,9 +1745,9 @@
     "semantic_hash": "a19b3cc54814cbcb66285f5734cef9bf"
   },
   "apps/fintr-be/app/operations/insights/space_currency_amount.rb": {
-    "mtime": 1782515895.4140146,
-    "ast_hash": "bc596fadb22b4431ec3eb535bb45daf4",
-    "semantic_hash": "bc596fadb22b4431ec3eb535bb45daf4"
+    "mtime": 1790739142.5664022,
+    "ast_hash": "0cb96f8955377a52f5e2d4ee09d9108a",
+    "semantic_hash": ""
   },
   "apps/fintr-be/app/operations/loans/operations/update_loan.rb": {
     "mtime": 1790738385.938378,
@@ -2300,9 +2300,9 @@
     "semantic_hash": "bf8750bff6cb5abd71cdda62a214fc16"
   },
   "apps/fintr-be/app/queries/monthly_financial_summaries/queries/aggregate_totals_in_space_for_range.rb": {
-    "mtime": 1782515895.4162867,
-    "ast_hash": "c6f1aa99876f366f90c3eeda42696b31",
-    "semantic_hash": "c6f1aa99876f366f90c3eeda42696b31"
+    "mtime": 1790739142.566393,
+    "ast_hash": "e4fd4006e49a664f447f78f960c00585",
+    "semantic_hash": ""
   },
   "apps/fintr-be/app/queries/monthly_financial_summaries/queries/current_month_summary.rb": {
     "mtime": 1778070730.3623548,
@@ -4715,9 +4715,9 @@
     "semantic_hash": "45370dfc19b2110c993d823f57509caf"
   },
   "apps/fintr-fe/src/components/dashboard/tabs/budgets/index.tsx": {
-    "mtime": 1790246815.4150932,
-    "ast_hash": "c78940269b373aa28e58677e269d3faa",
-    "semantic_hash": "c78940269b373aa28e58677e269d3faa"
+    "mtime": 1790743338.126505,
+    "ast_hash": "d02ade065683118d873598daf0f995d8",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/tabs/budgets/new-budget-dialog.tsx": {
     "mtime": 1790246815.41538,
@@ -5460,9 +5460,9 @@
     "semantic_hash": "4a7c763a6d6582f3c73f66a81bc94f53"
   },
   "apps/fintr-fe/src/hooks/async/useBudgetsData.ts": {
-    "mtime": 1790738385.9094281,
-    "ast_hash": "18eddd4bc6afd8aaefa447745a445e8a",
-    "semantic_hash": "18eddd4bc6afd8aaefa447745a445e8a"
+    "mtime": 1790741452.2669523,
+    "ast_hash": "7ab3fe1710d29716c97ca9e8ef032b12",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/hooks/async/useConversations.ts": {
     "mtime": 1782143274.364158,
@@ -7990,9 +7990,9 @@
     "semantic_hash": "06567b8621b4e3b9271c1c3c60f67d55"
   },
   "apps/fintr-fe/scripts/generate-service-worker.mjs": {
-    "mtime": 1790246815.373336,
-    "ast_hash": "7c9c30adde314d075eee860db0dec627",
-    "semantic_hash": "7c9c30adde314d075eee860db0dec627"
+    "mtime": 1790740671.7874925,
+    "ast_hash": "625026b16d0fc2fe0f4a5c9a7efc15eb",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/scripts/mobile/build-production-bundled.sh": {
     "mtime": 1790246815.3740463,
@@ -10050,9 +10050,9 @@
     "semantic_hash": "e3917087b5037f77b7f7797b5cd96c55"
   },
   "apps/fintr-fe/src/lib/service-worker-offline-policy.test.ts": {
-    "mtime": 1790246815.4643562,
-    "ast_hash": "dfca56dfe6292c70d3822eac8b7100f5",
-    "semantic_hash": "dfca56dfe6292c70d3822eac8b7100f5"
+    "mtime": 1790740671.7891881,
+    "ast_hash": "276e9e9806a35bf614a1f2bab1d9778d",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/unauthorized-session.test.ts": {
     "mtime": 1790246815.4649541,
@@ -11255,14 +11255,14 @@
     "semantic_hash": "e34dcbeb5378e29ff155e306e89dfb4c"
   },
   "apps/fintr-fe/src/services/budgets/ensure-monthly-budgets-local-first.test.ts": {
-    "mtime": 1790246815.4692204,
-    "ast_hash": "87ae875cbd2f2ff1ab292a7e92c3f7a2",
-    "semantic_hash": "87ae875cbd2f2ff1ab292a7e92c3f7a2"
+    "mtime": 1790741452.2761812,
+    "ast_hash": "ae26fb6ef85b68bab7e9efb660f0a8c4",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/budgets/ensure-monthly-budgets-local-first.ts": {
-    "mtime": 1790246815.4693234,
-    "ast_hash": "2e7db03c6568edbccd0d1372333a7cb9",
-    "semantic_hash": "2e7db03c6568edbccd0d1372333a7cb9"
+    "mtime": 1790741452.276476,
+    "ast_hash": "97f2de8898c38c404b84008a7726b142",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/budgets/hydrate-from-server.test.ts": {
     "mtime": 1790246815.469547,
@@ -11917,6 +11917,21 @@
   "apps/fintr-fe/scripts/capture-harbor-screenshots.mjs": {
     "mtime": 1790737364.5012183,
     "ast_hash": "58766aba122e94a41df3bede9e73106a",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/components/dashboard/tabs/budgets/budget-total-spent-info.test.tsx": {
+    "mtime": 1790743338.130279,
+    "ast_hash": "054bd1aa5577660d58914b6e19d5cdc0",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/components/dashboard/tabs/budgets/budget-total-spent-info.tsx": {
+    "mtime": 1790743338.1254768,
+    "ast_hash": "aedda9ddced95708d9eee389a9e7a265",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/hooks/async/useBudgetsData.test.ts": {
+    "mtime": 1790741452.2669277,
+    "ast_hash": "84fcf50c92ea528d26948775bbccca36",
     "semantic_hash": ""
   }
 }

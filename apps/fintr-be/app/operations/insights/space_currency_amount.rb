@@ -57,5 +57,40 @@ module Insights
         )
       end
     end
+
+    # Sum a transaction relation in the space currency.
+    # Groups booked cents by currency and date, then converts each bucket with cached FX.
+    def sum_relation_in_space(relation:, space:)
+      grouped_cents = relation
+        .group(:amount_currency, :date)
+        .sum(:amount_cents)
+
+      sum_currency_date_cents(
+        grouped_cents:,
+        space:
+      )
+    end
+
+    def sum_currency_date_cents(grouped_cents:, space:)
+      grouped_cents.sum do |(currency, date), cents|
+        cents_in_space(
+          cents:,
+          currency:,
+          date:,
+          space:
+        )
+      end
+    end
+
+    def cents_in_space(cents:, currency:, date:, space:)
+      return 0.to_d if cents.blank? || cents.zero?
+
+      to_space_decimal(
+        money: Money.new(cents, currency),
+        date: date.to_date,
+        space:,
+        strict: true
+      )
+    end
   end
 end

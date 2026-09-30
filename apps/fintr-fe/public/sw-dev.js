@@ -377,11 +377,16 @@ async function handleRequest(request) {
   const cache = await caches.open(CACHE_NAME);
   const url = new URL(request.url);
 
-  // While online, prefer the network for navigations and Turbopack/static
-  // assets so a stale precache cannot brick the tab after `pnpm dev` restarts.
+  // While online, prefer the network for navigations, RSC flights, and
+  // Turbopack/static assets. A cached flight (ignoreSearch matches any
+  // ?_rsc= token) updates the URL and leaves the previous page on screen.
   if (
     !isBrowserOffline()
-    && (request.mode === "navigate" || isStaticAssetRequest(request))
+    && (
+      request.mode === "navigate"
+      || isStaticAssetRequest(request)
+      || isRscRequest(request)
+    )
   ) {
     try {
       const networkResponse = await fetch(request);

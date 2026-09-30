@@ -583,9 +583,13 @@ async function handleRequest(request) {
   const cache = await openCurrentCache();
   const url = new URL(request.url);
 
-  // While online, prefer the network for navigations so a stale precache cannot
-  // brick the tab after preview:local rebuilds (ERR_FAILED / blank shell).
-  if (request.mode === "navigate" && !isBrowserOffline()) {
+  // While online, prefer the network for navigations and RSC flights so a
+  // stale precache cannot brick the tab after preview:local rebuilds, and a
+  // cached flight cannot update the URL while leaving the previous page up.
+  if (
+    !isBrowserOffline()
+    && (request.mode === "navigate" || isRscRequest(request))
+  ) {
     try {
       const networkResponse = await fetch(request);
 
