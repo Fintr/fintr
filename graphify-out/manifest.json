@@ -3345,9 +3345,9 @@
     "semantic_hash": "2fc4c7f7d9425166d43c0b9cc424fa85"
   },
   "apps/fintr-fe/android/app/build.gradle": {
-    "mtime": 1790253666.0193207,
-    "ast_hash": "c19f7192fc96e516f40d117e0f3b9357",
-    "semantic_hash": "c19f7192fc96e516f40d117e0f3b9357"
+    "mtime": 1790743684.7437158,
+    "ast_hash": "aa12e6bfe378963353b303300b503e07",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/android/app/capacitor.build.gradle": {
     "mtime": 1790251739.4074311,
