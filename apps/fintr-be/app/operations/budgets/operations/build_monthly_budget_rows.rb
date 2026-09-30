@@ -10,12 +10,15 @@ module Budgets
       private
 
       def build_rows(budgets:, space_id:, start_date:, end_date:)
+        space = Spaces::Space.find_by(id: space_id)
+        return Failure(space_id: "not found") if space.blank?
+
         rows_by_parent = {}
 
         budgets.each do |budget|
           spent = spent_for_budget(
             budget:,
-            space_id:,
+            space:,
             start_date:,
             end_date:
           )
@@ -31,7 +34,7 @@ module Budgets
               budget,
               parent_spent(
                 category_id: budget.category_id,
-                space_id:,
+                space:,
                 start_date:,
                 end_date:
               )
@@ -45,7 +48,7 @@ module Budgets
 
         finalize_parent_rows(
           rows_by_parent,
-          space_id:,
+          space:,
           start_date:,
           end_date:,
         )
@@ -95,11 +98,11 @@ module Budgets
         }
       end
 
-      def finalize_parent_rows(rows_by_parent, space_id:, start_date:, end_date:)
+      def finalize_parent_rows(rows_by_parent, space:, start_date:, end_date:)
         rows_by_parent.each_value do |row|
           attach_subcategory_spending_without_budget(
             row:,
-            space_id:,
+            space:,
             start_date:,
             end_date:,
           )
@@ -108,7 +111,7 @@ module Budgets
 
           row[:parent_only_spent] = parent_only_spent(
             category_id: row[:category_id],
-            space_id:,
+            space:,
             start_date:,
             end_date:,
           )
@@ -121,9 +124,12 @@ module Budgets
         end
       end
 
-      def spent_for_budget(budget:, space_id:, start_date:, end_date:)
-        scope = base_transactions(space_id:, start_date:, end_date:)
-                  .where(category_id: budget.category_id)
+      def spent_for_budget(budget:, space:, start_date:, end_date:)
+        scope = base_transactions(
+          space_id: space.id,
+          start_date:,
+          end_date:
+        ).where(category_id: budget.category_id)
 
         scope = if budget.parent_budget?
                   scope
@@ -131,36 +137,50 @@ module Budgets
                   scope.where(subcategory_id: budget.subcategory_id)
         end
 
-        scope.sum(:amount_cents).to_d / 100
+        sum_in_space_currency(
+          scope:,
+          space:
+        )
       end
 
-      def parent_spent(category_id:, space_id:, start_date:, end_date:)
-        base_transactions(space_id:, start_date:, end_date:)
-          .where(category_id:)
-          .sum(:amount_cents)
-          .to_d / 100
+      def parent_spent(category_id:, space:, start_date:, end_date:)
+        sum_in_space_currency(
+          scope: base_transactions(
+            space_id: space.id,
+            start_date:,
+            end_date:
+          ).where(category_id:),
+          space:
+        )
       end
 
-      def parent_only_spent(category_id:, space_id:, start_date:, end_date:)
-        base_transactions(space_id:, start_date:, end_date:)
-          .where(category_id:)
-          .where(subcategory_id: nil)
-          .sum(:amount_cents)
-          .to_d / 100
+      def parent_only_spent(category_id:, space:, start_date:, end_date:)
+        sum_in_space_currency(
+          scope: base_transactions(
+            space_id: space.id,
+            start_date:,
+            end_date:
+          ).where(category_id:)
+           .where(subcategory_id: nil),
+          space:
+        )
       end
 
-      def attach_subcategory_spending_without_budget(row:, space_id:, start_date:, end_date:)
-        spending_by_subcategory_id = base_transactions(space_id:, start_date:, end_date:)
-          .where(category_id: row[:category_id])
-          .where.not(subcategory_id: nil)
-          .group(:subcategory_id)
-          .sum(:amount_cents)
+      def attach_subcategory_spending_without_budget(row:, space:, start_date:, end_date:)
+        spending_by_subcategory_id = spent_by_subcategory_id(
+          scope: base_transactions(
+            space_id: space.id,
+            start_date:,
+            end_date:
+          ).where(category_id: row[:category_id]),
+          space:
+        )
 
         return if spending_by_subcategory_id.blank?
 
         existing_subcategory_ids = row[:subcategories].map { |sub| sub[:subcategory_id] }.compact
 
-        spending_by_subcategory_id.each do |subcategory_id, amount_cents|
+        spending_by_subcategory_id.each do |subcategory_id, spent|
           next if existing_subcategory_ids.include?(subcategory_id)
 
           subcategory = Transactions::Category.find_by(id: subcategory_id)
@@ -169,7 +189,7 @@ module Budgets
           row[:subcategories] << subcategory_spending_only_row(
             category_id: row[:category_id],
             subcategory:,
-            spent: amount_cents.to_d / 100,
+            spent:,
           )
         end
       end
@@ -193,6 +213,30 @@ module Budgets
           .calculated
           .where(space_id:)
           .where(date: start_date..end_date)
+      end
+
+      def sum_in_space_currency(scope:, space:)
+        Insights::SpaceCurrencyAmount.sum_relation_in_space(
+          relation: scope,
+          space:
+        )
+      end
+
+      def spent_by_subcategory_id(scope:, space:)
+        grouped_cents = scope
+          .where.not(subcategory_id: nil)
+          .group(:subcategory_id, :amount_currency, :date)
+          .sum(:amount_cents)
+
+        grouped_cents.each_with_object(Hash.new(0.to_d)) do |(group, cents), totals|
+          subcategory_id, currency, date = group
+          totals[subcategory_id] += Insights::SpaceCurrencyAmount.cents_in_space(
+            cents:,
+            currency:,
+            date:,
+            space:
+          )
+        end
       end
     end
   end

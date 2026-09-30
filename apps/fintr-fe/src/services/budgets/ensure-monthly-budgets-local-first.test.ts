@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getLocalDb, resetLocalDbForTests } from "@/lib/local-db";
+import { putSpaceTransactions } from "@/lib/local-db/transactions";
 import { cacheBudgetsResponse, loadCachedBudgetsResponse } from "@/services/budgets/local-cache";
 import type { BudgetsPage } from "@/types/budgetTypes";
 
@@ -436,6 +437,126 @@ describe("ensureMonthlyBudgetsLocalFirst", () => {
     expect(result.created).toBe(false);
     expect(result.page.budgets).toEqual([]);
     expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
+  it("includes a transaction added after the last visit in total spent", async () => {
+    await cacheBudgetsResponse(
+      "space-a",
+      "2026-08-01",
+      "2026-08-31",
+      {
+        budgets: [
+          {
+            id: "budget-food",
+            date: "2026-08-01",
+            category_name: "Food",
+            category_id: "cat-food",
+            total_spent: 0,
+            amount_currency: "PHP",
+            amount: 500,
+            has_explicit_parent_budget: true,
+            subcategories: [],
+          },
+        ],
+        summary: {
+          total_budget: 500,
+          total_spent: 0,
+          total_spent_percentage: 0,
+          remaining: 500,
+        },
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+    );
+    await putSpaceTransactions("space-a", [
+      {
+        id: "tx-lunch",
+        date: "2026-08-10",
+        description: "Lunch",
+        amount: 80,
+        categoryName: "Food",
+        categoryId: "cat-food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: "expense",
+        inSeries: false,
+        hasImage: false,
+        calculated: true,
+      },
+    ]);
+
+    const firstVisit = await ensureMonthlyBudgetsLocalFirst(
+      {} as never,
+      {
+        spaceCode: "space-a",
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      },
+      { waitForSync: false },
+    );
+
+    expect(firstVisit.page.summary?.total_spent).toBe(80);
+
+    await putSpaceTransactions("space-a", [
+      {
+        id: "tx-dinner",
+        date: "2026-08-12",
+        description: "Dinner",
+        amount: 40,
+        categoryName: "Food",
+        categoryId: "cat-food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: "expense",
+        inSeries: false,
+        hasImage: false,
+        calculated: true,
+      },
+    ]);
+
+    const returnVisit = await ensureMonthlyBudgetsLocalFirst(
+      {} as never,
+      {
+        spaceCode: "space-a",
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      },
+      { waitForSync: false },
+    );
+
+    expect(returnVisit.page.summary?.total_spent).toBe(120);
+  });
+
+  it("does not enqueue another budget create when the month is opened again", async () => {
+    await cacheBudgetsResponse(
+      "space-a",
+      "2026-07-01",
+      "2026-07-31",
+      julyPage(),
+    );
+
+    await ensureMonthlyBudgetsLocalFirst(
+      {} as never,
+      {
+        spaceCode: "space-a",
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      },
+      { waitForSync: false },
+    );
+
+    await ensureMonthlyBudgetsLocalFirst(
+      {} as never,
+      {
+        spaceCode: "space-a",
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      },
+      { waitForSync: false },
+    );
+
+    expect(await getLocalDb().outbox.count()).toBe(1);
   });
 });
 

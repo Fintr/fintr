@@ -109,6 +109,19 @@ describe("service worker offline policy", () => {
     expect(handleRequest).toContain("!isBrowserOffline()");
   });
 
+  it("fetches online RSC flights from the network before a cached payload", () => {
+    for (const source of [devWorkerSource, generatorSource]) {
+      const handleRequest = handleRequestSource(source);
+      const onlineIdx = handleRequest.indexOf("!isBrowserOffline()");
+      const rscIdx = handleRequest.indexOf("isRscRequest(request)");
+      const cacheIdx = handleRequest.indexOf("matchCachedRequest");
+
+      expect(onlineIdx).toBeGreaterThan(-1);
+      expect(rscIdx).toBeGreaterThan(onlineIdx);
+      expect(rscIdx).toBeLessThan(cacheIdx);
+    }
+  });
+
   it("fetches /_next/static/ from the network before cache in sw-dev", () => {
     const handleRequest = handleRequestSource(devWorkerSource);
     const staticIdx = handleRequest.indexOf("isStaticAssetRequest(request)");

@@ -163,4 +163,100 @@ RSpec.describe Budgets::Operations::BuildMonthlyBudgetRows do
     expect(sub_row[:spent]).to eq(45)
     expect(sub_row[:budget]).to eq(0)
   end
+
+  context "when expenses are booked in a foreign currency" do
+    let(:account) { create(:account, space:) }
+    let(:expense_date) { Date.new(2025, 5, 10) }
+    let!(:parent_budget) do
+      create(
+        :budget,
+        space:,
+        category: parent,
+        date: Date.new(2025, 5, 1),
+        amount_cents: 100_00
+      )
+    end
+
+    before do
+      ExchangeRates::ApiExchangeRate.create!(
+        base_currency: ExchangeRates::ApiExchangeRate::BASE_CURRENCY,
+        target_currency: "PHP",
+        rate: 56.25,
+        rate_date: expense_date
+      )
+      create(
+        :expense_transaction,
+        space:,
+        account:,
+        category: parent,
+        subcategory_id: sub.id,
+        date: expense_date,
+        amount: 100,
+        amount_currency: "USD",
+        balance_state: :calculated
+      )
+      create(
+        :expense_transaction,
+        space:,
+        account:,
+        category: parent,
+        date: expense_date,
+        amount: 10,
+        amount_currency: "PHP",
+        balance_state: :calculated
+      )
+    end
+
+    subject(:row) do
+      operation.call(
+        budgets: [parent_budget],
+        space_id: space.id,
+        start_date:,
+        end_date:
+      ).value!.first
+    end
+
+    it "converts the foreign expense into the space currency before totaling spent" do
+      expect(row[:total_spent]).to eq(5635)
+    end
+
+    it "converts subcategory spending into the space currency" do
+      sub_row = row[:subcategories].find { |entry| entry[:subcategory_id] == sub.id }
+
+      expect(sub_row[:spent]).to eq(5625)
+    end
+  end
+
+  context "when no cached rate exists for a foreign expense" do
+    let(:account) { create(:account, space:) }
+
+    it "omits that expense from spent instead of counting the raw foreign amount" do
+      create(
+        :expense_transaction,
+        space:,
+        account:,
+        category: parent,
+        date: Date.new(2025, 5, 10),
+        amount: 100,
+        amount_currency: "USD",
+        balance_state: :calculated
+      )
+      parent_budget = create(
+        :budget,
+        space:,
+        category: parent,
+        date: Date.new(2025, 5, 1),
+        amount_cents: 100_00
+      )
+
+      result = operation.call(
+        budgets: [parent_budget],
+        space_id: space.id,
+        start_date:,
+        end_date:
+      )
+
+      expect(result.value!.first[:total_spent]).to eq(0)
+    end
+  end
 end

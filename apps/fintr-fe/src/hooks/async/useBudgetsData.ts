@@ -1,11 +1,16 @@
+import { listSpaceTransactionsInDateRange } from "@/lib/local-db";
 import { fetchBudgetsPage } from "@/services/budgets/queries";
 import { cacheBudgetsResponse } from "@/services/budgets/local-cache";
-import { ensureMonthlyBudgetsLocalFirst } from "@/services/budgets/ensure-monthly-budgets-local-first";
+import {
+  applyBudgetSpendingToPage,
+  ensureMonthlyBudgetsLocalFirst,
+} from "@/services/budgets/ensure-monthly-budgets-local-first";
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import useAuthApi from "../useAuthApi";
 import { useLocalStorage } from "../useLocalStorage";
 import { useSkipCachedNetworkFetch } from "@/hooks/useOfflineReadMode";
@@ -15,7 +20,11 @@ import { deleteBudgetLocalFirst } from "@/services/budgets/delete-local-first";
 import { UpdateBudgetPayload } from "@/services/budgets/mutations";
 import { CreateBudgetPayload } from "@/types/budgetTypes";
 
-export const useBudgetsData = (startDate: string, endDate: string) => {
+export const useBudgetsData = (
+  startDate: string,
+  endDate: string,
+  active = true,
+) => {
   const queryClient = useQueryClient();
   const [spaceCode] = useLocalStorage("spaceCode", "");
   const { api } = useAuthApi({
@@ -39,17 +48,44 @@ export const useBudgetsData = (startDate: string, endDate: string) => {
     },
     enabled: Boolean(spaceCode && startDate && endDate),
     staleTime: Infinity,
+    refetchOnMount: "always",
     networkMode: "always",
   });
+
+  const refetchLocalBudgets = localBudgetsQuery.refetch;
+  const previousActiveRef = useRef(active);
+
+  useEffect(() => {
+    const becameActive = active && !previousActiveRef.current;
+    previousActiveRef.current = active;
+
+    if (!becameActive || !spaceCode || !startDate || !endDate) {
+      return;
+    }
+
+    void refetchLocalBudgets();
+  }, [
+    active,
+    endDate,
+    refetchLocalBudgets,
+    spaceCode,
+    startDate,
+  ]);
 
   const skipNetworkFetch = useSkipCachedNetworkFetch(localBudgetsQuery, spaceCode);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["budgets", spaceCode, startDate, endDate],
     queryFn: async () => {
-      const page = await fetchBudgetsPage(api, {
+      const fetchedPage = await fetchBudgetsPage(api, {
         queryKey: ["budgets", spaceCode, startDate, endDate],
       });
+      const transactions = await listSpaceTransactionsInDateRange(
+        spaceCode,
+        startDate,
+        endDate,
+      );
+      const page = applyBudgetSpendingToPage(fetchedPage, transactions);
       const localPage = queryClient.getQueryData<typeof page>([
         "budgets",
         "local",

@@ -35,31 +35,14 @@ module MonthlyFinancialSummaries
       private
 
       def sum_type_in_space(space:, start_date:, end_date:, type:)
-        grouped_cents = base_scope(
-          space:,
-          start_date:,
-          end_date:
-        )
-          .where(type: type)
-          .group(:amount_currency, :date)
-          .sum(:amount_cents)
-
-        prefetch_rates!(
-          grouped_cents:,
+        Insights::SpaceCurrencyAmount.sum_relation_in_space(
+          relation: base_scope(
+            space:,
+            start_date:,
+            end_date:
+          ).where(type: type),
           space:
         )
-
-        grouped_cents.sum do |(currency, date), cents|
-          next 0.to_d if cents.zero?
-
-          money = Money.new(cents, currency)
-          Insights::SpaceCurrencyAmount.to_space_decimal(
-            money:,
-            date: date.to_date,
-            space:,
-            strict: true
-          )
-        end
       end
 
       def base_scope(space:, start_date:, end_date:)
@@ -71,21 +54,6 @@ module MonthlyFinancialSummaries
             date: start_date.beginning_of_day..end_date.end_of_day
           )
           .where.not(transactions_categories: { name: "Initial Balance" })
-      end
-
-      def prefetch_rates!(grouped_cents:, space:)
-        space_currency = space.currency.presence || "PHP"
-
-        grouped_cents.each_key do |currency, date|
-          from_currency = currency.to_s.upcase
-          next if from_currency == space_currency
-
-          ExchangeRates::ApiExchangeRate.get_rate(
-            from: from_currency,
-            to: space_currency,
-            date: date.to_date
-          )
-        end
       end
     end
   end
