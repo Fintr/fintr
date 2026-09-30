@@ -52,6 +52,12 @@ module Budgets
           start_date:,
           end_date:,
         )
+        append_unbudgeted_expense_rows(
+          rows_by_parent,
+          space:,
+          start_date:,
+          end_date:,
+        )
 
         Success(rows_by_parent.values)
       end
@@ -208,11 +214,99 @@ module Budgets
         }
       end
 
+      def append_unbudgeted_expense_rows(rows_by_parent, space:, start_date:, end_date:)
+        spent_by_category = unbudgeted_spent_by_category(
+          rows_by_parent:,
+          space:,
+          start_date:,
+          end_date:,
+        )
+        return if spent_by_category.blank?
+
+        categories = Transactions::Category.where(id: spent_by_category.keys).index_by(&:id)
+        currency = space.currency.presence || "PHP"
+
+        spent_by_category.each do |category_id, spent|
+          next if spent.zero?
+
+          category = categories[category_id]
+          next if category.blank?
+
+          rows_by_parent[category_id] = unbudgeted_parent_row(
+            category:,
+            spent:,
+            currency:,
+          )
+          attach_subcategory_spending_without_budget(
+            row: rows_by_parent[category_id],
+            space:,
+            start_date:,
+            end_date:,
+          )
+          next if rows_by_parent[category_id][:subcategories].blank?
+
+          rows_by_parent[category_id][:parent_only_spent] = parent_only_spent(
+            category_id:,
+            space:,
+            start_date:,
+            end_date:,
+          )
+        end
+      end
+
+      def unbudgeted_spent_by_category(rows_by_parent:, space:, start_date:, end_date:)
+        scope = base_transactions(
+          space_id: space.id,
+          start_date:,
+          end_date:,
+        )
+        budgeted_ids = rows_by_parent.keys
+        scope = scope.where.not(category_id: budgeted_ids) if budgeted_ids.any?
+
+        grouped_cents = scope
+          .group(:category_id, :amount_currency, :date)
+          .sum(:amount_cents)
+
+        grouped_cents.each_with_object(Hash.new(0.to_d)) do |(group, cents), totals|
+          category_id, currency, date = group
+          next if category_id.blank?
+
+          totals[category_id] += Insights::SpaceCurrencyAmount.cents_in_space(
+            cents:,
+            currency:,
+            date:,
+            space:,
+          )
+        end
+      end
+
+      def unbudgeted_parent_row(category:, spent:, currency:)
+        {
+          id: nil,
+          category_id: category.id,
+          subcategory_id: nil,
+          category_name: category.name,
+          date: nil,
+          amount_currency: currency,
+          amount: 0,
+          budget: 0,
+          has_explicit_parent_budget: false,
+          total_spent: spent,
+          parent_only_spent: 0,
+          subcategories: [],
+        }
+      end
+
       def base_transactions(space_id:, start_date:, end_date:)
         Transactions::Transaction
           .calculated
-          .where(space_id:)
-          .where(date: start_date..end_date)
+          .joins(:category)
+          .where(
+            space_id:,
+            type: "Transactions::Expense",
+            date: start_date.beginning_of_day..end_date.end_of_day,
+          )
+          .where.not(transactions_categories: { name: "Initial Balance" })
       end
 
       def sum_in_space_currency(scope:, space:)

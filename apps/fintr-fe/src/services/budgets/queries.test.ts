@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   enrichCategoriesWithSubcategoryTree,
+  filterCategoryOptionsWithoutBudgets,
   findBudgetCategoryForParent,
   transformBudgetsToCategories,
 } from "./queries";
@@ -90,6 +91,54 @@ describe("budget queries", () => {
     });
   });
 
+  it("fills a blank parent name from the category tree", () => {
+    const expenseOptions: CategoryTreeOption[] = [
+      {
+        id: "cat-giving",
+        label: "Giving",
+        value: "Giving",
+        name: "Giving",
+        parentId: null,
+        children: [
+          {
+            id: "sub-donations",
+            label: "Donations",
+            value: "Donations",
+            name: "Donations",
+            parentId: "cat-giving",
+          },
+        ],
+      },
+    ];
+
+    const enriched = enrichCategoriesWithSubcategoryTree(
+      [
+        {
+          id: "",
+          name: "",
+          categoryId: "cat-giving",
+          spent: 840_797.33,
+          budget: 0,
+          color: "#000",
+          subcategories: [
+            {
+              id: "",
+              subcategoryId: "sub-donations",
+              subcategoryName: "Donations",
+              name: "Donations",
+              spent: 10,
+              budget: 1_000,
+            },
+          ],
+        },
+      ],
+      expenseOptions,
+    );
+
+    expect(enriched[0].name).toBe("Giving");
+    expect(enriched[0].categoryId).toBe("cat-giving");
+  });
+
   it("maps category_id on flat budget rows so parent lookup can match", () => {
     const categories = transformBudgetsToCategories([
       {
@@ -108,6 +157,34 @@ describe("budget queries", () => {
       spent: 4280,
       budget: 8000,
     });
+  });
+
+  it("keeps a deleted category available in add budget", () => {
+    const options = [
+      { id: "cat-home", label: "Home", value: "Home" },
+      { id: "cat-food", label: "Food", value: "Food" },
+    ];
+
+    const available = filterCategoryOptionsWithoutBudgets(options, [
+      {
+        id: "",
+        category_id: "cat-home",
+        category_name: "Home",
+        amount: 0,
+        has_explicit_parent_budget: false,
+        subcategories: [],
+      },
+      {
+        id: "budget-food",
+        category_id: "cat-food",
+        category_name: "Food",
+        amount: 20_000,
+        has_explicit_parent_budget: true,
+        subcategories: [],
+      },
+    ]);
+
+    expect(available.map((option) => option.id)).toEqual(["cat-home"]);
   });
 
   it("finds a parent budget by category id or by name", () => {

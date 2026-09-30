@@ -12,6 +12,7 @@ vi.mock("@/services/budgets/queries", () => ({
 }));
 
 import { fetchBudgetsPage } from "@/services/budgets/queries";
+import { rememberBudgetDeletion } from "./budget-deletions";
 import {
   applyBudgetSpendingToPage,
   catchUpMonthlyBudgetsLocalFirst,
@@ -385,6 +386,67 @@ describe("ensureMonthlyBudgetsLocalFirst", () => {
     expect(foodCreates).toHaveLength(4);
   });
 
+  it("does not copy a deleted budget back from the previous month", async () => {
+    await cacheBudgetsResponse(
+      "space-a",
+      "2026-08-01",
+      "2026-08-31",
+      {
+        budgets: [
+          {
+            id: "aug-home",
+            date: "2026-08-01",
+            category_id: "cat-home",
+            category_name: "Home",
+            amount: 20_000,
+            has_explicit_parent_budget: true,
+            total_spent: 0,
+            subcategories: [],
+          },
+        ],
+        summary: null,
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+    );
+    await cacheBudgetsResponse(
+      "space-a",
+      "2026-09-01",
+      "2026-09-30",
+      {
+        budgets: [],
+        summary: null,
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+    );
+    await rememberBudgetDeletion({
+      spaceCode: "space-a",
+      monthStart: "2026-09-01",
+      categoryId: "cat-home",
+      subcategoryId: null,
+      budgetId: "sep-home",
+    });
+
+    const result = await ensureMonthlyBudgetsLocalFirst(
+      {} as never,
+      {
+        spaceCode: "space-a",
+        startDate: "2026-09-01",
+        endDate: "2026-09-30",
+      },
+      { waitForSync: false },
+    );
+
+    expect(
+      result.page.budgets.find(
+        (row) => String(row.category_id ?? "") === "cat-home",
+      ),
+    ).toBeUndefined();
+  });
+
   it("does not copy when the target month already has every previous-month budget", async () => {
     await cacheBudgetsResponse(
       "space-a",
@@ -648,5 +710,59 @@ describe("applyBudgetSpendingToPage", () => {
     expect(page.summary?.total_budget).toBe(32_001);
     expect(page.summary?.total_spent).toBe(32_320.85);
     expect(page.summary?.remaining).toBeCloseTo(-319.85, 2);
+  });
+
+  it("counts expenses in categories that have no budget", () => {
+    const page = applyBudgetSpendingToPage(
+      {
+        budgets: [
+          {
+            id: "budget-food",
+            category_id: "cat-food",
+            category_name: "Food",
+            amount: 100,
+            total_spent: 0,
+            subcategories: [],
+          },
+        ],
+        summary: null,
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+      [
+        {
+          id: "tx-food",
+          date: "2026-08-10",
+          description: "Lunch",
+          amount: 40,
+          categoryName: "Food",
+          categoryId: "cat-food",
+          fromAccountName: "Cash",
+          toAccountName: "",
+          type: "expense",
+          inSeries: false,
+          hasImage: false,
+          calculated: true,
+        },
+        {
+          id: "tx-transport",
+          date: "2026-08-11",
+          description: "Taxi",
+          amount: 25,
+          categoryName: "Transport",
+          categoryId: "cat-transport",
+          fromAccountName: "Cash",
+          toAccountName: "",
+          type: "expense",
+          inSeries: false,
+          hasImage: false,
+          calculated: true,
+        },
+      ],
+    );
+
+    expect(page.summary?.total_spent).toBe(65);
+    expect(page.budgets.find((row) => row.category_id === "cat-transport")?.total_spent).toBe(25);
   });
 });

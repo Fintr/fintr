@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createMonthlyBudgetsPage,
   monthHasPersistedBudgets,
+  pageWithoutOmittedBudgets,
   previousCalendarMonthRange,
 } from "./create-monthly-budget";
 import type { BudgetsPage } from "@/types/budgetTypes";
@@ -114,6 +115,63 @@ describe("createMonthlyBudgetsPage", () => {
     expect(subcategories[0]?.amount).toBe(200);
     expect(subcategories[0]?.spent).toBe(0);
     expect(subcategories[0]?.date).toBe("2026-08-01");
+  });
+
+  it("does not copy a parent budget that was deleted for the target month", () => {
+    const previousPage: BudgetsPage = {
+      budgets: [
+        {
+          id: "budget-home",
+          date: "2026-07-01",
+          category_name: "Home",
+          category_id: "cat-home",
+          subcategory_id: null,
+          total_spent: 0,
+          amount_currency: "PHP",
+          amount: 20_000,
+          has_explicit_parent_budget: true,
+          parent_only_spent: 0,
+          subcategories: [],
+        },
+      ],
+      summary: null,
+      nextPage: null,
+      totalPages: null,
+      totalCount: null,
+    };
+    const page = createMonthlyBudgetsPage({
+      previousPage,
+      targetStartDate: "2026-08-01",
+      createId: () => "local:x",
+      omittedBudgets: [
+        {
+          categoryId: "cat-home",
+          subcategoryId: null,
+          budgetId: "budget-home",
+        },
+      ],
+    });
+
+    expect(page.budgets).toHaveLength(0);
+  });
+
+  it("removes a deleted budget that is still on the current page", () => {
+    const page = pageWithoutOmittedBudgets(
+      julyPage(),
+      [
+        {
+          categoryId: "cat-food",
+          subcategoryId: null,
+          budgetId: "budget-food",
+        },
+      ],
+    );
+
+    expect(page.budgets).toHaveLength(1);
+    const parent = page.budgets[0] as Record<string, unknown>;
+    expect(parent.has_explicit_parent_budget).toBe(false);
+    expect(parent.amount).toBe(0);
+    expect(String(parent.id)).toMatch(/^parent:/);
   });
 
   it("does not copy spending-only subcategory rows without a budget id", () => {

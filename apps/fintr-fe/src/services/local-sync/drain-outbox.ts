@@ -43,6 +43,7 @@ import {
   loadBudgetsPage,
   replaceBudgetIdInPage,
 } from "@/services/budgets/budget-cache-ops";
+import { budgetDeletionsForMonth } from "@/services/budgets/budget-deletions";
 import type { BudgetCreateOutboxPayload } from "@/services/budgets/create-local-first";
 import type { BudgetDeleteOutboxPayload } from "@/services/budgets/delete-local-first";
 import {
@@ -738,6 +739,34 @@ const drainUserSettingsUpdate = async (params: {
   }
 };
 
+const budgetCreateStillDeleted = async (
+  spaceId: string,
+  payload: BudgetCreateOutboxPayload,
+): Promise<boolean> => {
+  const deletions = await budgetDeletionsForMonth(
+    spaceId,
+    payload.date || payload.startDate,
+  );
+
+  return deletions.some(
+    (row) =>
+      row.categoryId === (payload.categoryId ?? "")
+      && (row.subcategoryId ?? null) === (payload.subcategoryId ?? null),
+  );
+};
+
+const isBudgetNotFoundError = (error: unknown): boolean => {
+  if (error && typeof error === "object" && "response" in error) {
+    const status = (error as { response?: { status?: number } }).response?.status;
+    if (status === 404) {
+      return true;
+    }
+  }
+
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return message.includes("not found");
+};
+
 const drainBudgetCreate = async (params: {
   api: AxiosInstance;
   record: LocalOutboxRecord;
@@ -746,9 +775,22 @@ const drainBudgetCreate = async (params: {
   const payload = record.payload as BudgetCreateOutboxPayload;
   const { localId, startDate, endDate, ...data } = payload;
 
+  if (await budgetCreateStillDeleted(record.spaceId, payload)) {
+    await removeOutboxRecord(record.id);
+    return "ok";
+  }
+
   try {
     const serverResponse = await createBudget(api, data);
     const serverId = extractCreatedId(serverResponse);
+
+    if (await budgetCreateStillDeleted(record.spaceId, payload)) {
+      if (serverId) {
+        await deleteBudget(api, serverId);
+      }
+      await removeOutboxRecord(record.id);
+      return "ok";
+    }
 
     if (serverId && localId && serverId !== localId) {
       const currentPage = await loadBudgetsPage(
@@ -839,18 +881,18 @@ const drainBudgetDelete = async (params: {
     await removeOutboxRecord(record.id);
     return "ok";
   } catch (error) {
-    if (isNetworkLikeError(error)) {
-      await updateOutboxStatus({
-        id: record.id,
-        status: "pending",
-        lastError:
-          error instanceof Error ? error.message : "Network error draining outbox",
-      });
-      return "network";
+    if (isBudgetNotFoundError(error)) {
+      await removeOutboxRecord(record.id);
+      return "ok";
     }
 
-    await removeOutboxRecord(record.id);
-    return "ok";
+    await updateOutboxStatus({
+      id: record.id,
+      status: "pending",
+      lastError:
+        error instanceof Error ? error.message : "Could not delete budget",
+    });
+    return "network";
   }
 };
 

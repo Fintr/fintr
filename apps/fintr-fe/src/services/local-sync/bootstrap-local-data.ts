@@ -72,11 +72,9 @@ import {
   loadCachedLoansInfiniteData,
 } from "@/services/loans/local-cache";
 import { loansListQueryKey } from "@/services/loans/loans-list-cache";
+import { applyBudgetsPageToCaches } from "@/services/budgets/budget-cache-ops";
 import { fetchBudgetsPage } from "@/services/budgets/queries";
-import {
-  cacheBudgetsResponse,
-  loadCachedBudgetsResponse,
-} from "@/services/budgets/local-cache";
+import { loadCachedBudgetsResponse } from "@/services/budgets/local-cache";
 import {
   cacheTransferDetail,
 } from "@/services/transactions/transfers/local-cache";
@@ -976,20 +974,13 @@ const syncLocalDataFromBackendV1 = async (
         queryKey: ["budgets", spaceCode, range.startDate, range.endDate],
         requestConfig: spaceRequestConfig(spaceCode),
       });
-      await cacheBudgetsResponse(
+      await applyBudgetsPageToCaches({
         spaceCode,
-        range.startDate,
-        range.endDate,
-        budgetsPage,
-      );
-      queryClient.setQueryData(
-        ["budgets", "local", spaceCode, range.startDate, range.endDate],
-        budgetsPage,
-      );
-      queryClient.setQueryData(
-        ["budgets", spaceCode, range.startDate, range.endDate],
-        budgetsPage,
-      );
+        startDate: range.startDate,
+        endDate: range.endDate,
+        page: budgetsPage,
+        queryClient,
+      });
     }
   } catch (error) {
     result.errors.push("budgets");

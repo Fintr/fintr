@@ -110,21 +110,62 @@ export const fetchBudgetsPage = async (
   }
 };
 
+const categoryOptionName = (option: CategoryTreeOption | undefined): string =>
+  option?.label?.trim() || option?.name?.trim() || "";
+
+const parentOptionForCategory = (
+  category: BudgetCategory,
+  expenseOptions: CategoryTreeOption[],
+): CategoryTreeOption | undefined => {
+  if (category.categoryId) {
+    const byId = expenseOptions.find((option) => option.id === category.categoryId);
+    if (byId) {
+      return byId;
+    }
+  }
+
+  const byChildId = expenseOptions.find((option) =>
+    (option.children ?? []).some((child) =>
+      category.subcategories.some(
+        (sub) => sub.subcategoryId && sub.subcategoryId === child.id,
+      ),
+    ),
+  );
+  if (byChildId) {
+    return byChildId;
+  }
+
+  return expenseOptions.find((option) =>
+    (option.children ?? []).some((child) => {
+      const childName = categoryOptionName(child);
+      if (!childName) {
+        return false;
+      }
+
+      return category.subcategories.some((sub) => {
+        const subName = (sub.subcategoryName || sub.name || "").trim();
+        return subName.length > 0
+          && normalizeCategoryMatchKey(subName) === normalizeCategoryMatchKey(childName);
+      });
+    }),
+  );
+};
+
 export const enrichCategoriesWithSubcategoryTree = (
   categories: BudgetCategory[],
   expenseOptions: CategoryTreeOption[],
 ): BudgetCategory[] => {
   return categories.map((category) => {
-    if (!category.categoryId) {
-      return category;
-    }
-
-    const parentOption = expenseOptions.find(
-      (option) => option.id === category.categoryId,
-    );
+    const parentOption = parentOptionForCategory(category, expenseOptions);
+    const categoryId = category.categoryId || parentOption?.id || "";
+    const name = category.name.trim() || categoryOptionName(parentOption);
 
     if (!parentOption?.children?.length) {
-      return category;
+      return {
+        ...category,
+        categoryId,
+        name,
+      };
     }
 
     const existingBySubId = new Map(
@@ -135,16 +176,21 @@ export const enrichCategoriesWithSubcategoryTree = (
 
     const subcategories = parentOption.children.map((child) => {
       const existing = existingBySubId.get(child.id);
+      const childName = child.label?.trim() || child.name?.trim() || "";
 
       if (existing) {
-        return existing;
+        return {
+          ...existing,
+          subcategoryName: existing.subcategoryName?.trim() || childName,
+          name: existing.name?.trim() || childName,
+        };
       }
 
       return {
         id: "",
         subcategoryId: child.id,
-        subcategoryName: child.label,
-        name: child.label,
+        subcategoryName: childName,
+        name: childName,
         spent: 0,
         budget: 0,
       };
@@ -152,6 +198,8 @@ export const enrichCategoriesWithSubcategoryTree = (
 
     return {
       ...category,
+      categoryId,
+      name,
       subcategories,
     };
   });
@@ -209,7 +257,9 @@ export const findBudgetCategoryForParent = (
 };
 
 const mapBudgetRowToCategory = (row: Record<string, unknown>): BudgetCategory => {
-  const categoryName = String(row.categoryName ?? row.category_name ?? '');
+  const categoryName = String(
+    row.categoryName ?? row.category_name ?? row.name ?? "",
+  ).trim();
   const subcategories = Array.isArray(row.subcategories)
     ? row.subcategories.map((sub: Record<string, unknown>) => ({
         id: String(sub.id ?? ''),
@@ -236,8 +286,18 @@ const mapBudgetRowToCategory = (row: Record<string, unknown>): BudgetCategory =>
   };
 };
 
+const hasParentBudget = (budget: Record<string, unknown>): boolean => {
+  if (budget.subcategory_id || budget.subcategoryId) {
+    return false;
+  }
+
+  const id = String(budget.id ?? "").trim();
+  return id.length > 0 && !id.startsWith("parent:");
+};
+
 /**
  * Returns category options that do not already have a parent budget in the fetched period.
+ * Spending rows left after a delete stay available so the category can be budgeted again.
  */
 export const filterCategoryOptionsWithoutBudgets = <
   T extends { label: string; value: string; id?: string },
@@ -245,15 +305,17 @@ export const filterCategoryOptionsWithoutBudgets = <
   options: T[],
   budgets: Array<Record<string, unknown>> | undefined,
 ): T[] => {
+  const budgetedParents = budgets?.filter(hasParentBudget) ?? [];
   const usedParentCategoryIds = new Set(
-    budgets
-      ?.filter((budget) => !budget.subcategory_id && !budget.subcategoryId)
+    budgetedParents
       .map((budget) => String(budget.category_id ?? budget.categoryId ?? ""))
-      .filter(Boolean) ?? [],
+      .filter(Boolean),
   );
 
   const usedCategoryNames = new Set(
-    budgets?.map((budget) => String(budget.category_name ?? budget.categoryName ?? "")) ?? [],
+    budgetedParents.map((budget) =>
+      String(budget.category_name ?? budget.categoryName ?? ""),
+    ),
   );
 
   return options.filter((option) => {

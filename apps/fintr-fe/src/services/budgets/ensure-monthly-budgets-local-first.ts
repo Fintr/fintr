@@ -15,14 +15,17 @@ import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
 import {
   applyBudgetsPageToCaches,
   loadBudgetsPage,
+  mergeSavedLocalBudgets,
   recalculateBudgetSummary,
   type BudgetRow,
 } from "./budget-cache-ops";
 import { normalizeBudgetsPage } from "./normalize-budgets-page";
+import { budgetDeletionsForMonth } from "./budget-deletions";
 import {
   calendarMonthRangeFromStart,
   calendarMonthStartDate,
   createMonthlyBudgetsPage,
+  pageWithoutOmittedBudgets,
   previousCalendarMonthRange,
 } from "./create-monthly-budget";
 
@@ -121,7 +124,11 @@ export const applyBudgetSpendingToPage = (
   transactions: IndexTransaction[],
 ): BudgetsPage => {
   const expenses = transactions.filter(
-    (tx) => isExpense(tx) && tx.calculated !== false,
+    (tx) =>
+      isExpense(tx)
+      && tx.calculated !== false
+      && Boolean(tx.categoryId)
+      && tx.categoryName !== "Initial Balance",
   );
 
   const nextRows = page.budgets.map((raw) => {
@@ -171,10 +178,99 @@ export const applyBudgetSpendingToPage = (
     };
   });
 
+  const budgetedCategoryIds = new Set(
+    nextRows
+      .map((row) => String(row.category_id ?? row.categoryId ?? ""))
+      .filter(Boolean),
+  );
+
+  for (const [categoryId, bucket] of unbudgetedExpenseBuckets(
+    expenses,
+    budgetedCategoryIds,
+  )) {
+    const subcategories = [...bucket.subcategories.entries()].map(
+      ([subcategoryId, sub]) => ({
+        id: "",
+        category_id: categoryId,
+        subcategory_id: subcategoryId,
+        subcategory_name: sub.name,
+        amount: 0,
+        budget: 0,
+        spent: sub.spent,
+      }),
+    );
+
+    nextRows.push({
+      id: "",
+      category_id: categoryId,
+      categoryId,
+      category_name: bucket.name,
+      amount: 0,
+      budget: 0,
+      total_spent: bucket.total,
+      has_explicit_parent_budget: false,
+      parent_only_spent: subcategories.length > 0 ? bucket.parentOnly : 0,
+      subcategories,
+    });
+  }
+
   return recalculateBudgetSummary({
     ...page,
     budgets: nextRows as BudgetsPage["budgets"],
   });
+};
+
+type UnbudgetedExpenseBucket = {
+  name: string;
+  total: number;
+  parentOnly: number;
+  subcategories: Map<string, { name: string; spent: number }>;
+};
+
+const unbudgetedExpenseBuckets = (
+  expenses: IndexTransaction[],
+  budgetedCategoryIds: Set<string>,
+): Map<string, UnbudgetedExpenseBucket> => {
+  const buckets = new Map<string, UnbudgetedExpenseBucket>();
+
+  for (const tx of expenses) {
+    const categoryId = String(tx.categoryId ?? "");
+    if (!categoryId || budgetedCategoryIds.has(categoryId)) {
+      continue;
+    }
+
+    let bucket = buckets.get(categoryId);
+    if (!bucket) {
+      bucket = {
+        name: tx.categoryName || "Category",
+        total: 0,
+        parentOnly: 0,
+        subcategories: new Map(),
+      };
+      buckets.set(categoryId, bucket);
+    }
+
+    const amount = transactionAmount(tx);
+    bucket.total += amount;
+    const subcategoryId = String(tx.subcategoryId ?? "");
+    if (!subcategoryId) {
+      bucket.parentOnly += amount;
+      continue;
+    }
+
+    const existing = bucket.subcategories.get(subcategoryId);
+    if (existing) {
+      existing.spent += amount;
+      continue;
+    }
+
+    bucket.subcategories.set(subcategoryId, {
+      name: tx.subcategoryName || "Subcategory",
+      spent: amount,
+    });
+  }
+
+  return buckets;
 };
 
 const collectLocalCreates = (params: {
@@ -274,17 +370,11 @@ const ensureMonthlyBudgetsForRange = async (
     endDate,
   };
 
-  const existingPage = normalizeBudgetsPage(
-    (await loadBudgetsPage(spaceCode, startDate, endDate))
-    ?? (await loadBudgetsPage(
-      spaceCode,
-      targetRange.startDate,
-      targetRange.endDate,
-    ))
-    ?? emptyBudgetsPage(),
-  );
-
   if (!spaceCode) {
+    const existingPage = normalizeBudgetsPage(
+      (await loadBudgetsPage(spaceCode, startDate, endDate))
+      ?? emptyBudgetsPage(),
+    );
     return unchangedResult(existingPage, false);
   }
 
@@ -302,6 +392,16 @@ const ensureMonthlyBudgetsForRange = async (
     );
   }
 
+  const existingPage = normalizeBudgetsPage(
+    (await loadBudgetsPage(spaceCode, startDate, endDate))
+    ?? (await loadBudgetsPage(
+      spaceCode,
+      targetRange.startDate,
+      targetRange.endDate,
+    ))
+    ?? emptyBudgetsPage(),
+  );
+
   const previousPage = previousRange
     ? normalizeBudgetsPage(
         (await loadBudgetsPage(
@@ -311,11 +411,20 @@ const ensureMonthlyBudgetsForRange = async (
         )) ?? emptyBudgetsPage(),
       )
     : emptyBudgetsPage();
+  const omittedBudgets = await budgetDeletionsForMonth(
+    spaceCode,
+    targetRange.startDate,
+  );
+  const existingWithoutDeleted = pageWithoutOmittedBudgets(
+    existingPage,
+    omittedBudgets,
+  );
 
   const mergedPage = createMonthlyBudgetsPage({
     previousPage,
-    existingPage,
+    existingPage: existingWithoutDeleted,
     targetStartDate: targetRange.startDate,
+    omittedBudgets,
   });
 
   const transactions = await listSpaceTransactionsInDateRange(
@@ -324,17 +433,29 @@ const ensureMonthlyBudgetsForRange = async (
     endDate,
   );
   const nextPage = applyBudgetSpendingToPage(mergedPage, transactions);
+  const latestOmissions = await budgetDeletionsForMonth(
+    spaceCode,
+    targetRange.startDate,
+  );
+  const latestPage = normalizeBudgetsPage(
+    (await loadBudgetsPage(spaceCode, startDate, endDate))
+    ?? emptyBudgetsPage(),
+  );
+  const pageToSave = mergeSavedLocalBudgets(
+    pageWithoutOmittedBudgets(nextPage, latestOmissions),
+    pageWithoutOmittedBudgets(latestPage, latestOmissions),
+  );
   const creates = collectLocalCreates({
-    page: nextPage,
+    page: pageToSave,
     startDate,
     endDate,
   });
 
-  await applyBudgetsPageToCaches({
+  const storedPage = await applyBudgetsPageToCaches({
     spaceCode,
     startDate,
     endDate,
-    page: nextPage,
+    page: pageToSave,
     queryClient,
   });
 
@@ -344,7 +465,7 @@ const ensureMonthlyBudgetsForRange = async (
   );
 
   if (pendingCreates.length === 0) {
-    return unchangedResult(nextPage, false);
+    return unchangedResult(storedPage, false);
   }
 
   for (const create of pendingCreates) {
@@ -357,7 +478,7 @@ const ensureMonthlyBudgetsForRange = async (
     });
   }
 
-  return unchangedResult(nextPage, true);
+  return unchangedResult(storedPage, true);
 };
 
 export const catchUpMonthlyBudgetsLocalFirst = async (

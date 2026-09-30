@@ -1,6 +1,13 @@
 import { listSpaceTransactionsInDateRange } from "@/lib/local-db";
+import { budgetDeletionsForMonth } from "@/services/budgets/budget-deletions";
+import type { BudgetsPage } from "@/types/budgetTypes";
+import { pageWithoutOmittedBudgets } from "@/services/budgets/create-monthly-budget";
 import { fetchBudgetsPage } from "@/services/budgets/queries";
-import { cacheBudgetsResponse } from "@/services/budgets/local-cache";
+import {
+  applyBudgetsPageToCaches,
+  budgetsPageForNetworkCache,
+  mergeSavedLocalBudgets,
+} from "@/services/budgets/budget-cache-ops";
 import {
   applyBudgetSpendingToPage,
   ensureMonthlyBudgetsLocalFirst,
@@ -43,8 +50,23 @@ export const useBudgetsData = (
         },
         { queryClient, waitForSync: false },
       );
+      const localKey = [
+        "budgets",
+        "local",
+        spaceCode,
+        startDate,
+        endDate,
+      ] as const;
+      const current = queryClient.getQueryData<BudgetsPage>(localKey);
+      if (!current) {
+        return ensured.page;
+      }
 
-      return ensured.page;
+      const omissions = await budgetDeletionsForMonth(spaceCode, startDate);
+      return mergeSavedLocalBudgets(
+        pageWithoutOmittedBudgets(ensured.page, omissions),
+        pageWithoutOmittedBudgets(current, omissions),
+      );
     },
     enabled: Boolean(spaceCode && startDate && endDate),
     staleTime: Infinity,
@@ -85,36 +107,37 @@ export const useBudgetsData = (
         startDate,
         endDate,
       );
-      const page = applyBudgetSpendingToPage(fetchedPage, transactions);
-      const localPage = queryClient.getQueryData<typeof page>([
+      const omittedBudgets = await budgetDeletionsForMonth(
+        spaceCode,
+        startDate,
+      );
+      const page = applyBudgetSpendingToPage(
+        pageWithoutOmittedBudgets(fetchedPage, omittedBudgets),
+        transactions,
+      );
+      const localKey = [
         "budgets",
         "local",
         spaceCode,
         startDate,
         endDate,
-      ]);
-      const hasLocalCreates = (localPage?.budgets ?? []).some((row) => {
-        const parent = row as { id?: string; subcategories?: Array<{ id?: string }> };
-        if (String(parent.id ?? "").startsWith("local:")) {
-          return true;
-        }
-
-        return (parent.subcategories ?? []).some((sub) =>
-          String(sub.id ?? "").startsWith("local:"),
-        );
+      ] as const;
+      const localPage = queryClient.getQueryData<typeof page>(localKey);
+      const localKept = localPage
+        ? pageWithoutOmittedBudgets(localPage, omittedBudgets)
+        : undefined;
+      const pageToStore = budgetsPageForNetworkCache({
+        fetched: page,
+        local: localKept,
       });
 
-      if (hasLocalCreates) {
-        return localPage ?? page;
-      }
-
-      void cacheBudgetsResponse(spaceCode, startDate, endDate, page).then(() => {
-        queryClient.setQueryData(
-          ["budgets", "local", spaceCode, startDate, endDate],
-          page,
-        );
+      return applyBudgetsPageToCaches({
+        spaceCode,
+        startDate,
+        endDate,
+        page: pageToStore,
+        queryClient,
       });
-      return page;
     },
     enabled: Boolean(spaceCode && startDate && endDate && !skipNetworkFetch),
     placeholderData: localBudgetsQuery.data ?? undefined,

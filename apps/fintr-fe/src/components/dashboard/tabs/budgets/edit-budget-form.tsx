@@ -12,7 +12,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { CalculatorInput } from "@/components/ui/calculator-input";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNumberInput } from "@/hooks/useNumberInput";
 import { formatCurrency, numberFormatting } from "@/lib/utils";
 import { useBudgetsData } from "@/hooks/async/useBudgetsData";
@@ -190,21 +190,33 @@ export function EditBudgetForm({
     );
   };
 
+  const budgetSeedKey = `${budget.id}:${budget.categoryId ?? ""}`;
+  const seededFor = useRef<string | null>(null);
+
   useEffect(() => {
+    if (hasSubcategoryChildren) {
+      initializeSubcategoryLines();
+    }
+  }, [budgetSeedKey, hasSubcategoryChildren, budget.subcategories]);
+
+  useEffect(() => {
+    if (seededFor.current === budgetSeedKey) {
+      return;
+    }
+
+    seededFor.current = budgetSeedKey;
     form.reset({
       category: categoryValue,
       amount: budget.budget,
     });
     amountInput.setDisplayValue(
-      numberFormatting.formatForInput(budget.budget.toString()),
+      budget.budget > 0
+        ? numberFormatting.formatForInput(budget.budget.toString())
+        : "",
     );
     setAllocationMessage(null);
     setIsSubmitting(false);
-
-    if (hasSubcategoryChildren) {
-      initializeSubcategoryLines();
-    }
-  }, [budget.id, budget.budget, budget.subcategories, categoryValue]);
+  }, [budgetSeedKey, budget.budget, categoryValue, amountInput, form]);
 
   const handleSubAmountChange = (subcategoryId: string, displayValue: string) => {
     const amount = numberFormatting.cleanForBackend(displayValue);
@@ -280,6 +292,7 @@ export function EditBudgetForm({
 
         await createBudgetMutation.mutateAsync({
           categoryId: budget.categoryId,
+          categoryName: budget.name,
           amount,
           date: firstDayOfMonth(budgetMonthDate),
         });

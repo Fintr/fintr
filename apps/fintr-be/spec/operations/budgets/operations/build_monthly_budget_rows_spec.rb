@@ -164,6 +164,53 @@ RSpec.describe Budgets::Operations::BuildMonthlyBudgetRows do
     expect(sub_row[:budget]).to eq(0)
   end
 
+  it "includes expenses in categories that have no budget in the spent total" do
+    transport = create(:category, :expense, space:, name: "Transport")
+    account = create(:account, space:)
+    create(
+      :expense_transaction,
+      space:,
+      account:,
+      category: parent,
+      date: Date.new(2025, 5, 4),
+      amount: 50,
+      balance_state: :calculated
+    )
+    create(
+      :expense_transaction,
+      space:,
+      account:,
+      category: transport,
+      date: Date.new(2025, 5, 6),
+      amount: 25,
+      balance_state: :calculated
+    )
+    parent_budget = create(
+      :budget,
+      space:,
+      category: parent,
+      date: Date.new(2025, 5, 1),
+      amount_cents: 100_00
+    )
+
+    result = operation.call(
+      budgets: [parent_budget],
+      space_id: space.id,
+      start_date:,
+      end_date:
+    )
+    rows = result.value!
+    expense_total = MonthlyFinancialSummaries::Queries::AggregateTotalsInSpaceForRange.call(
+      space:,
+      start_date:,
+      end_date:
+    )[:total_expenses]
+
+    expect(rows.sum { |row| row[:total_spent].to_d }).to eq(expense_total)
+    expect(rows.find { |row| row[:category_id] == transport.id }[:total_spent]).to eq(25)
+    expect(rows.find { |row| row[:category_id] == transport.id }[:amount]).to eq(0)
+  end
+
   context "when expenses are booked in a foreign currency" do
     let(:account) { create(:account, space:) }
     let(:expense_date) { Date.new(2025, 5, 10) }

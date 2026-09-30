@@ -8,8 +8,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetLocalDbForTests } from "@/lib/local-db";
 import { putSpaceTransactions } from "@/lib/local-db/transactions";
 import { cacheBudgetsResponse } from "@/services/budgets/local-cache";
+import type { BudgetsPage } from "@/types/budgetTypes";
+import type { ensureMonthlyBudgetsLocalFirst } from "@/services/budgets/ensure-monthly-budgets-local-first";
 
 import { useBudgetsData } from "./useBudgetsData";
+
+const ensureMock = vi.hoisted(() => ({
+  impl: null as null | typeof ensureMonthlyBudgetsLocalFirst,
+}));
+
+vi.mock("@/services/budgets/ensure-monthly-budgets-local-first", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/services/budgets/ensure-monthly-budgets-local-first")
+  >("@/services/budgets/ensure-monthly-budgets-local-first");
+
+  return {
+    ...actual,
+    ensureMonthlyBudgetsLocalFirst: (
+      ...args: Parameters<typeof actual.ensureMonthlyBudgetsLocalFirst>
+    ) => {
+      if (ensureMock.impl) {
+        return ensureMock.impl(...args);
+      }
+
+      return actual.ensureMonthlyBudgetsLocalFirst(...args);
+    },
+  };
+});
 
 vi.mock("../useAuthApi", () => ({
   default: () => ({
@@ -84,6 +109,7 @@ describe("useBudgetsData", () => {
   });
 
   afterEach(async () => {
+    ensureMock.impl = null;
     queryClient.clear();
     window.localStorage.clear();
     await resetLocalDbForTests();
@@ -156,5 +182,86 @@ describe("useBudgetsData", () => {
     await flushQueries();
 
     expect(visit.result.current.data?.summary?.total_spent).toBe(120);
+  });
+
+  it("keeps a Home budget saved while the month refresh is still running", async () => {
+    const spendingOnlyHomePage: BudgetsPage = {
+      budgets: [
+        {
+          id: "",
+          date: "2026-09-01",
+          category_name: "Home",
+          category_id: "cat-home",
+          total_spent: 18_800,
+          amount_currency: "PHP",
+          amount: 0,
+          has_explicit_parent_budget: false,
+          subcategories: [],
+        },
+      ],
+      summary: {
+        total_budget: 0,
+        total_spent: 18_800,
+        total_spent_percentage: null,
+        remaining: -18_800,
+      },
+      nextPage: null,
+      totalPages: null,
+      totalCount: null,
+    };
+    const savedHomePage: BudgetsPage = {
+      ...spendingOnlyHomePage,
+      budgets: [
+        {
+          ...spendingOnlyHomePage.budgets[0],
+          id: "local:home",
+          amount: 30_000,
+          has_explicit_parent_budget: true,
+        },
+      ],
+      summary: {
+        total_budget: 30_000,
+        total_spent: 18_800,
+        total_spent_percentage: 62.7,
+        remaining: 11_200,
+      },
+    };
+    let releaseRefresh: () => void = () => {};
+    const refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    ensureMock.impl = async () => {
+      await refreshGate;
+      const result = {
+        created: false,
+        page: spendingOnlyHomePage,
+        pendingSync: false,
+        syncPromise: Promise.resolve(null as never),
+      };
+      result.syncPromise = Promise.resolve(result);
+      return result;
+    };
+
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    const visit = renderHook(
+      () => useBudgetsData("2026-09-01", "2026-09-30"),
+      { wrapper },
+    );
+
+    await act(async () => {
+      queryClient.setQueryData(
+        ["budgets", "local", "space-a", "2026-09-01", "2026-09-30"],
+        savedHomePage,
+      );
+    });
+    releaseRefresh();
+    await flushQueries();
+
+    const home = visit.result.current.data?.budgets.find(
+      (row) => row.category_id === "cat-home",
+    );
+    expect(home?.id).toBe("local:home");
+    expect(home?.amount).toBe(30_000);
   });
 });

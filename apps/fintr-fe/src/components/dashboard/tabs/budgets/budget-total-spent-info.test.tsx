@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { BudgetTotalSpentInfo } from "./budget-total-spent-info";
 
 describe("BudgetTotalSpentInfo", () => {
-  it("explains that total spent only counts categories that have a budget", async () => {
+  it("explains that total spent is all expenses for the period", async () => {
     const user = userEvent.setup();
     render(<BudgetTotalSpentInfo />);
 
@@ -15,7 +15,7 @@ describe("BudgetTotalSpentInfo", () => {
 
     expect(
       screen.getByText(
-        "This total only counts spending in categories that have a budget.",
+        "This total is all expenses for this period.",
       ),
     ).toBeInTheDocument();
   });

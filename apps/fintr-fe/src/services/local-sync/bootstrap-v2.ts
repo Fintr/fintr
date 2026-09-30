@@ -44,9 +44,7 @@ import {
   cacheLoansAllPages,
 } from "@/services/loans/local-cache";
 import { loansListQueryKey } from "@/services/loans/loans-list-cache";
-import {
-  cacheBudgetsResponse,
-} from "@/services/budgets/local-cache";
+import { applyBudgetsPageToCaches } from "@/services/budgets/budget-cache-ops";
 import {
   cacheTransferDetail,
 } from "@/services/transactions/transfers/local-cache";
@@ -397,20 +395,13 @@ const applyBootstrapTier2 = async (params: {
       continue;
     }
 
-    await cacheBudgetsResponse(
+    await applyBudgetsPageToCaches({
       spaceCode,
-      range.startDate,
-      range.endDate,
-      budgetsPage as never,
-    );
-    queryClient.setQueryData(
-      ["budgets", "local", spaceCode, range.startDate, range.endDate],
-      budgetsPage,
-    );
-    queryClient.setQueryData(
-      ["budgets", spaceCode, range.startDate, range.endDate],
-      budgetsPage,
-    );
+      startDate: range.startDate,
+      endDate: range.endDate,
+      page: budgetsPage as never,
+      queryClient,
+    });
   }
 
   const loans = (bundle.loans ?? []) as Loan[];
