@@ -545,12 +545,14 @@ const BudgetsTab = ({ isActive = true }: BudgetsTabProps) => {
                             budgetMonthDate={appliedStartDate}
                             spaceCurrency={spaceCurrency}
                           />
-                          <DeleteBudgetDialog
-                            budget={category}
-                            onDelete={handleDeleteBudget}
-                            isLoading={deleteBudgetMutation.isPending}
-                            currency={spaceCurrency}
-                          />
+                          {category.id ? (
+                            <DeleteBudgetDialog
+                              budget={category}
+                              onDelete={handleDeleteBudget}
+                              isLoading={deleteBudgetMutation.isPending}
+                              currency={spaceCurrency}
+                            />
+                          ) : null}
                         </div>
                       </div>
                       
@@ -565,13 +567,22 @@ const BudgetsTab = ({ isActive = true }: BudgetsTabProps) => {
                           >
                             {formatCurrency(category.spent, spaceCurrency)}
                           </span>
-                          <span className="text-primary/70">
-                            {" "}
-                            / {formatCurrency(category.budget, spaceCurrency)}
-                          </span>
-                          <span className={`ml-2 ${getProgressColor(budgetPercentage, "font")}`}>
-                            ({formattedItemPercentage}%)
-                          </span>
+                          {category.id ? (
+                            <>
+                              <span className="text-primary/70">
+                                {" "}
+                                / {formatCurrency(category.budget, spaceCurrency)}
+                              </span>
+                              <span className={`ml-2 ${getProgressColor(budgetPercentage, "font")}`}>
+                                ({formattedItemPercentage}%)
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {" "}
+                              · No budget set
+                            </span>
+                          )}
                         </div>
                         <div className="hidden md:flex space-x-2">
                           <EditBudgetDialog
@@ -582,14 +593,16 @@ const BudgetsTab = ({ isActive = true }: BudgetsTabProps) => {
                             budgetMonthDate={appliedStartDate}
                             spaceCurrency={spaceCurrency}
                           />
-                          <DeleteBudgetDialog
-                            budget={category}
-                            onDelete={handleDeleteBudget}
-                            isLoading={deleteBudgetMutation.isPending}
-                            currency={spaceCurrency}
-                            variant="ghost"
-                            size="icon"
-                          />
+                          {category.id ? (
+                            <DeleteBudgetDialog
+                              budget={category}
+                              onDelete={handleDeleteBudget}
+                              isLoading={deleteBudgetMutation.isPending}
+                              currency={spaceCurrency}
+                              variant="ghost"
+                              size="icon"
+                            />
+                          ) : null}
                           
                         </div>
                       </div>

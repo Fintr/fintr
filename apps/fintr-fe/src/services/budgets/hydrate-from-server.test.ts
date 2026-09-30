@@ -11,6 +11,7 @@ vi.mock("@/services/budgets/queries", () => ({
 }));
 
 import { fetchBudgetsPage } from "@/services/budgets/queries";
+import { rememberBudgetDeletion } from "./budget-deletions";
 import { hydrateBudgetsFromServer } from "./hydrate-from-server";
 
 const serverSeptemberPage = (): BudgetsPage => ({
@@ -141,6 +142,40 @@ describe("hydrateBudgetsFromServer", () => {
     expect(cached?.budgets.map((row) => row.id)).toEqual([
       "server-food",
       "server-home",
+    ]);
+  });
+
+  it("does not restore a budget deleted locally when Rails still has it", async () => {
+    await rememberBudgetDeletion({
+      spaceCode: "space-a",
+      monthStart: "2026-09-01",
+      categoryId: "cat-home",
+      subcategoryId: null,
+      budgetId: "server-home",
+    });
+    vi.mocked(fetchBudgetsPage).mockResolvedValue(serverSeptemberPage());
+
+    await hydrateBudgetsFromServer(
+      {} as never,
+      {
+        spaceCode: "space-a",
+        asOfStartDate: "2026-09-01",
+        monthCount: 1,
+      },
+    );
+
+    const cached = await loadCachedBudgetsResponse(
+      "space-a",
+      "2026-09-01",
+      "2026-09-30",
+    );
+    expect(cached?.budgets.map((row) => ({
+      id: String(row.id ?? ""),
+      categoryId: String(row.category_id ?? ""),
+      amount: Number(row.amount ?? 0),
+    }))).toEqual([
+      { id: "server-food", categoryId: "cat-food", amount: 500 },
+      { id: "", categoryId: "cat-home", amount: 0 },
     ]);
   });
 

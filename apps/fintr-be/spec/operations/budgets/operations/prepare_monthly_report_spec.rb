@@ -106,7 +106,7 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
         expect(Budgets::Operations::CreateMonthlyBudget).not_to have_received(:new)
       end
 
-      it 'keeps summary remaining aligned to listed budgets when unbudgeted expenses exist' do
+      it 'includes unbudgeted category expenses in total spent' do
         shopping_category = create(:category, space:, category_type: "expense", name: "Shopping")
         create(
           :expense_transaction,
@@ -123,9 +123,12 @@ RSpec.describe Budgets::Operations::PrepareMonthlyReport do
         result = call_operation
         expect(result).to be_success
         summary = result.value![:summary]
+        shopping_row = result.value![:budgets].find { |row| row[:category_id] == shopping_category.id }
         expect(summary[:total_budget]).to eq(300)
-        expect(summary[:total_spent]).to eq(150)
-        expect(summary[:remaining]).to eq(150)
+        expect(summary[:total_spent]).to eq(10_150)
+        expect(summary[:remaining]).to eq(-9_850)
+        expect(shopping_row[:amount]).to eq(0)
+        expect(shopping_row[:total_spent]).to eq(10_000)
       end
     end
 

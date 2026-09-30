@@ -24,7 +24,7 @@ export const BudgetTotalSpentInfo = () => (
         Total spent
       </h4>
       <p className="text-sm text-muted-foreground">
-        This total only counts spending in categories that have a budget.
+        This total is all expenses for this period.
       </p>
     </PopoverContent>
   </Popover>

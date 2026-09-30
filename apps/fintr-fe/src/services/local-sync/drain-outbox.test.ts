@@ -496,6 +496,42 @@ describe("drainOutboxForSpace", () => {
     expect(await getLocalDb().outbox.count()).toBe(0);
   });
 
+  it("does not create a budget that was deleted before the copy synced", async () => {
+    const { rememberBudgetDeletion } = await import(
+      "@/services/budgets/budget-deletions"
+    );
+    await rememberBudgetDeletion({
+      spaceCode: "space-a",
+      monthStart: "2026-09-01",
+      categoryId: "cat-home",
+      subcategoryId: null,
+      budgetId: "local:home",
+    });
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_BUDGET_CREATE,
+      clientMutationId: "cid-budget-create-deleted",
+      payload: {
+        localId: "local:home",
+        startDate: "2026-09-01",
+        endDate: "2026-09-30",
+        amount: 20_000,
+        date: "2026-09-01",
+        categoryId: "cat-home",
+        categoryName: "Home",
+      },
+    });
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.processed).toBe(1);
+    expect(createBudget).not.toHaveBeenCalled();
+    expect(await getLocalDb().outbox.count()).toBe(0);
+  });
+
   it("drops legacy budget ensure-month commands; monthly copies drain as budget.create", async () => {
     await enqueueOutboxRecord({
       spaceId: "space-a",

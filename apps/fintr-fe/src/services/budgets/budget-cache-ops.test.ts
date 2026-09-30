@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { BudgetsPage } from "@/types/budgetTypes";
 
 import {
+  addParentBudgetRowToPage,
+  budgetsPageForNetworkCache,
+  mergeSavedLocalBudgets,
+} from "./budget-cache-ops";
+import {
   normalizeBudgetsPage,
   recalculateBudgetSummary,
 } from "./normalize-budgets-page";
@@ -150,5 +155,195 @@ describe("normalizeBudgetsPage", () => {
     expect(page.summary?.total_budget).toBe(32_001);
     expect(page.summary?.total_spent).toBe(32_320.85);
     expect(page.summary?.remaining).toBeCloseTo(-319.85, 2);
+  });
+});
+
+describe("addParentBudgetRowToPage", () => {
+  it("replaces a deleted category row with the new budget amount", () => {
+    const page = addParentBudgetRowToPage(
+      {
+        budgets: [
+          {
+            id: "",
+            category_id: "cat-home",
+            category_name: "Home",
+            amount: 0,
+            total_spent: 18_800,
+            has_explicit_parent_budget: false,
+            subcategories: [],
+          },
+          {
+            id: "budget-food",
+            category_id: "cat-food",
+            category_name: "Food",
+            amount: 20_000,
+            total_spent: 12_000,
+            has_explicit_parent_budget: true,
+            subcategories: [],
+          },
+        ],
+        summary: null,
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+      {
+        id: "local:home",
+        category_id: "cat-home",
+        category_name: "Home",
+        amount: 30_000,
+        total_spent: 0,
+        has_explicit_parent_budget: true,
+        subcategories: [],
+      },
+    );
+
+    expect(page.budgets).toHaveLength(2);
+    expect(page.budgets[0]).toMatchObject({
+      id: "local:home",
+      amount: 30_000,
+      total_spent: 18_800,
+      has_explicit_parent_budget: true,
+    });
+    expect(page.summary?.total_budget).toBe(50_000);
+  });
+});
+
+describe("mergeSavedLocalBudgets", () => {
+  it("keeps a budget saved while the page was being rebuilt", () => {
+    const page = mergeSavedLocalBudgets(
+      {
+        budgets: [
+          {
+            id: "",
+            category_id: "cat-home",
+            category_name: "Home",
+            amount: 0,
+            total_spent: 18_800,
+            has_explicit_parent_budget: false,
+            subcategories: [],
+          },
+        ],
+        summary: null,
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+      {
+        budgets: [
+          {
+            id: "local:home",
+            category_id: "cat-home",
+            category_name: "Home",
+            amount: 30_000,
+            total_spent: 0,
+            has_explicit_parent_budget: true,
+            subcategories: [],
+          },
+        ],
+        summary: null,
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+    );
+
+    expect(page.budgets).toHaveLength(1);
+    expect(page.budgets[0]).toMatchObject({
+      id: "local:home",
+      amount: 30_000,
+      total_spent: 18_800,
+    });
+  });
+
+  it("keeps a saved server budget when the rebuilt page only has spending", () => {
+    const page = mergeSavedLocalBudgets(
+      {
+        budgets: [
+          {
+            id: "",
+            category_id: "cat-home",
+            category_name: "Home",
+            amount: 0,
+            total_spent: 18_800,
+            has_explicit_parent_budget: false,
+            subcategories: [],
+          },
+        ],
+        summary: null,
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+      {
+        budgets: [
+          {
+            id: "budget-home",
+            category_id: "cat-home",
+            category_name: "Home",
+            amount: 30_000,
+            total_spent: 18_800,
+            has_explicit_parent_budget: true,
+            subcategories: [],
+          },
+        ],
+        summary: null,
+        nextPage: null,
+        totalPages: null,
+        totalCount: null,
+      },
+    );
+
+    expect(page.budgets).toHaveLength(1);
+    expect(page.budgets[0]).toMatchObject({
+      id: "budget-home",
+      amount: 30_000,
+      total_spent: 18_800,
+      has_explicit_parent_budget: true,
+    });
+  });
+});
+
+describe("budgetsPageForNetworkCache", () => {
+  it("keeps a budget created locally when a server page arrives without it", () => {
+    const local = {
+      budgets: [
+        {
+          id: "local:home",
+          category_id: "cat-home",
+          amount: 30_000,
+          total_spent: 18_800,
+        },
+      ],
+      summary: null,
+      nextPage: null,
+      totalPages: null,
+      totalCount: null,
+    };
+    const fetched = {
+      budgets: [
+        {
+          id: "",
+          category_id: "cat-home",
+          amount: 0,
+          total_spent: 18_800,
+        },
+      ],
+      summary: null,
+      nextPage: null,
+      totalPages: null,
+      totalCount: null,
+    };
+
+    expect(
+      budgetsPageForNetworkCache({
+        fetched,
+        local,
+      }).budgets[0],
+    ).toMatchObject({
+      id: "local:home",
+      amount: 30_000,
+      total_spent: 18_800,
+    });
   });
 });

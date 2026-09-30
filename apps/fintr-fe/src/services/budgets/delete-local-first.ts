@@ -3,19 +3,29 @@ import type { AxiosInstance } from "axios";
 
 import {
   enqueueOutboxRecord,
+  getLocalDb,
+  OUTBOX_COMMAND_BUDGET_CREATE,
   OUTBOX_COMMAND_BUDGET_DELETE,
   removeOutboxRecord,
   updateOutboxStatus,
 } from "@/lib/local-db";
-import { deleteBudget } from "@/services/budgets/mutations";
+import {
+  createBudget,
+  deleteBudget,
+} from "@/services/budgets/mutations";
 
 import {
   applyBudgetsPageToCaches,
   findBudgetLocation,
   loadBudgetsPage,
-  removeBudgetRowFromPage,
+  replaceBudgetIdInPage,
   type BudgetRow,
 } from "./budget-cache-ops";
+import {
+  loadBudgetDeletions,
+  rememberBudgetDeletion,
+} from "./budget-deletions";
+import { calendarMonthStartDate } from "./create-monthly-budget";
 
 export type BudgetDeleteOutboxPayload = {
   budgetId: string;
@@ -42,26 +52,77 @@ const newClientMutationId = (): string => {
   return `cid-budget-del-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
-const isNetworkLikeError = (error: unknown): boolean => {
-  if (error instanceof Error) {
-    return (
-      error.message.toLowerCase().includes("network")
-      || error.message.toLowerCase().includes("failed to fetch")
-    );
-  }
-
-  if (error && typeof error === "object") {
-    const record = error as {
-      message?: unknown;
-      details?: unknown;
-      success?: unknown;
-    };
-    if (record.details != null || record.success === false) {
-      return false;
+const isNotFoundError = (error: unknown): boolean => {
+  if (error && typeof error === "object" && "response" in error) {
+    const status = (error as { response?: { status?: number } }).response?.status;
+    if (status === 404) {
+      return true;
     }
   }
 
-  return false;
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return message.includes("not found");
+};
+
+const createdBudgetId = (response: unknown): string | undefined => {
+  if (!response || typeof response !== "object") {
+    return undefined;
+  }
+
+  const root = response as { id?: unknown; data?: { id?: unknown } };
+  if (typeof root.data?.id === "string" && root.data.id) {
+    return root.data.id;
+  }
+
+  if (typeof root.id === "string" && root.id) {
+    return root.id;
+  }
+
+  return undefined;
+};
+
+const isServerBudgetId = (budgetId: string): boolean =>
+  budgetId.length > 0
+  && !budgetId.startsWith("local:")
+  && !budgetId.startsWith("parent:");
+
+const cancelBudgetCreatesForDeletion = async (params: {
+  spaceCode: string;
+  startDate: string;
+  budgetId: string;
+  categoryId: string;
+  subcategoryId: string | null;
+}): Promise<void> => {
+  const monthStart = calendarMonthStartDate(params.startDate);
+  const rows = await getLocalDb()
+    .outbox
+    .where("spaceId")
+    .equals(params.spaceCode)
+    .toArray();
+
+  await Promise.all(
+    rows
+      .filter((row) => {
+        if (row.commandType !== OUTBOX_COMMAND_BUDGET_CREATE) {
+          return false;
+        }
+
+        const payload = row.payload as {
+          localId?: string;
+          categoryId?: string;
+          date?: string;
+          subcategoryId?: string | null;
+        };
+        if (payload.localId === params.budgetId) {
+          return true;
+        }
+
+        return payload.categoryId === params.categoryId
+          && (payload.subcategoryId ?? null) === params.subcategoryId
+          && calendarMonthStartDate(String(payload.date ?? "")) === monthStart;
+      })
+      .map((row) => getLocalDb().outbox.delete(row.id)),
+  );
 };
 
 /**
@@ -98,15 +159,74 @@ export const deleteBudgetLocalFirst = async (
   }
 
   const removedBudgetRow = { ...location.row };
-  const nextPage = removeBudgetRowFromPage(existingPage, budgetId);
+  const categoryId = String(
+    location.kind === "parent"
+      ? location.row.category_id ?? location.row.categoryId ?? ""
+      : location.parent.category_id ?? location.parent.categoryId ?? "",
+  );
+  const subcategoryId = location.kind === "subcategory"
+    ? String(location.row.subcategory_id ?? location.row.subcategoryId ?? "")
+    : "";
+
+  await rememberBudgetDeletion({
+    spaceCode,
+    monthStart: startDate,
+    categoryId,
+    subcategoryId: subcategoryId || null,
+    budgetId,
+  });
+
+  if (location.kind === "parent") {
+    const subcategories = Array.isArray(location.row.subcategories)
+      ? location.row.subcategories
+      : [];
+
+    for (const sub of subcategories) {
+      const subRow = sub as BudgetRow;
+      const subBudgetId = String(subRow.id ?? "");
+      const subCategoryId = String(
+        subRow.subcategory_id ?? subRow.subcategoryId ?? "",
+      );
+      if (!subBudgetId || !subCategoryId) {
+        continue;
+      }
+
+      await rememberBudgetDeletion({
+        spaceCode,
+        monthStart: startDate,
+        categoryId,
+        subcategoryId: subCategoryId,
+        budgetId: subBudgetId,
+      });
+    }
+  }
+
+  await cancelBudgetCreatesForDeletion({
+    spaceCode,
+    startDate,
+    budgetId,
+    categoryId,
+    subcategoryId: subcategoryId || null,
+  });
 
   await applyBudgetsPageToCaches({
     spaceCode,
     startDate,
     endDate,
-    page: nextPage,
+    page: existingPage,
     queryClient,
   });
+
+  if (!isServerBudgetId(budgetId)) {
+    const localResult: DeleteBudgetLocalFirstResult = {
+      data: { id: budgetId },
+      pendingSync: false,
+      removedBudgetRow,
+      syncPromise: Promise.resolve(null as never),
+    };
+    localResult.syncPromise = Promise.resolve(localResult);
+    return localResult;
+  }
 
   const clientMutationId = newClientMutationId();
   await enqueueOutboxRecord({
@@ -122,17 +242,85 @@ export const deleteBudgetLocalFirst = async (
   await updateOutboxStatus({ id: clientMutationId, status: "syncing" });
 
   let resolveSync!: (value: DeleteBudgetLocalFirstResult) => void;
-  let rejectSync!: (reason?: unknown) => void;
-  const syncPromise = new Promise<DeleteBudgetLocalFirstResult>(
-    (resolve, reject) => {
-      resolveSync = resolve;
-      rejectSync = reject;
-    },
-  );
+  const syncPromise = new Promise<DeleteBudgetLocalFirstResult>((resolve) => {
+    resolveSync = resolve;
+  });
+
+  const deletionStillWanted = async (): Promise<boolean> => {
+    const deletions = await loadBudgetDeletions(spaceCode);
+    return deletions.some((row) => row.budgetId === budgetId);
+  };
+
+  const reviveRecreatedBudget = async (): Promise<void> => {
+    if (!categoryId) {
+      return;
+    }
+
+    const page = await loadBudgetsPage(spaceCode, startDate, endDate);
+    if (!page) {
+      return;
+    }
+
+    const rows = (page.budgets ?? []) as BudgetRow[];
+    const parent = rows.find(
+      (row) =>
+        String(row.category_id ?? row.categoryId ?? "") === categoryId,
+    );
+    if (!parent) {
+      return;
+    }
+
+    const target = subcategoryId
+      ? ((parent.subcategories ?? []) as BudgetRow[]).find(
+        (row) =>
+          String(row.subcategory_id ?? row.subcategoryId ?? "") === subcategoryId,
+      )
+      : parent;
+    const amount = Number(target?.amount ?? 0);
+    const rowId = String(target?.id ?? "");
+    if (!target || amount < 1 || !rowId) {
+      return;
+    }
+
+    const response = await createBudget(api, {
+      categoryId,
+      subcategoryId: subcategoryId || null,
+      amount,
+      date: startDate,
+    });
+    const serverId = createdBudgetId(response);
+    if (!serverId || serverId === rowId) {
+      return;
+    }
+
+    await applyBudgetsPageToCaches({
+      spaceCode,
+      startDate,
+      endDate,
+      page: replaceBudgetIdInPage(page, rowId, serverId),
+      queryClient,
+    });
+  };
 
   const runSync = async (): Promise<void> => {
     try {
+      if (!(await deletionStillWanted())) {
+        await removeOutboxRecord(clientMutationId);
+        resolveSync({
+          data: { id: budgetId },
+          pendingSync: false,
+          removedBudgetRow,
+          syncPromise,
+        });
+        return;
+      }
+
       await deleteBudget(api, budgetId);
+
+      if (!(await deletionStillWanted())) {
+        await reviveRecreatedBudget();
+      }
+
       await removeOutboxRecord(clientMutationId);
 
       resolveSync({
@@ -142,32 +330,30 @@ export const deleteBudgetLocalFirst = async (
         syncPromise,
       });
     } catch (error) {
-      if (isNetworkLikeError(error)) {
-        await updateOutboxStatus({
-          id: clientMutationId,
-          status: "pending",
-          lastError:
-            error instanceof Error ? error.message : "Network error on delete",
-        });
-
+      if (isNotFoundError(error)) {
+        await removeOutboxRecord(clientMutationId);
         resolveSync({
           data: { id: budgetId },
-          pendingSync: true,
+          pendingSync: false,
           removedBudgetRow,
           syncPromise,
         });
         return;
       }
 
-      await applyBudgetsPageToCaches({
-        spaceCode,
-        startDate,
-        endDate,
-        page: existingPage,
-        queryClient,
+      await updateOutboxStatus({
+        id: clientMutationId,
+        status: "pending",
+        lastError:
+          error instanceof Error ? error.message : "Could not delete budget",
       });
-      await removeOutboxRecord(clientMutationId);
-      rejectSync(error);
+
+      resolveSync({
+        data: { id: budgetId },
+        pendingSync: true,
+        removedBudgetRow,
+        syncPromise,
+      });
     }
   };
 

@@ -29,6 +29,33 @@ const subcategoryIdOf = (row: BudgetRow): string =>
 const hasExplicitParentBudget = (row: BudgetRow): boolean =>
   Boolean(row.has_explicit_parent_budget ?? row.hasExplicitParentBudget);
 
+export type OmittedBudgetCopy = {
+  categoryId: string;
+  subcategoryId: string | null;
+  budgetId?: string;
+};
+
+const isParentOmitted = (
+  omissions: OmittedBudgetCopy[],
+  categoryId: string,
+): boolean =>
+  omissions.some(
+    (omission) =>
+      omission.categoryId === categoryId
+      && !omission.subcategoryId,
+  );
+
+const isSubcategoryOmitted = (
+  omissions: OmittedBudgetCopy[],
+  categoryId: string,
+  subcategoryId: string,
+): boolean =>
+  omissions.some(
+    (omission) =>
+      omission.categoryId === categoryId
+      && omission.subcategoryId === subcategoryId,
+  );
+
 export const previousCalendarMonthRange = (
   startDate: string,
 ): { startDate: string; endDate: string } | null => {
@@ -132,19 +159,25 @@ const mergeParentFromPrevious = (params: {
   existing: BudgetRow | undefined;
   targetStartDate: string;
   createId: () => string;
+  omittedBudgets: OmittedBudgetCopy[];
 }): BudgetRow => {
-  const { previous, existing, targetStartDate, createId } = params;
+  const { previous, existing, targetStartDate, createId, omittedBudgets } = params;
   const previousSubs = Array.isArray(previous.subcategories)
     ? previous.subcategories.map(asBudgetRow)
     : [];
   const categoryId = categoryIdOf(previous) || categoryIdOf(existing ?? previous);
+  const parentOmitted = isParentOmitted(omittedBudgets, categoryId);
+  const copyableSubs = previousSubs.filter((sub) => {
+    const subId = subcategoryIdOf(sub);
+    return subId && !isSubcategoryOmitted(omittedBudgets, categoryId, subId);
+  });
 
   if (existing) {
     const presentSubIds = existingSubcategoryIds(existing);
     const existingSubs = Array.isArray(existing.subcategories)
       ? existing.subcategories.map(asBudgetRow)
       : [];
-    const copiedSubs = previousSubs
+    const copiedSubs = copyableSubs
       .filter((sub) => {
         const subId = subcategoryIdOf(sub);
         return isPersistedBudgetId(sub.id) && subId && !presentSubIds.has(subId);
@@ -158,13 +191,29 @@ const mergeParentFromPrevious = (params: {
     };
   }
 
-  const parentId = hasExplicitParentBudget(previous)
+  const parentId = hasExplicitParentBudget(previous) && !parentOmitted
     ? createId()
     : `parent:${categoryId || String(previous.id)}`;
 
-  const copiedSubs = previousSubs
+  const copiedSubs = copyableSubs
     .map((sub) => copySubcategoryRow(sub, targetStartDate, createId))
     .filter((sub): sub is BudgetRow => sub != null);
+
+  if (parentOmitted) {
+    return {
+      id: parentId,
+      date: targetStartDate,
+      category_id: categoryId,
+      categoryId,
+      category_name: previous.category_name ?? previous.categoryName,
+      amount: 0,
+      budget: 0,
+      has_explicit_parent_budget: false,
+      total_spent: 0,
+      parent_only_spent: 0,
+      subcategories: copiedSubs,
+    };
+  }
 
   return {
     ...previous,
@@ -176,13 +225,86 @@ const mergeParentFromPrevious = (params: {
   };
 };
 
+export const pageWithoutOmittedBudgets = (
+  page: BudgetsPage,
+  omittedBudgets: OmittedBudgetCopy[],
+): BudgetsPage => {
+  if (omittedBudgets.length === 0) {
+    return page;
+  }
+
+  const omittedBudgetIds = new Set(
+    omittedBudgets
+      .map((omission) => omission.budgetId ?? "")
+      .filter(Boolean),
+  );
+  const budgets = (page.budgets ?? []).flatMap((raw) => {
+    const row = asBudgetRow(raw);
+    const categoryId = categoryIdOf(row);
+    const subcategories = Array.isArray(row.subcategories)
+      ? row.subcategories.map(asBudgetRow).filter((sub) => {
+        const subcategoryId = subcategoryIdOf(sub);
+        if (omittedBudgetIds.has(String(sub.id ?? ""))) {
+          return false;
+        }
+
+        return !subcategoryId
+          || !isSubcategoryOmitted(omittedBudgets, categoryId, subcategoryId);
+      })
+      : [];
+    const parentRemoved = isParentOmitted(omittedBudgets, categoryId)
+      || omittedBudgetIds.has(String(row.id ?? ""));
+
+    if (!parentRemoved) {
+      return [
+        {
+          ...row,
+          subcategories,
+        },
+      ];
+    }
+
+    const keptSubs = subcategories.filter((sub) => isPersistedBudgetId(sub.id));
+    if (keptSubs.length === 0) {
+      return [
+        {
+          ...row,
+          id: "",
+          amount: 0,
+          budget: 0,
+          has_explicit_parent_budget: false,
+          subcategories: [],
+        },
+      ];
+    }
+
+    return [
+      {
+        ...row,
+        id: `parent:${categoryId || String(row.id ?? "")}`,
+        amount: 0,
+        budget: 0,
+        has_explicit_parent_budget: false,
+        subcategories: keptSubs,
+      },
+    ];
+  });
+
+  return recalculateBudgetSummary({
+    ...page,
+    budgets: budgets as BudgetsPage["budgets"],
+  });
+};
+
 export const createMonthlyBudgetsPage = (params: {
   previousPage: BudgetsPage;
   existingPage?: BudgetsPage;
   targetStartDate: string;
   createId?: () => string;
+  omittedBudgets?: OmittedBudgetCopy[];
 }): BudgetsPage => {
   const createId = params.createId ?? defaultCreateId;
+  const omittedBudgets = params.omittedBudgets ?? [];
   const targetStartDate = calendarMonthStartDate(params.targetStartDate);
   const existingRows = (params.existingPage?.budgets ?? []).map(asBudgetRow);
   const existingByCategory = new Map(
@@ -204,11 +326,13 @@ export const createMonthlyBudgetsPage = (params: {
       existing,
       targetStartDate,
       createId,
+      omittedBudgets,
     });
     const mergedSubs = Array.isArray(merged.subcategories)
       ? merged.subcategories.map(asBudgetRow)
       : [];
     const hasCopiedParent = hasExplicitParentBudget(previous)
+      && !isParentOmitted(omittedBudgets, categoryId)
       && String(merged.id).startsWith("local:");
     const hasCopiedSub = mergedSubs.some((sub) =>
       String(sub.id).startsWith("local:"),
