@@ -203,7 +203,10 @@ export const buildUpdatedIndexTransaction = (params: {
       : previous.fromAccountName)
     || "";
 
-  const bookedAmount = money.bookedAmount ?? Number(money.amount) || 0;
+  const parsedAmount = Number(money.amount);
+  const bookedAmount = money.bookedAmount ?? (
+    Number.isFinite(parsedAmount) ? parsedAmount : 0
+  );
   const bookedAmountCurrency =
     money.bookedAmountCurrency
     ?? money.amountCurrency
