@@ -8,6 +8,7 @@ import {
   buildTransactionTotalsContext,
 } from "@/services/insights/transaction-space-totals";
 import type { IndexTransaction } from "@/types/transactionTypes";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 
 import {
   cacheMonthlyFinancialSummaries,
@@ -92,7 +93,10 @@ const monthTotalsFromTransactions = (
       continue;
     }
 
-    const amount = Math.abs(toSummaryNumber(transaction.amount));
+    const amount = signedTransactionAmount(
+      transaction.amount,
+      transaction.bookedAmount,
+    );
     const current = totals.get(key) ?? { totalIncome: 0, totalExpenses: 0 };
 
     if (isIncomeTransaction(transaction)) {

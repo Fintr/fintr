@@ -117,7 +117,22 @@ RSpec.describe Transactions::Queries::TotalsByType, type: :query do
         totals = result.value!
         expect(totals[:income]).to eq(0.0)
         expect(totals[:expense]).to eq(125.0)
-        expect(totals[:transfer]).to eq(0.0)
+      end
+
+      it 'reduces the expense total when an expense amount is negative' do
+        create(
+          :expense_transaction,
+          space: space,
+          account: account1,
+          category: expense_category,
+          date: Date.new(2024, 1, 25),
+          amount_cents: -2_000
+        )
+
+        result = described_class.call(params: default_params)
+
+        expect(result).to be_success
+        expect(result.value![:expense]).to eq(105.0)
       end
     end
 

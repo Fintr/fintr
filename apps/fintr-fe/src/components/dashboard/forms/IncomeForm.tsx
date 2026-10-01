@@ -72,7 +72,7 @@ import {
   transactionNeedsConversion,
   withEditOriginalCurrency,
 } from "@/utils/amountPickerTargetCurrency";
-import { positiveTransactionFormAmountString } from "@/utils/transactionFormAmount";
+import { signedTransactionFormAmountString } from "@/utils/transactionFormAmount";
 import {
   amountDirtySignature,
   conversionDirtySignature,
@@ -264,7 +264,14 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
   // Form state management
   const [formState, setFormState] = useState<IncomeFormValues>({
-    amount: prefillAmount || initialData?.amount?.toString() || "",
+    amount:
+      prefillAmount
+      || (initialData?.amount != null
+        ? signedTransactionFormAmountString(
+          initialData.amount,
+          initialData.bookedAmount,
+        )
+        : ""),
     description: initialData?.description || "",
     categoryName: initialData
       ? categoryPickerValueFromReceiptOrTransaction(
@@ -532,7 +539,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           ? (rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? ""
           : (initialData.amount ?? "");
 
-      const initialAmount = positiveTransactionFormAmountString(rawInitialAmount);
+      const initialAmount = signedTransactionFormAmountString(
+        rawInitialAmount,
+        hasOriginal || rawConv != null
+          ? rawInitialAmount
+          : initialData.bookedAmount ?? rawInitialAmount,
+      );
 
       const displayCurrency = hasOriginal
         ? String(originalCurrency)

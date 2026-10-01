@@ -19,7 +19,10 @@ import type {
   UpdateTransactionType,
 } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
-import { positiveTransactionFormAmount } from "@/utils/transactionFormAmount";
+import {
+  positiveTransactionFormAmount,
+  signedTransactionAmount,
+} from "@/utils/transactionFormAmount";
 import {
   conversionHasFx,
   moneyFieldsFromDetailPayload,
@@ -217,7 +220,7 @@ export const mapIndexTransactionToEditDataSync = (
     id: row.id,
     date: row.date,
     description: row.description ?? "",
-    amount: positiveTransactionFormAmount(row.amount),
+    amount: signedTransactionAmount(row.amount, row.bookedAmount),
     amountCurrency: row.amountCurrency,
     categoryName: row.categoryName ?? "",
     categoryId: categoryIds?.categoryId,

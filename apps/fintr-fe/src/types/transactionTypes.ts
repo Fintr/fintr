@@ -122,6 +122,8 @@ export interface UpdateTransactionType {
   date: string;
   description: string;
   amount: number;
+  /** Ledger amount. Sign lives here when the list amount is value-flipped. */
+  bookedAmount?: number;
   /** Booked transaction currency (ISO), aligned with +amount+ from GET /transactions/:id. */
   amountCurrency?: string;
   /** Space-normalized display from API when needed for summaries. */

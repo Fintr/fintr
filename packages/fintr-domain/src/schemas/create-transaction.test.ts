@@ -21,14 +21,32 @@ describe("createTransactionClientSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects non-positive amounts", () => {
+  it("accepts a negative expense and a negative income", () => {
+    const expense = createTransactionClientSchema.safeParse({
+      ...validClientPayload,
+      amount: -40,
+    });
+    const income = createTransactionClientSchema.safeParse({
+      ...validClientPayload,
+      amount: -25,
+      transactionType: "income",
+      categoryName: "Salary",
+    });
+
+    expect(expense.success).toBe(true);
+    expect(income.success).toBe(true);
+  });
+
+  it("rejects a zero amount", () => {
     const result = createTransactionClientSchema.safeParse({
       ...validClientPayload,
-      amount: -1,
+      amount: 0,
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((i) => i.path[0] === "amount")).toBe(true);
+      expect(result.error.issues.some((issue) => issue.path[0] === "amount")).toBe(
+        true,
+      );
     }
   });
 

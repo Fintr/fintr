@@ -78,7 +78,10 @@ const newClientMutationId = (): string => {
 };
 
 const occurrenceAmount = (data: CreateTransactionType): number => {
-  const amount = Math.abs(Number(data.amount) || 0);
+  const amount = Number(data.amount);
+  if (!Number.isFinite(amount) || amount === 0) {
+    return 0;
+  }
   if (
     data.scheduleType === ScheduleTypeEnum.INSTALLMENT &&
     data.installmentPeriod != null &&

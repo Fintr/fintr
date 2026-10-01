@@ -1,5 +1,6 @@
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 
 import type { InsightsSummary } from "./types";
 import {
@@ -53,7 +54,7 @@ export const amountNumericForSpaceTotal = (
   // Index rows already carry space-normalized amount + ISO from API or local-first
   // writes. Prefer that over re-converting booked legs with stale cached FX.
   if (amountCurrency === space && displayAmount !== 0) {
-    return Number(Math.abs(displayAmount).toFixed(2));
+    return Number(displayAmount.toFixed(2));
   }
 
   if (
@@ -196,7 +197,7 @@ export const aggregateTotalsInSpaceForRange = (
       }
 
       const converted = toSpaceDecimal({
-        amount: type === "expense" ? Math.abs(group.total) : group.total,
+        amount: group.total,
         fromCurrency: group.currency,
         date: group.date,
         spaceCurrency: space,
@@ -232,16 +233,19 @@ export const summaryFromTransactionsForSpace = (
   let totalExpenses = 0;
 
   for (const transaction of transactions) {
-    const amount = amountNumericForSpaceTotal(
-      transaction,
-      spaceCurrency,
-      rateLookup,
+    const amount = signedTransactionAmount(
+      amountNumericForSpaceTotal(
+        transaction,
+        spaceCurrency,
+        rateLookup,
+      ),
+      transaction.bookedAmount ?? transaction.amount,
     );
 
     if (isIncome(transaction)) {
       totalIncome += amount;
     } else if (isExpense(transaction)) {
-      totalExpenses += Math.abs(amount);
+      totalExpenses += amount;
     }
   }
 

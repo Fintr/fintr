@@ -21,6 +21,7 @@ import {
 import { isTransactionCalculatedForDate } from "@/utils/transactionCalculated";
 import { invalidateLocalInsightsQueries } from "@/utils/invalidateSpaceQueries";
 import { isUploadableFile } from "@/utils/formUtils";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 import {
   enqueueOutboxRecord,
   OUTBOX_COMMAND_TRANSACTION_UPDATE,
@@ -172,7 +173,7 @@ export const buildUpdatedIndexTransaction = (params: {
     || previous.currencyConversion?.convertedCurrency
     || entryCurrency;
   const money = optimisticIndexMoneyFromCreate({
-    occurrenceAmount: Math.abs(Number(data.amount) || 0),
+    occurrenceAmount: Number(data.amount) || 0,
     data: {
       ...data,
       transactionType,
@@ -202,9 +203,7 @@ export const buildUpdatedIndexTransaction = (params: {
       : previous.fromAccountName)
     || "";
 
-  const bookedAmount = Math.abs(
-    money.bookedAmount ?? Math.abs(Number(money.amount) || 0),
-  );
+  const bookedAmount = money.bookedAmount ?? Number(money.amount) || 0;
   const bookedAmountCurrency =
     money.bookedAmountCurrency
     ?? money.amountCurrency
@@ -286,7 +285,7 @@ export const buildUpdatedIndexTransaction = (params: {
       : previousConversion?.exchangeRate
         ?? (
           bookedAmount !== 0
-            ? Math.abs(Number(money.amount) || 0) / bookedAmount
+            ? Math.abs(Number(money.amount) || 0) / Math.abs(bookedAmount)
             : 1
         );
 
@@ -298,7 +297,7 @@ export const buildUpdatedIndexTransaction = (params: {
         ?? previousConversion?.originalCurrency
         ?? bookedAmountCurrency
         ?? "PHP",
-      convertedAmount: Math.abs(Number(money.amount) || 0),
+      convertedAmount: Number(money.amount) || 0,
       convertedCurrency:
         previousConversion?.convertedCurrency
         ?? money.amountCurrency
@@ -353,7 +352,7 @@ export const buildUpdatedIndexTransaction = (params: {
             ?? previous.installmentPeriod
             ?? 0,
           previousAmountCents: indexRowLedgerAmountCents(previous),
-          nextAmountCents: Math.round(Math.abs(Number(money.amount) || 0) * 100),
+          nextAmountCents: Math.round((Number(money.amount) || 0) * 100),
         }) / 100;
     }
   }
@@ -374,7 +373,10 @@ const applySummaryDelta = async (params: {
   let nextSummaries = await applyLocalTransactionToMonthlySummaries({
     spaceCode: params.spaceId,
     date: params.previous.date,
-    amount: Math.abs(Number(params.previous.amount) || 0),
+    amount: signedTransactionAmount(
+      params.previous.amount,
+      params.previous.bookedAmount,
+    ),
     type: previousType,
     mode: "remove",
     currency: params.amountCurrency,
@@ -383,7 +385,10 @@ const applySummaryDelta = async (params: {
   nextSummaries = await applyLocalTransactionToMonthlySummaries({
     spaceCode: params.spaceId,
     date: params.next.date,
-    amount: Math.abs(Number(params.next.amount) || 0),
+    amount: signedTransactionAmount(
+      params.next.amount,
+      params.next.bookedAmount,
+    ),
     type: nextType,
     mode: "add",
     currency: params.amountCurrency,

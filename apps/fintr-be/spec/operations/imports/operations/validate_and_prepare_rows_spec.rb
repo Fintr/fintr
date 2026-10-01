@@ -378,7 +378,7 @@ RSpec.describe Imports::Operations::ValidateAndPrepareRows, type: :operation do
             result = operation.send(:validate_row, row_data: row_data, row_number: 1, category_map: category_map)
 
             expect(result[:success]).to be false
-            expect(result[:errors]).to include("Amount must be greater than 0")
+            expect(result[:errors]).to include("Amount cannot be zero")
           end
         end
 
@@ -397,7 +397,7 @@ RSpec.describe Imports::Operations::ValidateAndPrepareRows, type: :operation do
             result = operation.send(:validate_row, row_data: row_data, row_number: 1, category_map: category_map)
 
             expect(result[:success]).to be false
-            expect(result[:errors]).to include("Amount must be greater than 0")
+            expect(result[:errors]).to include("Amount cannot be zero")
           end
         end
 
@@ -412,11 +412,12 @@ RSpec.describe Imports::Operations::ValidateAndPrepareRows, type: :operation do
             }
           end
 
-          it "returns failure with amount error" do
+          it "accepts a negative income amount" do
             result = operation.send(:validate_row, row_data: row_data, row_number: 1, category_map: category_map)
 
-            expect(result[:success]).to be false
-            expect(result[:errors]).to include("Amount must be greater than 0")
+            expect(result[:success]).to be true
+            expect(result[:category]).to eq(income_category)
+            expect(result).not_to have_key(:errors)
           end
         end
       end

@@ -11,6 +11,7 @@ import type {
   TransactionTotals,
 } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 import {
   type IndexTransactionWithCategoryIds,
   parseTransactionListFilterFromQueryKey,
@@ -42,15 +43,6 @@ const transactionDateKey = (date: IndexTransaction["date"]): string => {
   return String(date ?? "").slice(0, 10);
 };
 
-const toAmountNumber = (amount: IndexTransaction["amount"]): number => {
-  if (typeof amount === "number") {
-    return amount;
-  }
-
-  const parsed = Number(amount);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 const adjustTotalsForUpsert = (
   totals: TransactionTotals,
   params: {
@@ -64,7 +56,7 @@ const adjustTotalsForUpsert = (
   let transfer = totals.transfer ?? 0;
 
   const apply = (row: IndexTransaction, sign: 1 | -1) => {
-    const amount = Math.abs(toAmountNumber(row.amount));
+    const amount = signedTransactionAmount(row.amount, row.bookedAmount);
     if (row.type === CombinedTransactionTypeEnum.INCOME) income += sign * amount;
     if (row.type === CombinedTransactionTypeEnum.EXPENSE) expense += sign * amount;
     if (row.type === CombinedTransactionTypeEnum.TRANSFER) transfer += sign * amount;
@@ -76,8 +68,8 @@ const adjustTotalsForUpsert = (
   apply(params.next, 1);
 
   return {
-    income: Math.max(0, income),
-    expense: Math.max(0, expense),
+    income,
+    expense,
     transfer: Math.max(0, transfer),
   };
 };

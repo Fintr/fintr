@@ -35,7 +35,7 @@ module Insights
       total = transactions.inject(0.to_d) do |memo, transaction|
         next memo unless transaction.is_a?(Transactions::Expense)
 
-        memo + transaction.amount_numeric_for_space_total.to_d.abs
+        memo + transaction.signed_type_total_amount
       end
       Success(total)
     end

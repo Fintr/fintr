@@ -68,7 +68,7 @@ function SummaryTotals({
       {summaryBoxes.map((box) => {
         const Icon = box.icon;
         const amount = totals[box.key];
-        const displayAmount = box.key === "income" ? amount : Math.abs(amount);
+        const displayAmount = box.key === "transfer" ? Math.abs(amount) : amount;
 
         return (
           <div
@@ -217,7 +217,7 @@ export function TransactionTotalsDisplay({
           >
             <ArrowDownLeft className="h-4 w-4 text-red-900 dark:text-red-700" />
             <span className="text-sm font-medium text-red-900 dark:text-red-700">
-              Expenses: {formatCurrency(Math.abs(totals.expense), spaceCurrency)}
+              Expenses: {formatCurrency(totals.expense, spaceCurrency)}
             </span>
           </div>
         )}

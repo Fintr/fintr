@@ -18,6 +18,7 @@ import { removeIndexTransactionsFromQueryCaches } from "@/services/transactions/
 import type { Account } from "@/types/accountTypes";
 import type { IndexTransaction } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 import { invalidateLocalInsightsQueries } from "@/utils/invalidateSpaceQueries";
 
 export type RemovedAccountTransactions = {
@@ -50,7 +51,7 @@ const adjustSummaries = async (params: {
     const updated = await applyLocalTransactionToMonthlySummaries({
       spaceCode: spaceId,
       date: row.date,
-      amount: Math.abs(Number(row.amount) || 0),
+      amount: signedTransactionAmount(row.amount, row.bookedAmount),
       type: summaryType,
       mode,
       currency: row.amountCurrency,

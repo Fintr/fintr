@@ -46,10 +46,10 @@ export const createTransactionClientSchema = z
     tags: z.array(z.unknown()).optional(),
   })
   .superRefine((data, ctx) => {
-    if (!Number.isFinite(data.amount) || data.amount <= 0) {
+    if (!Number.isFinite(data.amount) || data.amount === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "must be greater than 0",
+        message: "cannot be zero",
         path: ["amount"],
       });
     }

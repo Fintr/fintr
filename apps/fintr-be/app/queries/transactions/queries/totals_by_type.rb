@@ -97,11 +97,9 @@ module Transactions
           end
 
           case transaction.transactable_type
-          when "Transactions::Income"
-            totals[:income] += amount
-          when "Transactions::Expense"
-            # amount_in_space_currency uses the expense sign (negative); totals expose magnitude.
-            totals[:expense] += amount.abs
+          when "Transactions::Income", "Transactions::Expense"
+            type_key = transaction.transactable_type == "Transactions::Income" ? :income : :expense
+            totals[type_key] += transaction.transactable.signed_type_total_amount.to_f
           when "Transactions::Transfer"
             totals[:transfer] += amount
           end

@@ -34,7 +34,7 @@ module Insights
             date: date.to_date,
             space:,
             strict: true
-          ).abs
+          )
         end
       end
 

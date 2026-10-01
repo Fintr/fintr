@@ -92,16 +92,16 @@ export const transactionTouchesAccount = (
   return isFromAccount(transaction, account) || isToAccount(transaction, account);
 };
 
-const magnitudeInAccountCurrency = (
+const signedAmountInAccountCurrency = (
   transaction: IndexTransaction,
   accountCurrency: string,
   rateLookup?: ExchangeRateLookup,
 ): number => {
   const target = normalizeCurrency(accountCurrency) || "PHP";
-  const displayAmount = Math.abs(parseBalance(transaction.amount));
+  const displayAmount = parseBalance(transaction.amount);
   const amountCurrency = normalizeCurrency(transaction.amountCurrency);
-  const bookedAmount = Math.abs(
-    parseBalance(transaction.bookedAmount ?? transaction.amount),
+  const bookedAmount = parseBalance(
+    transaction.bookedAmount ?? transaction.amount,
   );
   const bookedCurrency = normalizeCurrency(
     transaction.bookedAmountCurrency ?? transaction.amountCurrency,
@@ -121,22 +121,20 @@ const magnitudeInAccountCurrency = (
     normalizeCurrency(spaceAmount.currency) === target &&
     Number.isFinite(spaceAmount.amount)
   ) {
-    return Number(Math.abs(spaceAmount.amount).toFixed(2));
+    return Number(Number(spaceAmount.amount).toFixed(2));
   }
 
   const fromCurrency = bookedCurrency || amountCurrency || target;
   const sourceAmount = bookedAmount || displayAmount;
 
-  return Math.abs(
-    toSpaceDecimal({
-      amount: sourceAmount,
-      fromCurrency,
-      date: dateKey(transaction.date),
-      spaceCurrency: target,
-      rateLookup,
-      strict: false,
-    }),
-  );
+  return toSpaceDecimal({
+    amount: sourceAmount,
+    fromCurrency,
+    date: dateKey(transaction.date),
+    spaceCurrency: target,
+    rateLookup,
+    strict: false,
+  });
 };
 
 export const signedAccountBalanceEffect = (
@@ -151,55 +149,57 @@ export const signedAccountBalanceEffect = (
     return 0;
   }
 
-  const amount = magnitudeInAccountCurrency(
+  const signed = signedAmountInAccountCurrency(
     transaction,
     account.balanceCurrency,
     rateLookup,
   );
 
-  if (amount === 0) {
+  if (signed === 0) {
     return 0;
   }
 
+  const magnitude = Math.abs(signed);
+
   switch (transaction.type) {
     case CombinedTransactionTypeEnum.INCOME:
-      return to ? amount : 0;
+      return to ? signed : 0;
     case CombinedTransactionTypeEnum.EXPENSE:
-      return from ? -amount : 0;
+      return from ? -signed : 0;
     case CombinedTransactionTypeEnum.TRANSFER:
       if (from && to) {
         return 0;
       }
 
       if (from) {
-        return -amount;
+        return -magnitude;
       }
 
       if (to) {
-        return amount;
+        return magnitude;
       }
 
       return 0;
     case CombinedTransactionTypeEnum.LOAN_DISBURSEMENT:
       if (transaction.loanType === "lent") {
-        return -amount;
+        return -magnitude;
       }
 
       if (transaction.loanType === "borrowed") {
-        return amount;
+        return magnitude;
       }
 
-      return to ? amount : from ? -amount : 0;
+      return to ? magnitude : from ? -magnitude : 0;
     case CombinedTransactionTypeEnum.LOAN_PAYMENT:
       if (transaction.loanType === "lent") {
-        return amount;
+        return magnitude;
       }
 
       if (transaction.loanType === "borrowed") {
-        return -amount;
+        return -magnitude;
       }
 
-      return from ? -amount : to ? amount : 0;
+      return from ? -magnitude : to ? magnitude : 0;
     default:
       return 0;
   }

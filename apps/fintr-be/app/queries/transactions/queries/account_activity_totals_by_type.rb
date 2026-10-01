@@ -87,18 +87,27 @@ module Transactions
 
         relation.find_each do |activity|
           amount = activity_amount_for_total(activity)
+          transactable = activity.activitable
 
           case activity.activity_kind
           when "income"
-            totals[:income] += amount
+            totals[:income] += signed_type_total(transactable:, fallback: amount)
           when "expense"
-            totals[:expense] += amount.abs
+            totals[:expense] += signed_type_total(transactable:, fallback: amount)
           when "transfer"
             totals[:transfer] += amount
           end
         end
 
         Success(totals)
+      end
+
+      def signed_type_total(transactable:, fallback:)
+        if transactable.respond_to?(:signed_type_total_amount)
+          return transactable.signed_type_total_amount.to_f
+        end
+
+        fallback
       end
 
       def activity_amount_for_total(activity)

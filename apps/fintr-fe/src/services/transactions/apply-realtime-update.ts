@@ -15,6 +15,7 @@ import {
   type IndexTransactionWithCategoryIds,
 } from "@/services/transactions/upsert-into-query-caches";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 
 const asIncomeOrExpense = (
   type: CombinedTransactionTypeEnum,
@@ -78,7 +79,10 @@ export const applyRealtimeTransactionUpdated = async (params: {
         nextSummaries = await applyLocalTransactionToMonthlySummaries({
           spaceCode: spaceId,
           date: previous.date,
-          amount: Math.abs(Number(previous.amount) || 0),
+          amount: signedTransactionAmount(
+            previous.amount,
+            previous.bookedAmount,
+          ),
           type: previousKind,
           mode: "remove",
           currency: previous.amountCurrency,
@@ -90,7 +94,7 @@ export const applyRealtimeTransactionUpdated = async (params: {
         nextSummaries = await applyLocalTransactionToMonthlySummaries({
           spaceCode: spaceId,
           date: row.date,
-          amount: Math.abs(Number(row.amount) || 0),
+          amount: signedTransactionAmount(row.amount, row.bookedAmount),
           type: nextKind,
           mode: "add",
           currency: row.amountCurrency,

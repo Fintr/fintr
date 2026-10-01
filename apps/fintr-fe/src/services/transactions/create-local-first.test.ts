@@ -293,7 +293,7 @@ describe("createTransactionLocalFirst", () => {
       createTransactionLocalFirst({} as never, {
         spaceId: "space-a",
         data: {
-          amount: -1,
+          amount: 0,
           description: "Bad",
           transactionType: "expense",
           categoryName: "Food",
@@ -732,6 +732,44 @@ describe("createTransactionLocalFirst", () => {
     expect(
       series.map((row) => (row as { tagIds?: string[] }).tagIds),
     ).toEqual(series.map(() => ["tag-japan"]));
+  });
+
+  it("keeps a negative expense amount so the type can flip the balance effect", () => {
+    const expense = buildOptimisticIndexTransaction({
+      id: "local:neg-expense",
+      data: {
+        amount: -40,
+        description: "Refund",
+        transactionType: "expense",
+        categoryName: "Food",
+        accountName: "Cash",
+        date: "2026-08-17",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+      },
+      entryCurrency: "PHP",
+      spaceCurrency: "PHP",
+    });
+
+    expect(expense.amount).toBe(-40);
+    expect(expense.type).toBe(CombinedTransactionTypeEnum.EXPENSE);
+
+    const income = buildOptimisticIndexTransaction({
+      id: "local:neg-income",
+      data: {
+        amount: -25,
+        description: "Reversal",
+        transactionType: "income",
+        categoryName: "Salary",
+        accountName: "Cash",
+        date: "2026-08-17",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+      },
+      entryCurrency: "PHP",
+      spaceCurrency: "PHP",
+    });
+
+    expect(income.amount).toBe(-25);
+    expect(income.type).toBe(CombinedTransactionTypeEnum.INCOME);
   });
 
   it("stamps account and merchant ids from the create payload onto optimistic rows", () => {

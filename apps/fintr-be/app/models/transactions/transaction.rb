@@ -71,5 +71,16 @@ module Transactions
         transactable: self
       )
     end
+
+    # Type totals follow the stored entry sign. Expense#value still flips that
+    # sign for the account balance, so a negative expense reduces spending and
+    # increases the balance.
+    def signed_type_total_amount
+      magnitude = amount_numeric_for_space_total.to_d.abs
+      return 0.to_d if magnitude.zero?
+
+      sign = amount.negative? ? -1 : 1
+      magnitude * sign
+    end
   end
 end

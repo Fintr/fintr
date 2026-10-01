@@ -4,7 +4,7 @@ import { useRef } from "react";
 import type { ConversionSnapshot } from "@/components/dashboard/forms/AmountWithRatePicker";
 import { isUploadableFile } from "@/utils/formUtils";
 import { isExistingCachedAttachment } from "@/utils/fileUtils";
-import { positiveTransactionFormAmount } from "@/utils/transactionFormAmount";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 
 export const dateDirtySignature = (date: Date | undefined): string => {
   if (!date) {
@@ -15,7 +15,7 @@ export const dateDirtySignature = (date: Date | undefined): string => {
 };
 
 export const amountDirtySignature = (value: unknown): string => {
-  return String(positiveTransactionFormAmount(value));
+  return String(signedTransactionAmount(value));
 };
 
 export const tagIdsDirtySignature = (ids: string[]): string => {

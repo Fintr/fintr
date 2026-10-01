@@ -94,6 +94,32 @@ describe("signedAccountBalanceEffect", () => {
     expect(signedAccountBalanceEffect(tx, account)).toBe(-1150);
   });
 
+  it("flips a negative expense into money in", () => {
+    const tx = makeTx({
+      id: "neg-expense",
+      date: "2025-01-10",
+      amount: -40,
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      fromAccountId: "acc-cash",
+      fromAccountName: "Cash",
+    });
+
+    expect(signedAccountBalanceEffect(tx, account)).toBe(40);
+  });
+
+  it("flips a negative income into money out", () => {
+    const tx = makeTx({
+      id: "neg-income",
+      date: "2025-01-10",
+      amount: -25,
+      type: CombinedTransactionTypeEnum.INCOME,
+      toAccountId: "acc-cash",
+      toAccountName: "Cash",
+    });
+
+    expect(signedAccountBalanceEffect(tx, account)).toBe(-25);
+  });
+
   it("signs borrowed loan disbursement as money in", () => {
     const tx = makeTx({
       id: "1",

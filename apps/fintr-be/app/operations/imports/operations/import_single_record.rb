@@ -20,13 +20,17 @@ module Imports
       class RowDataContract < Dry::Validation::Contract
         params do
           required(:date).filled(:string)
-          required(:amount).filled(:decimal, gt?: 0)
+          required(:amount).filled(:decimal)
           required(:type).filled(:string, included_in?: %w[income expense])
           required(:category).filled(:string)
           optional(:description).value(:string)
           optional(:merchant).maybe(:string)
         end
 
+
+        rule(:amount) do
+          key.failure("cannot be zero") if value.to_d.zero?
+        end
 
         rule(:date) do
           if value.present?

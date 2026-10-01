@@ -83,8 +83,8 @@ module Imports
         parsed_date = validate_date_format(row_data[:date], errors)
 
         # Validate amount
-        if row_data[:amount].nil? || row_data[:amount] <= 0
-          errors << "Amount must be greater than 0"
+        if row_data[:amount].nil? || row_data[:amount].zero?
+          errors << "Amount cannot be zero"
         end
 
         # Validate type

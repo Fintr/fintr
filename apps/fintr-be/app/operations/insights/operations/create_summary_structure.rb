@@ -72,12 +72,12 @@ module Insights
         total_income = params[:transactions].inject(0.to_d) do |memo, tx|
           next memo unless tx.is_a?(Transactions::Income)
 
-          memo + tx.amount_numeric_for_space_total.to_d
+          memo + tx.signed_type_total_amount
         end
         total_expenses = params[:transactions].inject(0.to_d) do |memo, tx|
           next memo unless tx.is_a?(Transactions::Expense)
 
-          memo + tx.amount_numeric_for_space_total.to_d.abs
+          memo + tx.signed_type_total_amount
         end
 
         Success(

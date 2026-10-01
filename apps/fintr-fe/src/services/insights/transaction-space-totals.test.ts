@@ -46,6 +46,32 @@ describe("transaction-space-totals", () => {
     });
   });
 
+  it("lets a negative expense reduce spending and a negative income reduce income", () => {
+    const summary = summaryFromTransactionsForSpace(
+      [
+        tx({
+          id: "in",
+          type: CombinedTransactionTypeEnum.INCOME,
+          amount: 1000,
+        }),
+        tx({
+          id: "reversal",
+          type: CombinedTransactionTypeEnum.INCOME,
+          amount: -100,
+        }),
+        tx({ id: "out", amount: 200 }),
+        tx({ id: "refund", amount: -50 }),
+      ],
+      "PHP",
+    );
+
+    expect(summary).toEqual({
+      totalIncome: 900,
+      totalExpenses: 150,
+      netSavings: 750,
+    });
+  });
+
   it("converts booked foreign amounts using cached rates", () => {
     const rateLookup = (from: string, to: string, date: string) => {
       if (from === "USD" && to === "PHP" && date === "2026-07-15") {

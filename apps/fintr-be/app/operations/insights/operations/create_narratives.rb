@@ -391,7 +391,7 @@ module Insights
         expenses = transactions.to_a.select { |tx| tx.is_a?(Transactions::Expense) }
         expenses.each do |tx|
           name = category_label(tx)
-          amount = tx.amount_numeric_for_space_total.to_d.abs
+          amount = tx.signed_type_total_amount
           cogs += amount if name.match?(BUSINESS_COGS_PATTERN)
         end
 

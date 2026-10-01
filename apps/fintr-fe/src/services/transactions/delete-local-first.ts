@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { AxiosInstance } from "axios";
 
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 import {
   enqueueOutboxRecord,
   OUTBOX_COMMAND_LOAN_CREATE,
@@ -105,7 +106,7 @@ const adjustSummariesForRemoved = async (
     nextSummaries = await applyLocalTransactionToMonthlySummaries({
       spaceCode: spaceId,
       date: row.date,
-      amount: Math.abs(Number(row.amount) || 0),
+      amount: signedTransactionAmount(row.amount, row.bookedAmount),
       type: summaryType,
       mode,
       currency: row.amountCurrency,

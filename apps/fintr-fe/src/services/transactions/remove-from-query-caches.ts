@@ -17,6 +17,7 @@ import type {
   TransactionTotals,
 } from "@/types/transactionTypes";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 
 type InfinitePageData<TPage> = {
   pages: TPage[];
@@ -29,12 +30,6 @@ const isInfinitePageData = <TPage>(
   if (!value || typeof value !== "object") return false;
   const record = value as { pages?: unknown };
   return Array.isArray(record.pages);
-};
-
-const toAmountNumber = (amount: IndexTransaction["amount"]): number => {
-  if (typeof amount === "number") return amount;
-  const parsed = Number(amount);
-  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const subtractFromTotals = (
@@ -50,15 +45,15 @@ const subtractFromTotals = (
   let transfer = totals.transfer ?? 0;
 
   for (const row of removed) {
-    const amount = Math.abs(toAmountNumber(row.amount));
+    const amount = signedTransactionAmount(row.amount, row.bookedAmount);
     if (row.type === CombinedTransactionTypeEnum.INCOME) income -= amount;
     if (row.type === CombinedTransactionTypeEnum.EXPENSE) expense -= amount;
     if (row.type === CombinedTransactionTypeEnum.TRANSFER) transfer -= amount;
   }
 
   return {
-    income: Math.max(0, income),
-    expense: Math.max(0, expense),
+    income,
+    expense,
     transfer: Math.max(0, transfer),
   };
 };

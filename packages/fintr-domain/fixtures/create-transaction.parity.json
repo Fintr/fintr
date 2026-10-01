@@ -15,6 +15,36 @@
     "expect_valid": true
   },
   {
+    "name": "negative expense",
+    "payload": {
+      "user_id": "user-1",
+      "space_id": "space-1",
+      "amount": -40,
+      "date": "2026-08-08",
+      "transaction_type": "expense",
+      "category_name": "Food",
+      "account_name": "Cash",
+      "schedule_type": "one_time",
+      "description": ""
+    },
+    "expect_valid": true
+  },
+  {
+    "name": "negative income",
+    "payload": {
+      "user_id": "user-1",
+      "space_id": "space-1",
+      "amount": -25,
+      "date": "2026-08-08",
+      "transaction_type": "income",
+      "category_name": "Salary",
+      "account_name": "Cash",
+      "schedule_type": "one_time",
+      "description": ""
+    },
+    "expect_valid": true
+  },
+  {
     "name": "recurring without interval",
     "payload": {
       "user_id": "user-1",

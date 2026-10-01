@@ -10,7 +10,7 @@ module Imports
           required(:import_account).value(type?: Transactions::Account)
           required(:validated_rows).array(:hash) do
             required(:row_data).hash do
-              required(:amount).value(:decimal, gt?: 0)
+              required(:amount).value(:decimal, excluded_from?: [0])
               optional(:description).value(:string)
               required(:category).value(:string)
               required(:date).value(:string, format?: /\A\d{4}-\d{2}-\d{2}\z/)

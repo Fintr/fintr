@@ -113,7 +113,7 @@ RSpec.describe Imports::Operations::BulkImportTransactions do
         [
           {
             row_data: {
-              amount: -100.0, # Invalid: negative amount
+              amount: 0, # Invalid: zero amount
               description: 'Test',
               category: 'Salary',
               date: '2024-01-15'

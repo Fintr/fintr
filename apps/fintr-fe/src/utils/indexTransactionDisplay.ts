@@ -39,12 +39,12 @@ export function formatIndexTransactionListAmount(
   currency: string,
   showBookedCurrencies: boolean,
 ): string {
-  if (showBookedCurrencies) {
-    return formatCurrency(Math.abs(amount), currency);
-  }
-
   if (amount < 0) {
     return `-${formatCurrency(Math.abs(amount), currency)}`;
+  }
+
+  if (showBookedCurrencies) {
+    return formatCurrency(amount, currency);
   }
 
   return formatCurrency(amount, currency);

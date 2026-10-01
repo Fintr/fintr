@@ -92,8 +92,8 @@ import {
 } from "@/utils/amountPickerTargetCurrency";
 import { getLocalIsoDateKey } from "@/utils/dateUtils";
 import {
-  positiveTransactionFormAmount,
-  positiveTransactionFormAmountString,
+  signedTransactionAmount,
+  signedTransactionFormAmountString,
 } from "@/utils/transactionFormAmount";
 import {
   amountDirtySignature,
@@ -340,7 +340,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     amount:
       prefillAmount
       || (initialData?.amount != null
-        ? positiveTransactionFormAmountString(initialData.amount)
+        ? signedTransactionFormAmountString(
+          initialData.amount,
+          initialData.bookedAmount,
+        )
         : ""),
     description: initialData?.description || "",
     categoryName: initialData?.categoryName || "",
@@ -1308,7 +1311,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           ? (rawConv as any).original_amount ?? (rawConv as any).originalAmount ?? initialData.amount ?? ""
           : (initialData.amount ?? "");
 
-      const initialAmount = positiveTransactionFormAmountString(rawInitialAmount);
+      const initialAmount = signedTransactionFormAmountString(
+        rawInitialAmount,
+        hasOriginal || rawConv != null
+          ? rawInitialAmount
+          : initialData.bookedAmount ?? rawInitialAmount,
+      );
 
       const displayCurrency = hasOriginal
         ? String(originalCurrency)
@@ -2192,7 +2200,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       return null;
     }
 
-    const perPaymentAmount = positiveTransactionFormAmount(
+    const perPaymentAmount = signedTransactionAmount(
       (initialData as { originalDisplayAmount?: unknown }).originalDisplayAmount
       ?? (initialData as { original_display_amount?: unknown }).original_display_amount
       ?? initialData.currencyConversion?.originalAmount
