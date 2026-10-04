@@ -6,7 +6,7 @@ import java.net.URL;
 
 final class FintrServerReachability {
 
-  private static final int DEFAULT_TIMEOUT_MS = 8000;
+  private static final int DEFAULT_TIMEOUT_MS = 2500;
 
   private FintrServerReachability() {}
 

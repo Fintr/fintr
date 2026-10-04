@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildEarlyErrorDetectionScript } from "./early-error-detection-script";
+import {
+  buildEarlyErrorDetectionScript,
+  shouldRedirectNativeHomeToAuth,
+} from "./early-error-detection-script";
 
 describe("buildEarlyErrorDetectionScript", () => {
   it("initializes the early error buffer", () => {
@@ -27,5 +30,22 @@ describe("buildEarlyErrorDetectionScript", () => {
 
     expect(script).toContain('location.pathname.slice(-4) === ".txt"');
     expect(script).toContain("location.replace");
+  });
+
+  it("sends the native shell from the marketing home straight to login", () => {
+    const script = buildEarlyErrorDetectionScript();
+
+    expect(script).toContain('navigator.userAgent.indexOf("FintrNativeApp")');
+    expect(script).toContain('location.replace("/auth"');
+    expect(shouldRedirectNativeHomeToAuth("FintrNativeApp", "/")).toBe(true);
+    expect(
+      shouldRedirectNativeHomeToAuth(
+        "Mozilla/5.0 (Linux; Android 14) Chrome/120.0.0.0 Mobile",
+        "/",
+      ),
+    ).toBe(false);
+    expect(
+      shouldRedirectNativeHomeToAuth("FintrNativeApp", "/dashboard/home"),
+    ).toBe(false);
   });
 });

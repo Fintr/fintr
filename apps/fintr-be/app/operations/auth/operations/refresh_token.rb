@@ -20,8 +20,7 @@ module Auth
         return Failure("Auth0 token refresh is not configured") unless Auth::PasswordGrantCredentials.configured?
 
         uri = URI("https://#{creds[:auth0_domain]}/oauth/token")
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = true
+        http = Auth::Auth0Https.open(uri)
 
         request = Net::HTTP::Post.new(uri)
         request["Content-Type"] = "application/json"

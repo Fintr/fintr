@@ -135,6 +135,10 @@ public class FintrBridgeWebViewClient extends BridgeWebViewClient {
       return false;
     }
 
+    if (connectionGate != null) {
+      connectionGate.noteOfflineNavigation();
+    }
+
     applyOfflineSystemChrome(view);
 
     if (connectionGate != null) {

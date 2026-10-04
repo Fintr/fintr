@@ -1,5 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+import { withNativeAuthStartPath } from './src/lib/native-shell-start-url';
+
 // When CAPACITOR_SERVER_URL is set, the app loads the web app from that URL.
 // - Development: set to http://localhost:5173 (or your machine IP) for live reload
 // - Production (FIN-194 default): leave UNSET so the native app loads bundled `out/`
@@ -37,6 +39,8 @@ const CACHE_VERSION = process.env.CAPACITOR_CACHE_VERSION || Date.now().toString
 const buildServerUrl = (baseUrl: string | undefined): string | undefined => {
   if (!baseUrl) return undefined;
 
+  const authStartUrl = withNativeAuthStartPath(baseUrl);
+
   // Ensure the URL has a path component (trailing slash) before the query string.
   // Capacitor's WebViewLocalServer registers handlers for "https://host/" and
   // "https://host/**". A bare URL like "https://www.fintr.ai?cv=123" has an
@@ -44,7 +48,7 @@ const buildServerUrl = (baseUrl: string | undefined): string | undefined => {
   // shouldInterceptRequest returns null and the Capacitor bridge JS
   // (PluginHeaders, nativeCallback, etc.) is never injected into the page.
   // Adding the slash ensures path="/" which DOES match, triggering injection.
-  const [origin, existingQuery] = baseUrl.split('?');
+  const [origin, existingQuery] = authStartUrl.split('?');
   const base = origin.endsWith('/') ? origin : `${origin}/`;
   const withSlash = existingQuery ? `${base}?${existingQuery}` : base;
 
@@ -87,7 +91,7 @@ const config: CapacitorConfig = {
   } as any,
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 0,
       backgroundColor: "#FAFAF8",
       showSpinner: false,
     },

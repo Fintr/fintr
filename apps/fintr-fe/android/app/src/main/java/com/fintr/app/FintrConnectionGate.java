@@ -8,8 +8,10 @@ import com.getcapacitor.Bridge;
 import java.net.URL;
 
 /**
- * Probes the configured server URL before choosing what to show. The WebView stays
- * hidden until the correct page has loaded — offline.html is never shown while online.
+ * Shows the WebView immediately. A startup HEAD/GET of the same URL the WebView is
+ * loading stalls a single-threaded dev server for the whole page compile, which
+ * kept the login screen hidden for tens of seconds on Android and iOS test builds.
+ * Main-frame failures still fall through to offline.html.
  */
 public final class FintrConnectionGate {
 
@@ -27,9 +29,14 @@ public final class FintrConnectionGate {
     this.activity = activity;
   }
 
-  /** WebViewClient may only redirect to offline.html when the gate is in offline mode. */
+  /** Main-frame failures may open offline.html once the shell has started. */
   public boolean shouldHandleOfflineError() {
-    return initialGateComplete && offlineMode;
+    return initialGateComplete;
+  }
+
+  public void noteOfflineNavigation() {
+    initialGateComplete = true;
+    offlineMode = true;
   }
 
   public void beginInitialGate(Bridge bridge) {
@@ -38,28 +45,13 @@ public final class FintrConnectionGate {
     }
 
     WebView webView = bridge.getWebView();
-    if (webView == null) {
-      return;
-    }
-
-    String serverUrl = bridge.getServerUrl();
-    if (serverUrl == null || serverUrl.trim().isEmpty()) {
-      initialGateComplete = true;
-      offlineMode = false;
-      activity.applyAppearance(true);
-      revealWebView(webView);
-      return;
-    }
-
-    initialGateComplete = false;
+    initialGateComplete = true;
     offlineMode = false;
     activity.applyAppearance(true);
-    hideWebView(webView);
 
-    new Thread(() -> {
-      boolean reachable = FintrServerReachability.isReachable(serverUrl);
-      mainHandler.post(() -> presentAfterProbe(bridge, webView, serverUrl, reachable));
-    }).start();
+    if (webView != null) {
+      revealWebView(webView);
+    }
   }
 
   public void onPageFinished(WebView webView, String url, Bridge bridge) {
@@ -104,58 +96,6 @@ public final class FintrConnectionGate {
     if (webView != null) {
       webView.setVisibility(View.VISIBLE);
     }
-  }
-
-  private void presentAfterProbe(
-    Bridge bridge,
-    WebView webView,
-    String serverUrl,
-    boolean reachable
-  ) {
-    initialGateComplete = true;
-
-    if (reachable) {
-      presentServer(bridge, webView, serverUrl);
-      return;
-    }
-
-    presentOffline(bridge, webView);
-  }
-
-  private void presentServer(Bridge bridge, WebView webView, String serverUrl) {
-    stopReconnectMonitor();
-    offlineMode = false;
-    pendingRevealUrlPrefix = null;
-    activity.applyAppearance(true);
-    hideWebView(webView);
-
-    String currentUrl = webView.getUrl();
-    if (
-      currentUrl != null
-      && isServerUrl(currentUrl, bridge)
-      && !isWebViewLoading(webView)
-    ) {
-      revealWebView(webView);
-      return;
-    }
-
-    pendingRevealUrlPrefix = serverBase(serverUrl);
-    webView.loadUrl(serverUrl);
-  }
-
-  private void presentOffline(Bridge bridge, WebView webView) {
-    String errorUrl = bridge.getErrorUrl();
-    if (errorUrl == null || errorUrl.trim().isEmpty()) {
-      revealWebView(webView);
-      return;
-    }
-
-    offlineMode = true;
-    activity.applyAppearance(false);
-    prepareReveal(errorUrl);
-    hideWebView(webView);
-    webView.loadUrl(errorUrl);
-    startReconnectMonitor(bridge);
   }
 
   private void startReconnectMonitor(Bridge bridge) {
@@ -263,9 +203,5 @@ public final class FintrConnectionGate {
 
   private String serverBase(String serverUrl) {
     return serverUrl.split("\\?")[0];
-  }
-
-  private boolean isWebViewLoading(WebView webView) {
-    return webView.getProgress() < 100;
   }
 }

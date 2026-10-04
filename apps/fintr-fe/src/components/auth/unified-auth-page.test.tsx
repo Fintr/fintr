@@ -60,6 +60,22 @@ describe("UnifiedAuthPage post-login redirect", () => {
     });
   });
 
+  it("shows the login form while auth is still resolving a logged-out session", async () => {
+    vi.mocked(AuthStorage.isAuthenticated).mockReturnValue(false);
+    mockUseAuth.mockReturnValue({
+      login: vi.fn(),
+      signup: vi.fn(),
+      isAuthenticated: false,
+      isLoading: true,
+    });
+
+    const UnifiedAuthPage = (await import("./unified-auth-page")).default;
+    render(<UnifiedAuthPage isLogin={true} />);
+
+    expect(screen.getByLabelText(/Email address/i)).toBeInTheDocument();
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+  });
+
   it("does not redirect while the user is logged out", async () => {
     const UnifiedAuthPage = (await import("./unified-auth-page")).default;
     render(<UnifiedAuthPage isLogin={true} />);

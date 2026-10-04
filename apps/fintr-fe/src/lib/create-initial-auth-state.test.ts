@@ -63,10 +63,10 @@ describe("createInitialAuthState", () => {
     expect(state.user?.email).toBe("miko@example.com");
   });
 
-  it("starts loading on a true cold start with no session", () => {
+  it("does not block the login form on a cold start with no session", () => {
     const state = createInitialAuthState();
 
-    expect(state.isLoading).toBe(true);
+    expect(state.isLoading).toBe(false);
     expect(state.user).toBeNull();
     expect(state.tokens).toBeNull();
   });
