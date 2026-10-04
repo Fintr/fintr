@@ -312,6 +312,17 @@ export const resolveSeriesInstallmentPeriod = (
   return null;
 };
 
+const earliestRecurrenceEndsOn = (
+  rows: Array<Pick<IndexTransaction, "recurrenceEndsOn">>,
+): string | null => {
+  const dates = rows
+    .map((row) => row.recurrenceEndsOn?.slice(0, 10))
+    .filter((value): value is string => Boolean(value))
+    .sort();
+
+  return dates[0] ?? null;
+};
+
 export const buildUpcomingSeriesDisplayItems = (
   series: RecurringSeriesSummary,
   today = getLocalIsoDateKey(new Date()),
@@ -343,7 +354,7 @@ export const buildUpcomingSeriesDisplayItems = (
 
   const occurrencesByDate = indexOccurrencesByDate(series.occurrences);
 
-  if (parentDate && (repeatInterval || isInstallment)) {
+    if (parentDate && (repeatInterval || isInstallment)) {
     const projectedDates = computeUpcomingSeriesDates({
       parentDate,
       repeatInterval: repeatInterval ?? "every_month",
@@ -352,6 +363,7 @@ export const buildUpcomingSeriesDisplayItems = (
       today,
       count: displayCount,
       exclusiveThroughDate,
+      endsOnDate: earliestRecurrenceEndsOn(series.occurrences),
     });
 
     return projectedDates.map((date) => ({
@@ -540,6 +552,7 @@ export const buildRecurringSeriesSummaries = (
         today,
         count: 1,
         exclusiveThroughDate,
+        endsOnDate: earliestRecurrenceEndsOn(sorted),
       });
       if (projected[0]) {
         nextOccurrenceDate = projected[0];

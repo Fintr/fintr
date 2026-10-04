@@ -726,6 +726,7 @@ describe("deleteTransactionLocalFirst", () => {
       "2026-09-30",
     );
     expect(rows.map((row) => row.id)).toEqual(["tx-past"]);
+    expect(rows[0]?.recurrenceEndsOn).toBe("2026-08-07");
   });
 
   it("expands this_and_future when the clicked child has stale inSeries false", async () => {

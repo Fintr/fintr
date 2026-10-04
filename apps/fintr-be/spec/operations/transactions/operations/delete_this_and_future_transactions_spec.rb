@@ -450,4 +450,264 @@ RSpec.describe Transactions::Operations::DeleteThisAndFutureTransactions do
       end
     end
   end
+
+  describe "monthly income deleted from this month forward" do
+    let(:parent_date) { Date.new(2026, 9, 4) }
+    let(:current_date) { Date.new(2026, 10, 4) }
+    let(:next_date) { Date.new(2026, 11, 4) }
+    let(:income_category) { create(:category, space:, name: "Salary") }
+    let(:schedule) do
+      Utils::Recurrence.schedule(
+        repeat_interval: :every_month,
+        date: parent_date,
+      ).to_hash
+    end
+    let!(:parent_income) do
+      create(
+        :income_transaction,
+        :repeat,
+        user:,
+        space:,
+        account:,
+        category: income_category,
+        date: parent_date,
+        amount: Money.from_amount(1_000, "PHP"),
+        balance: Money.from_amount(1_000, "PHP"),
+        balance_state: "pending",
+        schedule:,
+        description: "Salary",
+        repeat_count: 1,
+      )
+    end
+    let!(:current_income) do
+      create(
+        :income_transaction,
+        :repeat,
+        user:,
+        space:,
+        account:,
+        category: income_category,
+        parent: parent_income,
+        date: current_date,
+        amount: Money.from_amount(1_000, "PHP"),
+        balance: Money.from_amount(1_000, "PHP"),
+        balance_state: "pending",
+        schedule: {},
+        description: "Salary",
+        repeat_count: 2,
+      )
+    end
+    let!(:next_income) do
+      create(
+        :income_transaction,
+        :repeat,
+        user:,
+        space:,
+        account:,
+        category: income_category,
+        parent: parent_income,
+        date: next_date,
+        amount: Money.from_amount(1_000, "PHP"),
+        balance: Money.from_amount(1_000, "PHP"),
+        balance_state: "pending",
+        schedule: {},
+        description: "Salary",
+        repeat_count: 3,
+      )
+    end
+
+    before { travel_to current_date }
+
+    it "removes this month and later occurrences" do
+      operation.call(transaction: current_income)
+
+      expect(Transactions::Transaction.where(id: [current_income.id, next_income.id])).to be_empty
+    end
+
+    it "keeps the earlier occurrence" do
+      operation.call(transaction: current_income)
+
+      expect(Transactions::Transaction.exists?(parent_income.id)).to be(true)
+    end
+
+    it "ends the surviving schedule the day before the deleted occurrence" do
+      operation.call(transaction: current_income)
+
+      expect(
+        Utils::Recurrence.ends_on(schedule_hash: parent_income.reload.schedule),
+      ).to eq(current_date - 1.day)
+    end
+
+    it "does not recreate the deleted month when past occurrences are materialized" do
+      operation.call(transaction: current_income)
+
+      expect {
+        Transactions::Operations::CreateRepeatTransactions.new.call(
+          transaction_id: parent_income.id,
+          balance_state: "calculated",
+          date_start: (parent_date + 1.day).beginning_of_day.to_datetime,
+          date_end: current_date,
+          suppress_actor_toast: true,
+        )
+      }.not_to change(Transactions::Transaction, :count)
+    end
+
+    it "does not recreate the next month from the duplicate job window" do
+      operation.call(transaction: current_income)
+
+      expect {
+        Transactions::Operations::CreateRepeatTransactions.new.call(
+          transaction_id: parent_income.id,
+          balance_state: "pending",
+          date_start: current_date + 1.month,
+          date_end: current_date + 1.month,
+          suppress_actor_toast: true,
+        )
+      }.not_to change(Transactions::Transaction, :count)
+    end
+  end
+
+  describe "monthly income deleted from a later month" do
+    let(:parent_date) { Date.new(2026, 9, 4) }
+    let(:kept_date) { Date.new(2026, 11, 4) }
+    let(:cutoff_date) { Date.new(2026, 12, 4) }
+    let(:income_category) { create(:category, space:, name: "Salary") }
+    let(:schedule) do
+      Utils::Recurrence.schedule(
+        repeat_interval: :every_month,
+        date: parent_date,
+      ).to_hash
+    end
+    let!(:parent_income) do
+      create(
+        :income_transaction,
+        :repeat,
+        user:,
+        space:,
+        account:,
+        category: income_category,
+        date: parent_date,
+        amount: Money.from_amount(1_000, "PHP"),
+        balance: Money.from_amount(1_000, "PHP"),
+        balance_state: "pending",
+        schedule:,
+        description: "Salary",
+        repeat_count: 1,
+      )
+    end
+    let!(:cutoff_income) do
+      create(
+        :income_transaction,
+        :repeat,
+        user:,
+        space:,
+        account:,
+        category: income_category,
+        parent: parent_income,
+        date: cutoff_date,
+        amount: Money.from_amount(1_000, "PHP"),
+        balance: Money.from_amount(1_000, "PHP"),
+        balance_state: "pending",
+        schedule: {},
+        description: "Salary",
+        repeat_count: 4,
+      )
+    end
+
+    before { travel_to Date.new(2026, 10, 4) }
+
+    it "still materializes the month before the cutoff" do
+      operation.call(transaction: cutoff_income)
+
+      expect {
+        Transactions::Operations::CreateRepeatTransactions.new.call(
+          transaction_id: parent_income.id,
+          balance_state: "pending",
+          date_start: kept_date,
+          date_end: kept_date,
+          suppress_actor_toast: true,
+        )
+      }.to change(Transactions::Transaction, :count).by(1)
+    end
+  end
+
+  describe "installment series deleted from a later payment" do
+    let(:parent_date) { Date.new(2026, 8, 18) }
+    let(:cutoff_date) { Date.new(2026, 10, 18) }
+    let(:schedule) do
+      Utils::Recurrence.schedule(
+        repeat_interval: :installment,
+        date: parent_date,
+        installment_period: 6,
+      ).to_hash
+    end
+    let!(:parent_expense) do
+      create(
+        :expense_transaction,
+        :installment,
+        user:,
+        space:,
+        account:,
+        category:,
+        date: parent_date,
+        amount: Money.from_amount(100, "PHP"),
+        balance: Money.from_amount(1_000, "PHP"),
+        balance_state: "pending",
+        schedule:,
+        installment_period: 6,
+        installment_count: 1,
+        description: "Phone",
+      )
+    end
+    let!(:kept_expense) do
+      create(
+        :expense_transaction,
+        :installment,
+        user:,
+        space:,
+        account:,
+        category:,
+        parent: parent_expense,
+        date: Date.new(2026, 9, 18),
+        amount: Money.from_amount(100, "PHP"),
+        balance: Money.from_amount(1_000, "PHP"),
+        balance_state: "pending",
+        schedule: {},
+        installment_period: 6,
+        installment_count: 2,
+        description: "Phone",
+      )
+    end
+    let!(:cutoff_expense) do
+      create(
+        :expense_transaction,
+        :installment,
+        user:,
+        space:,
+        account:,
+        category:,
+        parent: parent_expense,
+        date: cutoff_date,
+        amount: Money.from_amount(100, "PHP"),
+        balance: Money.from_amount(1_000, "PHP"),
+        balance_state: "pending",
+        schedule: {},
+        installment_period: 6,
+        installment_count: 3,
+        description: "Phone",
+      )
+    end
+
+    before { travel_to cutoff_date }
+
+    it "does not recreate payments on or after the cutoff" do
+      operation.call(transaction: cutoff_expense)
+
+      expect {
+        Transactions::Operations::MaterializeSeriesChildren.new.call(
+          transaction_id: parent_expense.id,
+        )
+      }.not_to change(Transactions::Transaction, :count)
+    end
+  end
 end

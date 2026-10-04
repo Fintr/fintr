@@ -52,7 +52,17 @@ module Transactions
           date: root.date,
           installment_period: period,
         )
-        root.update!(schedule: schedule.to_hash)
+        # Keep a this-and-future end date. Rebuilding from the period alone would
+        # drop +until+ and let the hourly job treat the series as open-ended.
+        existing_end = Utils::Recurrence.ends_on(schedule_hash: root.schedule)
+        schedule_hash = schedule.to_hash
+        if existing_end
+          schedule_hash = Utils::Recurrence.cap_schedule_before(
+            schedule_hash:,
+            cutoff_date: existing_end + 1.day,
+          ) || schedule_hash
+        end
+        root.update!(schedule: schedule_hash)
         Success(root)
       rescue ActiveRecord::ActiveRecordError => e
         Failure(error: e)

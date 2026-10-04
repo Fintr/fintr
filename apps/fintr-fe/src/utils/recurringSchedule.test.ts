@@ -288,6 +288,30 @@ describe("recurringSchedule", () => {
     expect(upcoming.some((item) => item.isProjected)).toBe(true);
   });
 
+  it("does not project occurrences after a this-and-future delete", () => {
+    const summaries = buildRecurringSeriesSummaries(
+      [
+        buildRow({
+          id: "salary-root",
+          date: "2026-09-04",
+          description: "Salary",
+          amount: 1000,
+          categoryName: "Salary",
+          type: CombinedTransactionTypeEnum.INCOME,
+          scheduleType: "repeat",
+          repeatInterval: "every_month",
+          inSeries: true,
+          recurrenceEndsOn: "2026-10-03",
+        }),
+      ],
+      "2026-10-04",
+    );
+
+    const series = summaries.find((entry) => entry.rootParentId === "salary-root");
+    expect(series?.nextOccurrenceDate).toBeNull();
+    expect(series?.isActive).toBe(false);
+  });
+
   it("collapses installment children to one representative per series", () => {
     const representatives = filterRowsToSeriesRepresentatives([
       buildRow({

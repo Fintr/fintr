@@ -184,6 +184,29 @@ const optionalIndexId = (
   return { [camel]: asString(value) };
 };
 
+const optionalRecurrenceEndsOn = (
+  payload: Record<string, unknown>,
+): { recurrenceEndsOn?: string | null } => {
+  const hasCamel = Object.prototype.hasOwnProperty.call(
+    payload,
+    "recurrenceEndsOn",
+  );
+  const hasSnake = Object.prototype.hasOwnProperty.call(
+    payload,
+    "recurrence_ends_on",
+  );
+  if (!hasCamel && !hasSnake) {
+    return {};
+  }
+
+  const value = hasCamel ? payload.recurrenceEndsOn : payload.recurrence_ends_on;
+  if (value == null || value === "") {
+    return { recurrenceEndsOn: null };
+  }
+
+  return { recurrenceEndsOn: asString(value).slice(0, 10) };
+};
+
 export const normalizeRealtimeIndexTransaction = (
   payload: Record<string, unknown>,
 ): IndexTransactionWithCategoryIds | null => {
@@ -244,6 +267,7 @@ export const normalizeRealtimeIndexTransaction = (
         : asString(
             pickField(payload, "repeatInterval", "repeat_interval"),
           ),
+    ...optionalRecurrenceEndsOn(payload),
     installmentPeriod:
       pickField(payload, "installmentPeriod", "installment_period") == null
         ? undefined
