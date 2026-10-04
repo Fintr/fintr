@@ -40,8 +40,8 @@ export const createInitialAuthState = (): StoredAuthSession => {
       };
     }
   } catch {
-    // Ignore storage errors and fall through to a cold-start loading state.
+    // Ignore storage errors. A missing session should still show the login form.
   }
 
-  return { user: null, tokens: null, isLoading: true };
+  return { user: null, tokens: null, isLoading: false };
 };

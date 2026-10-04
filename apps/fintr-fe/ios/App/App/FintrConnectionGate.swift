@@ -2,9 +2,10 @@ import Capacitor
 import UIKit
 import WebKit
 
-/// Probes the configured server URL before choosing what to show. The WebView is only
-/// hidden when the server is unreachable; when online, Capacitor's load is left alone
-/// and the WebView is revealed immediately.
+/// Reveals the WebView immediately. A startup reachability probe of the same URL
+/// the WebView is loading stalls a single-threaded dev server for the whole compile
+/// and kept login hidden for tens of seconds. Capacitor still loads offline.html
+/// when the main frame fails.
 final class FintrConnectionGate: NSObject {
     private weak var webView: WKWebView?
     private weak var bridge: CAPBridgeProtocol?
@@ -29,78 +30,7 @@ final class FintrConnectionGate: NSObject {
 
         offlineAppearanceBridge.install(webView: webView, bridge: bridge)
         observeLoadingState(webView)
-
-        guard usesRemoteServer(bridge: bridge) else {
-            reveal(webView)
-            return
-        }
-
-        let serverURL = bridge.config.serverURL
-        FintrServerReachability.check(serverURL) { [weak self] reachable in
-            DispatchQueue.main.async {
-                guard let self = self else {
-                    return
-                }
-
-                if reachable {
-                    self.presentServer(webView: webView, bridge: bridge)
-                } else {
-                    self.presentOffline(webView: webView, bridge: bridge)
-                }
-            }
-        }
-    }
-
-    private func presentServer(webView: WKWebView, bridge: CAPBridgeProtocol) {
-        stopReconnectMonitor()
-        awaitingServerReveal = false
-        offlineAppearanceBridge.resetAppAppearance()
         reveal(webView)
-
-        let serverURL = bridge.config.serverURL
-
-        if
-            let currentURL = webView.url,
-            isServer(url: currentURL, bridge: bridge),
-            !webView.isLoading
-        {
-            return
-        }
-
-        if let currentURL = webView.url, isOffline(url: currentURL, bridge: bridge) {
-            awaitingServerReveal = true
-            webView.load(URLRequest(url: serverURL))
-            return
-        }
-
-        if webView.url == nil || !webView.isLoading {
-            awaitingServerReveal = true
-            webView.load(URLRequest(url: serverURL))
-        }
-    }
-
-    private func presentOffline(webView: WKWebView, bridge: CAPBridgeProtocol) {
-        awaitingServerReveal = false
-        offlineAppearanceBridge.applyOfflineAppearance()
-
-        guard let errorURL = bridge.config.errorPathURL else {
-            reveal(webView)
-            return
-        }
-
-        if
-            let currentURL = webView.url,
-            isOffline(url: currentURL, bridge: bridge),
-            !webView.isLoading
-        {
-            reveal(webView)
-            startReconnectMonitor()
-            return
-        }
-
-        hide(webView)
-        webView.load(URLRequest(url: errorURL))
-        startReconnectMonitor()
     }
 
     private func handleLoadFinished(webView: WKWebView, url: URL, bridge: CAPBridgeProtocol) {
@@ -178,10 +108,6 @@ final class FintrConnectionGate: NSObject {
 
             self.handleLoadFinished(webView: webView, url: url, bridge: bridge)
         }
-    }
-
-    private func usesRemoteServer(bridge: CAPBridgeProtocol) -> Bool {
-        bridge.config.serverURL.absoluteString != bridge.config.localURL.absoluteString
     }
 
     private func serverBasePrefix(for serverURL: URL) -> String {

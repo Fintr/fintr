@@ -1,7 +1,7 @@
 import Foundation
 
 enum FintrServerReachability {
-    private static let defaultTimeout: TimeInterval = 8
+    private static let defaultTimeout: TimeInterval = 3
 
     static func check(
         _ serverURL: URL,

@@ -1,9 +1,32 @@
 /**
+ * Native shells append FintrNativeApp to the WebView user agent. Opening `/`
+ * downloads the marketing page and only then redirects to login.
+ */
+export function shouldRedirectNativeHomeToAuth(
+  userAgent: string,
+  pathname: string,
+): boolean {
+  if (!userAgent.includes("FintrNativeApp")) {
+    return false;
+  }
+
+  const path = pathname.replace(/\/$/, "") || "/";
+  return path === "/";
+}
+
+/**
  * Inline bootstrap for root layout. Runs before React hydration to capture early
  * errors and recover from stale chunk loads after deploys.
  */
 export function buildEarlyErrorDetectionScript(): string {
   return `
+          if (
+            navigator.userAgent.indexOf("FintrNativeApp") !== -1 &&
+            (location.pathname === "/" || location.pathname === "")
+          ) {
+            location.replace("/auth" + location.search + location.hash);
+          }
+
           if (location.pathname.slice(-4) === ".txt") {
             location.replace(location.pathname.slice(0, -4) + location.search + location.hash);
           }
