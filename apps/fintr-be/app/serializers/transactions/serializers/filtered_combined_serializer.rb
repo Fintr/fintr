@@ -141,6 +141,13 @@ module Transactions
         transactable.repeat_interval
       end
 
+      field :recurrence_ends_on do |record|
+        transactable = record.transactable
+        next nil unless transactable.respond_to?(:schedule)
+
+        Utils::Recurrence.ends_on(schedule_hash: transactable.schedule)&.iso8601
+      end
+
       field :installment_period do |record|
         transactable = record.transactable
         next nil unless transactable.respond_to?(:installment_period)

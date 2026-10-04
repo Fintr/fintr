@@ -249,6 +249,10 @@ module Transactions
             if transaction.respond_to?(:schedule_type)
               transaction.schedule_type
             end,
+          recurrence_ends_on:
+            if transaction.respond_to?(:schedule)
+              Utils::Recurrence.ends_on(schedule_hash: transaction.schedule)&.iso8601
+            end,
           has_image: transaction.respond_to?(:files) && transaction.files.attached?,
           has_loan_payment: false,
           calculated: transaction_calculated_for_index?(transaction:),

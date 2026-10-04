@@ -41,6 +41,8 @@ export interface IndexTransaction {
   parentId?: string | null;
   scheduleType?: ScheduleTypeEnum | string;
   repeatInterval?: string | null;
+  /** Last day this series may occur. Set when this-and-future deletes end the schedule. */
+  recurrenceEndsOn?: string | null;
   /** Total months for installment schedules (always stored as months). */
   installmentPeriod?: number | null;
   /** Full installment obligation stored on the series parent. */

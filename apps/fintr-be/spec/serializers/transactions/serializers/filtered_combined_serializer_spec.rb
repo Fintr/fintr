@@ -228,6 +228,7 @@ RSpec.describe Transactions::Serializers::FilteredCombinedSerializer do
       :has_loan_payment,
       :schedule_type,
       :repeat_interval,
+      :recurrence_ends_on,
       :installment_period,
       :installment_total,
       :parent_id,

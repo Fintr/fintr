@@ -47,6 +47,42 @@ module Utils
         "#{usage_period.begin.strftime(format)} - #{usage_period.end.strftime(format)}"
       end
 
+      # Last calendar day the schedule may still occur. Nil when the series is open-ended.
+      # Caps are stored as the instant before the deleted occurrence, so +until+ falls on
+      # the previous day.
+      def ends_on(schedule_hash:)
+        return nil if schedule_hash.blank?
+
+        schedule = IceCube::Schedule.from_hash(schedule_hash)
+        until_times = schedule.recurrence_rules.filter_map(&:until_time)
+        return nil if until_times.empty?
+
+        until_times.min.in_time_zone("UTC").to_date
+      end
+
+      # Stop occurrences on +cutoff_date+ and after. Returns nil when the hash is unchanged.
+      def cap_schedule_before(schedule_hash:, cutoff_date:)
+        return nil if schedule_hash.blank? || cutoff_date.blank?
+
+        schedule = IceCube::Schedule.from_hash(schedule_hash)
+        return nil if schedule.recurrence_rules.empty?
+
+        until_time = cutoff_date.to_date.in_time_zone("UTC").beginning_of_day - 1.second
+        changed = false
+
+        schedule.recurrence_rules.each do |rule|
+          existing = rule.until_time
+          next if existing.present? && existing <= until_time
+
+          rule.until(until_time)
+          changed = true
+        end
+
+        return nil unless changed
+
+        schedule.to_hash
+      end
+
       # Repeat schedules materialize one month ahead; installments materialize
       # through the final payment date (parent date + period - 1 months).
       def future_series_end_date(record:, reference_date: Date.current)

@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AxiosInstance } from "axios";
+import { format, parseISO, subDays } from "date-fns";
 
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
 import { signedTransactionAmount } from "@/utils/transactionFormAmount";
@@ -40,6 +41,7 @@ import {
   loadLocalIndexTransactionById,
   loadAllTimeTransactionsForDeleteScope,
   removeLocalIndexTransactionsByIds,
+  upsertLocalIndexTransaction,
 } from "./local-cache";
 import { clearCachedTransactionDetail } from "./detail-local";
 import { deleteTransaction } from "./mutation";
@@ -49,6 +51,7 @@ import {
   resolveLinkedTransferFeeRows,
   resolveSeriesRowsForDeleteScope,
   resolveTransactionInSeries,
+  sameSeriesFingerprint,
   withResolvedInSeries,
 } from "./resolve-delete-scope";
 import { deleteTransfer } from "./transfers/mutation";
@@ -221,6 +224,50 @@ const mergeRowsById = (
   return Array.from(byId.values());
 };
 
+const recurrenceEndsOnBefore = (date: string): string =>
+  format(subDays(parseISO(date.slice(0, 10)), 1), "yyyy-MM-dd");
+
+const stampSeriesRecurrenceEnd = async (params: {
+  spaceId: string;
+  target: IndexTransaction;
+  contextRows: IndexTransaction[];
+  deleteScope: DeleteScopeEnum;
+  removedIds: string[];
+}): Promise<void> => {
+  if (params.deleteScope !== DeleteScopeEnum.THIS_AND_FUTURE) {
+    return;
+  }
+
+  const cutoff = params.target.date.slice(0, 10);
+  const endsOn = recurrenceEndsOnBefore(params.target.date);
+  const removedIds = new Set(params.removedIds);
+  const seriesRootId =
+    params.target.rootParentId ?? params.target.parentId ?? params.target.id;
+
+  const survivors = params.contextRows.filter((row) => {
+    if (!row?.id || removedIds.has(row.id)) {
+      return false;
+    }
+    if (row.date.slice(0, 10) >= cutoff) {
+      return false;
+    }
+
+    return (
+      row.id === seriesRootId
+      || row.parentId === seriesRootId
+      || row.rootParentId === seriesRootId
+      || sameSeriesFingerprint(row, params.target)
+    );
+  });
+
+  for (const row of survivors) {
+    await upsertLocalIndexTransaction(params.spaceId, {
+      ...row,
+      recurrenceEndsOn: endsOn,
+    });
+  }
+};
+
 const loadIdbRowsForDelete = async (
   spaceId: string,
 ): Promise<IndexTransaction[]> => {
@@ -376,6 +423,14 @@ const deleteIndexRowsOptimistic = async (params: {
   await Promise.all(
     removedIds.map((id) => clearCachedTransactionDetail(spaceId, id)),
   );
+
+  await stampSeriesRecurrenceEnd({
+    spaceId,
+    target,
+    contextRows: mergeRowsById(rqRows, idbRows, [target]),
+    deleteScope,
+    removedIds,
+  });
 
   if (queryClient) {
     invalidateLocalInsightsQueries(queryClient);

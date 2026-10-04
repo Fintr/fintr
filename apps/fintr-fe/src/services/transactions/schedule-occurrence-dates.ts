@@ -141,6 +141,8 @@ export const computeUpcomingSeriesDates = (params: {
   count?: number;
   /** Skip dates on or before this day (e.g. today when already recorded). */
   exclusiveThroughDate?: string;
+  /** Last day the series may occur. Later dates are not projected. */
+  endsOnDate?: string | null;
 }): string[] => {
   const count = params.count ?? 5;
   const todayKey = dateKey(parseIsoDate(params.today ?? toIsoDate(new Date())));
@@ -155,10 +157,16 @@ export const computeUpcomingSeriesDates = (params: {
     const exclusiveThroughKey = params.exclusiveThroughDate
       ? dateKey(parseIsoDate(params.exclusiveThroughDate))
       : null;
+    const endsOnKey = params.endsOnDate
+      ? dateKey(parseIsoDate(params.endsOnDate))
+      : null;
     const dates: string[] = [];
     for (let index = 0; index < period; index += 1) {
       const cursor = addMonths(parentDate, index);
       const key = dateKey(cursor);
+      if (endsOnKey && key > endsOnKey) {
+        break;
+      }
       if (key >= todayKey) {
         if (exclusiveThroughKey && key <= exclusiveThroughKey) {
           continue;
@@ -198,9 +206,19 @@ export const computeUpcomingSeriesDates = (params: {
     }
   }
 
+  const endsOnKey = params.endsOnDate
+    ? dateKey(parseIsoDate(params.endsOnDate))
+    : null;
+  if (endsOnKey && dateKey(cursor) > endsOnKey) {
+    return [];
+  }
+
   const dates: string[] = [];
   let current = cursor;
   for (let step = 0; step < count; step += 1) {
+    if (endsOnKey && dateKey(current) > endsOnKey) {
+      break;
+    }
     dates.push(toIsoDate(current));
     const next = advanceByRepeatInterval(current, interval);
     if (!next) {
