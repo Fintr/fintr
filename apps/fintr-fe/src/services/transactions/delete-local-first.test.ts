@@ -14,7 +14,13 @@ import {
 } from "@/lib/local-db";
 import { listSpaceAccounts } from "@/lib/local-db";
 import { cacheAccountsResponse } from "@/services/transactions/accounts/local-cache";
-import { loadCachedTransactionsInRange } from "@/services/transactions/local-cache";
+import {
+  buildTransactionsFilterKey,
+  cacheTransactionsPage,
+  loadCachedTransactionsInRange,
+  loadCachedTransactionsPage,
+  loadCachedTransactionsPageAt,
+} from "@/services/transactions/local-cache";
 import { upsertLocalIndexTransaction } from "@/services/transactions/local-cache";
 import { cacheMonthlyFinancialSummaries } from "@/services/monthly-financial-summaries/local-cache";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
@@ -727,6 +733,60 @@ describe("deleteTransactionLocalFirst", () => {
     );
     expect(rows.map((row) => row.id)).toEqual(["tx-past"]);
     expect(rows[0]?.recurrenceEndsOn).toBe("2026-08-07");
+  });
+
+  it("does not bring this-and-future rows back from the page snapshot on reload", async () => {
+    const filterKey = buildTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      startDate: "2026-07-01",
+      endDate: "2026-09-30",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    });
+    const snapshotRow = (id: string, date: string) => ({
+      id,
+      date,
+      description: "Lunch",
+      amount: 50,
+      amountCurrency: "PHP",
+      categoryName: "Food",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.EXPENSE,
+      inSeries: true,
+      hasImage: false,
+    });
+
+    await seedExpense({ id: "tx-past", date: "2026-07-01", inSeries: true });
+    await seedExpense({ id: "tx-current", date: "2026-08-08", inSeries: true });
+    await seedExpense({ id: "tx-future", date: "2026-09-08", inSeries: true });
+    await cacheTransactionsPage("space-a", filterKey, {
+      transactions: [
+        snapshotRow("tx-future", "2026-09-08"),
+        snapshotRow("tx-current", "2026-08-08"),
+        snapshotRow("tx-past", "2026-07-01"),
+      ],
+      nextPage: null,
+      totalPages: 1,
+      totalCount: 3,
+      totals: null,
+    });
+    vi.mocked(deleteTransaction).mockResolvedValue({ success: true });
+
+    await deleteTransactionLocalFirst({} as never, {
+      spaceId: "space-a",
+      transactionId: "tx-current",
+      deleteScope: DeleteScopeEnum.THIS_AND_FUTURE,
+    });
+
+    const reloaded = await loadCachedTransactionsPageAt("space-a", filterKey, 1);
+    expect(reloaded?.transactions.map((row) => row.id)).toEqual(["tx-past"]);
+
+    const snapshot = await loadCachedTransactionsPage("space-a", filterKey);
+    expect(snapshot?.transactions.map((row) => row.id)).toEqual(["tx-past"]);
   });
 
   it("expands this_and_future when the clicked child has stale inSeries false", async () => {
