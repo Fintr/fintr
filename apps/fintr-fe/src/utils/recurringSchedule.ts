@@ -539,8 +539,10 @@ export const buildRecurringSeriesSummaries = (
     )
       ? today
       : undefined;
+    const endsOnDate = earliestRecurrenceEndsOn(sorted);
     const future = sorted
       .filter((row) => parseRowDate(row.date) > todayDate)
+      .filter((row) => !endsOnDate || row.date.slice(0, 10) <= endsOnDate)
       .sort((left, right) => left.date.localeCompare(right.date));
     let nextOccurrenceDate = future[0]?.date ?? null;
     if (parentDate && (repeatInterval || installmentPeriod)) {
@@ -552,9 +554,11 @@ export const buildRecurringSeriesSummaries = (
         today,
         count: 1,
         exclusiveThroughDate,
-        endsOnDate: earliestRecurrenceEndsOn(sorted),
+        endsOnDate,
       });
-      if (projected[0]) {
+      if (endsOnDate) {
+        nextOccurrenceDate = projected[0] ?? null;
+      } else if (projected[0]) {
         nextOccurrenceDate = projected[0];
       }
     }

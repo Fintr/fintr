@@ -43,6 +43,7 @@ import {
   resolveSeriesRowsForDeleteScope,
   resolveTransactionInSeries,
   sameSeriesFingerprint,
+  seriesFingerprintKey,
   withResolvedInSeries,
 } from "./resolve-delete-scope";
 
@@ -620,10 +621,13 @@ export const loadAllCachedTransactionsForInsights = async (
   mergeRows(await loadAllTransactionsFromLocalIndex(spaceId));
 
   if (byId.size > 0) {
-    return Array.from(byId.values());
+    return withoutOmittedSeriesRows(spaceId, Array.from(byId.values()));
   }
 
-  return await listSpaceTransactions(spaceId);
+  return withoutOmittedSeriesRows(
+    spaceId,
+    await listSpaceTransactions(spaceId),
+  );
 };
 
 const legacyMigrationPromises = new Map<string, Promise<void>>();
@@ -734,7 +738,18 @@ export const mergeMetaTransactionSnapshotsIntoIndex = async (
       return;
     }
 
-    await putSpaceTransactions(spaceId, Array.from(byId.values()));
+    const visible = await withoutOmittedSeriesRows(
+      spaceId,
+      Array.from(byId.values()),
+    );
+    const visibleIds = new Set(visible.map((row) => row.id));
+    const droppedIds = Array.from(byId.keys()).filter(
+      (id) => !visibleIds.has(id),
+    );
+    if (droppedIds.length > 0) {
+      await deleteSpaceTransactions(spaceId, droppedIds);
+    }
+    await putSpaceTransactions(spaceId, visible);
   } catch (error) {
     console.warn(
       "[local-db] Failed to merge meta transaction snapshots into index",
@@ -831,7 +846,9 @@ export const loadCachedTransactionsInRange = async (
       );
 
       if (filtered.length > 0) {
-        return filtered.sort(compareTransactionsNewestFirst);
+        return (
+          await withoutOmittedSeriesRows(spaceId, filtered)
+        ).sort(compareTransactionsNewestFirst);
       }
     }
 
@@ -927,8 +944,10 @@ const loadFilteredTransactionsForFilterKey = async (
     return [];
   }
 
+  const visible = await withoutOmittedSeriesRows(spaceId, mergedRows);
+
   return filterTransactionsForRange(
-    [{ transactions: mergedRows }],
+    [{ transactions: visible }],
     filterKey,
   ).sort(compareTransactionsNewestFirst);
 };
@@ -1464,7 +1483,293 @@ export const mergeIndexTransactionMetadata = (
     return { ...withParent, parentId: existing.parentId, inSeries: true };
   }
 
+  if (existing?.recurrenceEndsOn && !withParent.recurrenceEndsOn) {
+    return {
+      ...withParent,
+      recurrenceEndsOn: existing.recurrenceEndsOn,
+    };
+  }
+
   return withParent;
+};
+
+type OmittedSeriesEnd = {
+  rootId: string;
+  endsOn: string;
+  fingerprint: string;
+};
+
+type OmittedSeriesState = {
+  ids: string[];
+  ends: OmittedSeriesEnd[];
+  seeded: boolean;
+};
+
+const emptyOmittedSeriesState = (): OmittedSeriesState => ({
+  ids: [],
+  ends: [],
+  seeded: false,
+});
+
+const omittedSeriesStateKey = (spaceId: string): string =>
+  `omittedSeriesTransactions:${spaceId}`;
+
+const seriesRootId = (row: IndexTransaction): string =>
+  row.rootParentId || row.parentId || row.id;
+
+const readOmittedSeriesState = async (
+  spaceId: string,
+): Promise<OmittedSeriesState> => {
+  const stored = await getLocalResponseSnapshot<Partial<OmittedSeriesState>>(
+    omittedSeriesStateKey(spaceId),
+  );
+
+  return {
+    ids: Array.isArray(stored?.ids) ? stored.ids.filter(Boolean) : [],
+    ends: Array.isArray(stored?.ends)
+      ? stored.ends.filter(
+          (end): end is OmittedSeriesEnd =>
+            Boolean(end?.rootId && end?.endsOn),
+        )
+      : [],
+    seeded: stored?.seeded === true,
+  };
+};
+
+const writeOmittedSeriesState = async (
+  spaceId: string,
+  state: OmittedSeriesState,
+): Promise<void> => {
+  await putLocalResponseSnapshot(omittedSeriesStateKey(spaceId), state);
+};
+
+const rememberSeriesEnd = (
+  ends: OmittedSeriesEnd[],
+  row: IndexTransaction,
+): OmittedSeriesEnd[] => {
+  const endsOn = row.recurrenceEndsOn?.slice(0, 10);
+  if (!endsOn) {
+    return ends;
+  }
+
+  const rootId = seriesRootId(row);
+  const fingerprint = seriesFingerprintKey(row);
+  const previous = ends.find((end) => end.rootId === rootId);
+  const nextEnd = {
+    rootId,
+    endsOn:
+      previous && previous.endsOn < endsOn ? previous.endsOn : endsOn,
+    fingerprint: previous?.fingerprint || fingerprint,
+  };
+
+  return [
+    ...ends.filter((end) => end.rootId !== rootId),
+    nextEnd,
+  ];
+};
+
+const seedOmittedSeriesState = async (
+  spaceId: string,
+): Promise<OmittedSeriesState> => {
+  const state = await readOmittedSeriesState(spaceId);
+  if (state.seeded) {
+    return state;
+  }
+
+  const rows = await listSpaceTransactions(spaceId);
+  const seeded = {
+    ...state,
+    ends: rows.reduce(
+      (ends, row) => rememberSeriesEnd(ends, row),
+      state.ends,
+    ),
+    seeded: true,
+  };
+  await writeOmittedSeriesState(spaceId, seeded);
+  return seeded;
+};
+
+const rowIsAfterOmittedSeriesEnd = (
+  row: IndexTransaction,
+  state: OmittedSeriesState,
+): boolean => {
+  if (row.id && state.ids.includes(row.id)) {
+    return true;
+  }
+
+  const date = row.date?.slice(0, 10) ?? "";
+  if (!date) {
+    return false;
+  }
+
+  return state.ends.some((end) => {
+    if (date <= end.endsOn) {
+      return false;
+    }
+
+    if (
+      row.id === end.rootId
+      || row.parentId === end.rootId
+      || row.rootParentId === end.rootId
+    ) {
+      return true;
+    }
+
+    const seriesRow =
+      row.inSeries
+      || row.scheduleType === "repeat"
+      || row.scheduleType === "installment";
+
+    return Boolean(
+      seriesRow
+      && end.fingerprint
+      && seriesFingerprintKey(row) === end.fingerprint,
+    );
+  });
+};
+
+const withoutOmittedSeriesRows = async (
+  spaceId: string,
+  rows: IndexTransaction[],
+): Promise<IndexTransaction[]> => {
+  if (!spaceId || rows.length === 0) {
+    return rows;
+  }
+
+  const state = await seedOmittedSeriesState(spaceId);
+  if (state.ids.length === 0 && state.ends.length === 0) {
+    return rows;
+  }
+
+  return rows.filter((row) => !rowIsAfterOmittedSeriesEnd(row, state));
+};
+
+const stripPageTransactions = (
+  page: TransactionsPage,
+  ids: Set<string>,
+): TransactionsPage => {
+  if (!page || typeof page !== "object" || !Array.isArray(page.transactions)) {
+    return page;
+  }
+
+  const transactions = page.transactions.filter(
+    (row) => !row?.id || !ids.has(row.id),
+  );
+  if (transactions.length === page.transactions.length) {
+    return page;
+  }
+
+  const removedCount = page.transactions.length - transactions.length;
+
+  return {
+    ...page,
+    transactions,
+    totalCount:
+      typeof page.totalCount === "number"
+        ? Math.max(0, page.totalCount - removedCount)
+        : page.totalCount,
+  };
+};
+
+const stripIdsFromSnapshotValue = (
+  value: unknown,
+  ids: Set<string>,
+): unknown => {
+  if (Array.isArray(value)) {
+    let changed = false;
+    const pages = value.map((page) => {
+      const stripped = stripPageTransactions(page as TransactionsPage, ids);
+      if (stripped !== page) {
+        changed = true;
+      }
+      return stripped;
+    });
+    return changed ? pages : value;
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const record = value as {
+    pages?: TransactionsPage[];
+    transactions?: TransactionsPage["transactions"];
+  };
+
+  if (Array.isArray(record.pages)) {
+    let changed = false;
+    const pages = record.pages.map((page) => {
+      const stripped = stripPageTransactions(page, ids);
+      if (stripped !== page) {
+        changed = true;
+      }
+      return stripped;
+    });
+    return changed ? { ...record, pages } : value;
+  }
+
+  if (Array.isArray(record.transactions)) {
+    return stripPageTransactions(record as TransactionsPage, ids);
+  }
+
+  return value;
+};
+
+const stripOmittedIdsFromSnapshots = async (
+  spaceId: string,
+  ids: Set<string>,
+): Promise<void> => {
+  if (!spaceId || ids.size === 0) {
+    return;
+  }
+
+  const prefixes = [
+    `transactionsPage1:${spaceId}:`,
+    `transactionsAllPages:${spaceId}:`,
+  ];
+  const rows = await getLocalDb()
+    .meta
+    .filter((row) => prefixes.some((prefix) => row.key.startsWith(prefix)))
+    .toArray();
+
+  for (const row of rows) {
+    const next = stripIdsFromSnapshotValue(row.value, ids);
+    if (next !== row.value) {
+      await putLocalResponseSnapshot(row.key, next);
+    }
+  }
+};
+
+const rememberRemovedTransactionIds = async (
+  spaceId: string,
+  transactionIds: string[],
+): Promise<void> => {
+  const ids = transactionIds.filter(Boolean);
+  if (!spaceId || ids.length === 0) {
+    return;
+  }
+
+  const state = await readOmittedSeriesState(spaceId);
+  await writeOmittedSeriesState(spaceId, {
+    ...state,
+    ids: Array.from(new Set([...state.ids, ...ids])),
+  });
+  await stripOmittedIdsFromSnapshots(spaceId, new Set(ids));
+};
+
+const rememberSeriesEndForRow = async (
+  spaceId: string,
+  row: IndexTransaction,
+): Promise<void> => {
+  if (!spaceId || !row.recurrenceEndsOn) {
+    return;
+  }
+
+  const state = await readOmittedSeriesState(spaceId);
+  await writeOmittedSeriesState(spaceId, {
+    ...state,
+    ends: rememberSeriesEnd(state.ends, row),
+  });
 };
 
 /**
@@ -1498,7 +1803,18 @@ export const mergeFetchedTransactionsIntoAllTimeCache = async (
       );
     }
 
-    await putSpaceTransactions(spaceId, Array.from(byId.values()));
+    const visible = await withoutOmittedSeriesRows(
+      spaceId,
+      Array.from(byId.values()),
+    );
+    const visibleIds = new Set(visible.map((row) => row.id));
+    const droppedIds = Array.from(byId.keys()).filter(
+      (id) => !visibleIds.has(id),
+    );
+    if (droppedIds.length > 0) {
+      await deleteSpaceTransactions(spaceId, droppedIds);
+    }
+    await putSpaceTransactions(spaceId, visible);
     const { backfillSpaceTransactionRelationIds } = await import(
       "@/services/transactions/relation-ids-local"
     );
@@ -1528,6 +1844,15 @@ export const upsertLocalIndexTransaction = async (
       current,
       transaction as IndexTransactionWithMetadata,
     );
+    const state = await seedOmittedSeriesState(spaceId);
+    if (rowIsAfterOmittedSeriesEnd(merged, state)) {
+      if (current) {
+        await deleteSpaceTransactions(spaceId, [merged.id]);
+      }
+      return;
+    }
+
+    await rememberSeriesEndForRow(spaceId, merged);
     await putSpaceTransactions(spaceId, [
       backfillIndexRowForOffline(merged),
     ]);
@@ -1608,6 +1933,7 @@ export const removeLocalIndexTransaction = async (
     }
 
     await deleteSpaceTransactions(spaceId, [transactionId]);
+    await rememberRemovedTransactionIds(spaceId, [transactionId]);
   } catch (error) {
     console.warn("[local-db] Failed to remove local transaction", error);
   }
@@ -1644,6 +1970,10 @@ export const removeLocalIndexTransactionsByIds = async (
     }
 
     await deleteSpaceTransactions(spaceId, removed.map((row) => row.id));
+    await rememberRemovedTransactionIds(
+      spaceId,
+      removed.map((row) => row.id),
+    );
     return removed;
   } catch (error) {
     console.warn("[local-db] Failed to remove local transactions", error);

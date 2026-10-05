@@ -27,6 +27,7 @@ import {
   loadAllTypeCachedRowsForFilterKey,
   loadScatteredTransactionSnapshotsFromMeta,
   mergeFetchedTransactionsIntoAllTimeCache,
+  mergeMetaTransactionSnapshotsIntoIndex,
   replaceLocalIndexTransactionId,
   upsertLocalIndexTransaction,
   mergeIndexTransactionTags,
@@ -111,6 +112,83 @@ describe("transactions local-cache", () => {
       "newer-second",
       "older",
     ]);
+  });
+
+  it("does not reload a deleted recurring row from a stale page snapshot", async () => {
+    const filterKey = buildTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      startDate: "2026-07-01",
+      endDate: "2026-09-30",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    });
+
+    const seriesRow = (
+      id: string,
+      date: string,
+    ): TransactionsPage["transactions"][number] =>
+      ({
+        id,
+        date,
+        description: "Salary",
+        amount: 1000,
+        amountCurrency: "PHP",
+        categoryName: "Salary",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.INCOME,
+        parentId: id === "salary-past" ? null : "salary-past",
+        rootParentId: "salary-past",
+        scheduleType: "repeat",
+        repeatInterval: "every_month",
+        inSeries: true,
+        hasImage: false,
+      }) as TransactionsPage["transactions"][number];
+
+    await cacheTransactionsPage("space-a", filterKey, {
+      transactions: [
+        seriesRow("salary-future", "2026-09-04"),
+        seriesRow("salary-current", "2026-08-04"),
+        seriesRow("salary-past", "2026-07-04"),
+      ],
+      nextPage: null,
+      totalPages: 1,
+      totalCount: 3,
+      totals: null,
+    });
+    await upsertLocalIndexTransaction("space-a", {
+      ...seriesRow("salary-past", "2026-07-04"),
+      recurrenceEndsOn: "2026-08-03",
+    });
+
+    const page = await loadCachedTransactionsPageAt("space-a", filterKey, 1);
+
+    expect(page?.transactions.map((row) => row.id)).toEqual(["salary-past"]);
+    expect(page?.transactions[0]?.recurrenceEndsOn).toBe("2026-08-03");
+
+    const augustKey = buildTransactionsFilterKey({
+      categoriesSerialized: "[]",
+      startDate: "2026-08-01",
+      endDate: "2026-08-31",
+      minAmount: "",
+      maxAmount: "",
+      searchQuery: "",
+      accountNamesSerialized: "[]",
+      tagIdsSerialized: "[]",
+    });
+    const august = await loadCachedTransactionsPageAt("space-a", augustKey, 1);
+    expect(august?.transactions ?? []).toEqual([]);
+
+    await mergeMetaTransactionSnapshotsIntoIndex("space-a");
+    const stored = await loadCachedTransactionsInRange(
+      "space-a",
+      "2026-07-01",
+      "2026-09-30",
+    );
+    expect(stored.map((row) => row.id)).toEqual(["salary-past"]);
   });
 
   it("filters cached transactions by entry type (e.g. loans only)", async () => {
@@ -1213,6 +1291,77 @@ describe("transactions local-cache", () => {
 
     expect(janToAug).toHaveLength(1);
     expect(janToAug[0]?.categoryName).toBe("Food & Groceries");
+  });
+
+  it("keeps a local series end when a server refresh still includes later rows", async () => {
+    await upsertLocalIndexTransaction("space-a", {
+      id: "salary-past",
+      date: "2026-07-04",
+      description: "Salary",
+      amount: 1000,
+      amountCurrency: "PHP",
+      categoryName: "Salary",
+      fromAccountName: "Cash",
+      toAccountName: "",
+      type: CombinedTransactionTypeEnum.INCOME,
+      scheduleType: "repeat",
+      repeatInterval: "every_month",
+      inSeries: true,
+      hasImage: false,
+      recurrenceEndsOn: "2026-08-03",
+    });
+
+    await mergeFetchedTransactionsIntoAllTimeCache("space-a", [
+      {
+        transactions: [
+          {
+            id: "salary-past",
+            date: "2026-07-04",
+            description: "Salary",
+            amount: 1000,
+            amountCurrency: "PHP",
+            categoryName: "Salary",
+            fromAccountName: "Cash",
+            toAccountName: "",
+            type: CombinedTransactionTypeEnum.INCOME,
+            scheduleType: "repeat",
+            repeatInterval: "every_month",
+            inSeries: true,
+            hasImage: false,
+          },
+          {
+            id: "salary-current",
+            date: "2026-08-04",
+            description: "Salary",
+            amount: 1000,
+            amountCurrency: "PHP",
+            categoryName: "Salary",
+            fromAccountName: "Cash",
+            toAccountName: "",
+            parentId: "salary-past",
+            rootParentId: "salary-past",
+            type: CombinedTransactionTypeEnum.INCOME,
+            scheduleType: "repeat",
+            repeatInterval: "every_month",
+            inSeries: true,
+            hasImage: false,
+          },
+        ] as TransactionsPage["transactions"],
+        nextPage: null,
+        totalPages: 1,
+        totalCount: 2,
+        totals: null,
+      },
+    ]);
+
+    const rows = await loadCachedTransactionsInRange(
+      "space-a",
+      "2026-07-01",
+      "2026-09-30",
+    );
+
+    expect(rows.map((row) => row.id)).toEqual(["salary-past"]);
+    expect(rows[0]?.recurrenceEndsOn).toBe("2026-08-03");
   });
 
   it("falls back to month-scoped caches when the all-time store is empty", async () => {
