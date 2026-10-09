@@ -1,9 +1,13 @@
+import path from "node:path";
+
 import type { NextConfig } from "next";
 
 import { nextDevRewrites } from "./src/lib/next-dev-rewrites";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@fintr/domain"],
+  // @fintr/domain is linked from packages/; Turbopack can't resolve files outside its root.
+  turbopack: { root: path.join(__dirname, "../..") },
   allowedDevOrigins: ["10.0.2.2"],
   async rewrites() {
     if (process.env.NODE_ENV !== "development") {

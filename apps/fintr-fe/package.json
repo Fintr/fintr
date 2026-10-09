@@ -43,7 +43,7 @@
     "@capacitor/share": "^7.0.4",
     "@capgo/capacitor-llm": "7.2.15",
     "@daypicker/react": "^10.0.1",
-    "@fintr/domain": "file:../../packages/fintr-domain",
+    "@fintr/domain": "link:../../packages/fintr-domain",
     "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-accordion": "^1.2.10",

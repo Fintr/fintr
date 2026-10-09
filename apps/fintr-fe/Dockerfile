@@ -1,12 +1,15 @@
 FROM node:20-alpine AS base
 
-# Context is the monorepo root. @fintr/domain is file:../../packages/fintr-domain,
+# Context is the monorepo root. @fintr/domain is link:../../packages/fintr-domain,
 # which resolves to /packages/fintr-domain when this app is installed at /app.
+# A link does not install the package's own deps (zod), so install them there.
 FROM base AS deps
 WORKDIR /app
 COPY apps/fintr-fe/package.json apps/fintr-fe/pnpm-lock.yaml ./
 COPY packages/fintr-domain /packages/fintr-domain
-RUN npm install -g pnpm@9 && pnpm install --frozen-lockfile
+RUN npm install -g pnpm@9 \
+  && pnpm install --frozen-lockfile \
+  && pnpm --dir /packages/fintr-domain install --frozen-lockfile --prod
 
 FROM base AS builder
 WORKDIR /app

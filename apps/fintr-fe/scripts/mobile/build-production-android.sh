@@ -62,10 +62,13 @@ echo "Step 3: Building Next.js app for Capacitor..."
 export NEXT_OUTPUT_MODE=export
 
 cat > next.config.capacitor.ts << 'NEXTCONFIG'
+import path from "node:path";
+
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@fintr/domain"],
+  turbopack: { root: path.join(__dirname, "../..") },
   output: "export",
   typescript: { ignoreBuildErrors: true },
   experimental: {

@@ -41,7 +41,9 @@ jobs:
           cache-dependency-path: apps/fintr-fe/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir ../../packages/fintr-domain install --frozen-lockfile --prod
 
       - name: Run Vitest
         run: pnpm test:ci

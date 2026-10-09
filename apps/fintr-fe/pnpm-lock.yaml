@@ -48,8 +48,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(@types/react@19.2.14)(react@19.2.6)
       '@fintr/domain':
-        specifier: file:../../packages/fintr-domain
-        version: file:../../packages/fintr-domain
+        specifier: link:../../packages/fintr-domain
+        version: link:../../packages/fintr-domain
       '@gsap/react':
         specifier: ^2.1.2
         version: 2.1.2(gsap@3.15.0)(react@19.2.6)
@@ -785,9 +785,6 @@ packages:
     resolution: {integrity: sha512-K4wyxfUZx2ux5o+b6BtTqouYFVILohLZmSbA2tKUueJstNcBnoGPVhllCaOvbQ3ZrXdUxUC/fyrSWSCqHhdOPg==}
     peerDependencies:
       '@opentelemetry/api': ^1.9.0
-
-  '@fintr/domain@file:../../packages/fintr-domain':
-    resolution: {directory: ../../packages/fintr-domain, type: directory}
 
   '@floating-ui/core@1.7.3':
     resolution: {integrity: sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==}
@@ -6471,10 +6468,6 @@ snapshots:
       minimatch: 10.2.5
     transitivePeerDependencies:
       - supports-color
-
-  '@fintr/domain@file:../../packages/fintr-domain':
-    dependencies:
-      zod: 3.25.76
 
   '@floating-ui/core@1.7.3':
     dependencies:
