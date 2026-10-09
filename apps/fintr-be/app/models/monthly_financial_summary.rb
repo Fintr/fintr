@@ -13,11 +13,11 @@ class MonthlyFinancialSummary < ApplicationRecord
 
   validates :total_income,
             presence: true,
-            numericality: { greater_than_or_equal_to: 0 }
+            numericality: true
 
   validates :total_expenses,
             presence: true,
-            numericality: { greater_than_or_equal_to: 0 }
+            numericality: true
 
   validates :net_savings,
             presence: true

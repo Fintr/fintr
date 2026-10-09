@@ -69,10 +69,9 @@ RSpec.describe MonthlyFinancialSummary, type: :model do
         expect(summary).to be_valid
       end
 
-      it 'is invalid with a negative value' do
+      it 'is valid with a negative value from income reversals' do
         summary.total_income = -100.00
-        expect(summary).not_to be_valid
-        expect(summary.errors[:total_income]).to include('must be greater than or equal to 0')
+        expect(summary).to be_valid
       end
 
       it 'is invalid without total_income' do
@@ -88,10 +87,9 @@ RSpec.describe MonthlyFinancialSummary, type: :model do
         expect(summary).to be_valid
       end
 
-      it 'is invalid with a negative value' do
+      it 'is valid with a negative value from refunds' do
         summary.total_expenses = -50.00
-        expect(summary).not_to be_valid
-        expect(summary.errors[:total_expenses]).to include('must be greater than or equal to 0')
+        expect(summary).to be_valid
       end
 
       it 'is invalid without total_expenses' do

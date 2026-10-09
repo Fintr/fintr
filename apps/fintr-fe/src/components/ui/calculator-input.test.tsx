@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act, cleanup } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { CalculatorInput } from "./calculator-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
+import { useNumberInput } from "@/hooks/useNumberInput";
 
 vi.mock("@/hooks/usePlatformDetection", () => ({
   usePlatformDetection: () => ({
@@ -602,6 +603,46 @@ describe("CalculatorInput", () => {
       });
 
       expect(mockOnChange).toHaveBeenLastCalledWith("123");
+    });
+  });
+
+  describe("Negative amounts from the keypad", () => {
+    const NumberInputHarness = ({ onValue }: { onValue: (value: number) => void }) => {
+      const amountInput = useNumberInput({ onValueChange: onValue });
+
+      return (
+        <CalculatorInput
+          value={amountInput.displayValue}
+          onChange={(value) => amountInput.handleInputChange(value)}
+          placeholder="0.00"
+        />
+      );
+    };
+
+    const pressKeys = (labels: string[]) => {
+      for (const label of labels) {
+        const button = Array.from(
+          document.body.querySelectorAll("[data-calculator-keyboard-button]"),
+        ).find((candidate) => candidate.textContent === label);
+
+        fireEvent.pointerDown(button as Element, { button: 0 });
+      }
+    };
+
+    it.each([
+      [["−", "5", "0"]],
+      [["±", "5", "0"]],
+      [["5", "0", "±"]],
+      [["5", "0", "±", "="]],
+    ])("keeps the minus sign for %j", (keys) => {
+      const onValue = vi.fn();
+
+      render(<NumberInputHarness onValue={onValue} />);
+      fireEvent.focus(screen.getByPlaceholderText("0.00"));
+      pressKeys(keys);
+
+      expect(screen.getByPlaceholderText("0.00")).toHaveValue("-50");
+      expect(onValue).toHaveBeenLastCalledWith(-50);
     });
   });
 
