@@ -748,7 +748,7 @@ const AccountSetupFlow = () => {
               className="h-12"
             />
           </div>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
             <h1 className="text-2xl font-bold text-primary">
               Account Setup ({currentStep + 1}/{STEPS.length})
             </h1>
@@ -773,7 +773,11 @@ const AccountSetupFlow = () => {
                 >
                   {step.icon}
                 </div>
-                <span className="text-xs font-medium">{step.title}</span>
+                <span
+                  className={`text-xs font-medium ${index === currentStep ? "" : "hidden sm:inline"}`}
+                >
+                  {step.title}
+                </span>
               </div>
             ))}
           </div>

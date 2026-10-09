@@ -26,7 +26,7 @@ const ConsentPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
+      <div className="w-full max-w-md bg-card rounded-lg shadow-md p-8 text-center">
         <h1 className="text-2xl md:text-3xl font-bold text-primary mb-4">
           Additional Permissions Required
         </h1>
@@ -42,7 +42,7 @@ const ConsentPage = () => {
             Grant Permissions
           </Button>
         </div>
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-muted-foreground">
           You can revoke these permissions at any time from your account settings.
         </p>
       </div>

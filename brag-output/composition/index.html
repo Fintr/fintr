@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Fintr</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "League Spartan";
+        src: url("assets/fonts/league-spartan-400.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      @font-face {
+        font-family: "League Spartan";
+        src: url("assets/fonts/league-spartan-600.woff2") format("woff2");
+        font-weight: 600;
+        font-style: normal;
+      }
+
+      @font-face {
+        font-family: "League Spartan";
+        src: url("assets/fonts/league-spartan-700.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+      }
+
+      body {
+        margin: 0;
+        background: #0a2540;
+      }
+
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #faf9f7;
+        color: #0a2540;
+        font-family: "League Spartan", sans-serif;
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .cream {
+        background: #faf9f7;
+      }
+
+      .midnight {
+        background: #151921;
+      }
+
+      .stack {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        width: 1280px;
+      }
+
+      .bar {
+        width: 48px;
+        height: 4px;
+        border-radius: 2px;
+        background: #0d9488;
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        margin: 0 0 28px;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+        color: #0a2540;
+      }
+
+      .hook {
+        margin: 0;
+        font-size: 112px;
+        font-weight: 700;
+        line-height: 0.98;
+        letter-spacing: -2px;
+        color: #0a2540;
+      }
+
+      .card {
+        width: 860px;
+        background: #1e2433;
+        border-radius: 28px;
+        padding: 56px 64px 48px;
+      }
+
+      .card-kicker {
+        margin: 0 0 12px;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: #d6d3d1;
+      }
+
+      .merchant {
+        margin: 0 0 36px;
+        font-size: 64px;
+        font-weight: 700;
+        letter-spacing: -1.5px;
+        line-height: 1;
+        color: #f4f1ea;
+      }
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 18px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .row-label {
+        font-size: 22px;
+        font-weight: 600;
+        color: #d6d3d1;
+      }
+
+      .row-value {
+        font-size: 36px;
+        font-weight: 700;
+        color: #f4f1ea;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 28px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: #134e4a;
+        color: #ccfbf1;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .month-wrap {
+        width: 1400px;
+      }
+
+      .month-title {
+        margin: 0 0 36px;
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: #e7e5e4;
+      }
+
+      .stats {
+        display: flex;
+        gap: 24px;
+      }
+
+      .stat {
+        width: 400px;
+        background: #1e2433;
+        border-radius: 24px;
+        padding: 36px 36px 32px;
+      }
+
+      .stat-label {
+        margin: 0 0 12px;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: #e7e5e4;
+      }
+
+      .stat-value {
+        margin: 0;
+        font-size: 56px;
+        font-weight: 700;
+        letter-spacing: -1px;
+        line-height: 1;
+      }
+
+      .in {
+        color: #99f6e4;
+      }
+
+      .out {
+        color: #fdba74;
+      }
+
+      .net {
+        color: #f4f1ea;
+      }
+
+      .budget {
+        margin-top: 28px;
+        width: 1248px;
+      }
+
+      .budget-label {
+        margin: 0 0 14px;
+        font-size: 22px;
+        font-weight: 600;
+        color: #f4f1ea;
+      }
+
+      .track {
+        width: 1248px;
+        height: 14px;
+        border-radius: 999px;
+        background: #2a3142;
+        overflow: hidden;
+      }
+
+      .fill {
+        width: 1248px;
+        height: 14px;
+        border-radius: 999px;
+        background: #2dd4bf;
+      }
+
+      .outro-stack {
+        align-items: flex-start;
+        width: 1200px;
+      }
+
+      .wordmark {
+        margin: 0 0 18px;
+        font-size: 120px;
+        font-weight: 700;
+        letter-spacing: -3px;
+        line-height: 0.9;
+        color: #0a2540;
+      }
+
+      .tagline {
+        margin: 0 0 28px;
+        font-size: 40px;
+        font-weight: 600;
+        letter-spacing: -0.6px;
+        color: #0a2540;
+      }
+
+      .store {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: #0a2540;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1920"
+      data-height="1080"
+      data-duration="20.5"
+    >
+      <section
+        id="scene-hook"
+        class="clip"
+        data-start="0"
+        data-duration="4.6"
+        data-track-index="1"
+        style="z-index: 1"
+      >
+        <div class="scene cream">
+          <div class="stack" id="hook-stack">
+            <div class="bar" id="hook-bar"></div>
+            <p class="eyebrow" id="hook-eyebrow">AI-powered personal finance assistant</p>
+            <h1 class="hook" id="hook-line-a">Save more.</h1>
+            <h1 class="hook" id="hook-line-b">Spend smarter.</h1>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="scene-receipt"
+        class="clip"
+        data-start="4.15"
+        data-duration="7.7"
+        data-track-index="2"
+        style="z-index: 2"
+      >
+        <div class="scene midnight" id="receipt-scene" style="opacity: 0">
+          <div class="card">
+            <p class="card-kicker" id="receipt-kicker">Receipt</p>
+            <h2 class="merchant" id="merchant">Cafe Luna</h2>
+            <div class="row" id="amount-row">
+              <span class="row-label">Amount</span>
+              <span class="row-value">₱248</span>
+            </div>
+            <div class="row" id="category-row">
+              <span class="row-label">Category</span>
+              <span class="row-value">Dining</span>
+            </div>
+            <div class="pill" id="logged-pill">Logged</div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="scene-month"
+        class="clip"
+        data-start="11.4"
+        data-duration="5.2"
+        data-track-index="3"
+        style="z-index: 3"
+      >
+        <div class="scene midnight" id="month-scene" style="opacity: 0">
+          <div class="month-wrap">
+            <p class="month-title" id="month-title">This month</p>
+            <div class="stats">
+              <div class="stat" id="stat-in">
+                <p class="stat-label">In</p>
+                <p class="stat-value in">₱48,200</p>
+              </div>
+              <div class="stat" id="stat-out">
+                <p class="stat-label">Out</p>
+                <p class="stat-value out">₱31,400</p>
+              </div>
+              <div class="stat" id="stat-net">
+                <p class="stat-label">Net</p>
+                <p class="stat-value net">₱16,800</p>
+              </div>
+            </div>
+            <div class="budget" id="budget-block">
+              <p class="budget-label">Dining · On budget.</p>
+              <div class="track">
+                <div class="fill" id="budget-fill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="scene-outro"
+        class="clip"
+        data-start="16.15"
+        data-duration="4.35"
+        data-track-index="4"
+        style="z-index: 4"
+      >
+        <div class="scene cream" id="outro-scene" style="opacity: 0">
+          <div class="stack outro-stack">
+            <h2 class="wordmark" id="wordmark">Fintr</h2>
+            <p class="tagline" id="tagline">Afford the life you want.</p>
+            <p class="store" id="store-line">On the App Store</p>
+          </div>
+        </div>
+      </section>
+
+      <audio
+        id="music"
+        src="assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3"
+        data-start="0"
+        data-duration="20.5"
+        data-track-index="10"
+        data-volume="1"
+        data-automation='{"version":1,"lanes":[{"target":"volume","points":[{"t":0,"v":0},{"t":0.45,"v":0.28},{"t":18.6,"v":0.28},{"t":20.5,"v":0}]}]}'
+      ></audio>
+      <audio
+        id="sfx-merchant"
+        src="assets/sfx/click_003.ogg"
+        data-start="6.34"
+        data-duration="0.02"
+        data-track-index="11"
+        data-volume="0.5"
+      ></audio>
+      <audio
+        id="sfx-amount"
+        src="assets/sfx/click_002.ogg"
+        data-start="7.4"
+        data-duration="0.02"
+        data-track-index="12"
+        data-volume="0.5"
+      ></audio>
+      <audio
+        id="sfx-category"
+        src="assets/sfx/click_005.ogg"
+        data-start="8.44"
+        data-duration="0.02"
+        data-track-index="13"
+        data-volume="0.5"
+      ></audio>
+      <audio
+        id="sfx-logged"
+        src="assets/sfx/impactGeneric_light_000.ogg"
+        data-start="10.54"
+        data-duration="0.14"
+        data-track-index="14"
+        data-volume="0.35"
+      ></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo(
+        "#hook-bar",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: true },
+        0.25
+      );
+      tl.fromTo(
+        "#hook-eyebrow",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", immediateRender: true },
+        0.4
+      );
+      tl.fromTo(
+        "#hook-line-a",
+        { opacity: 0, y: 28 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power3.out", immediateRender: true },
+        0.7
+      );
+      tl.fromTo(
+        "#hook-line-b",
+        { opacity: 0, y: 28 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power3.out", immediateRender: true },
+        1.05
+      );
+      tl.to("#hook-stack", { opacity: 0, duration: 0.4, ease: "power1.in" }, 4.15);
+
+      tl.fromTo(
+        "#receipt-scene",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "power1.out", immediateRender: true },
+        4.15
+      );
+      tl.fromTo(
+        "#receipt-kicker",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: "power2.out", immediateRender: true },
+        4.45
+      );
+      // beat-locked: 6.34s
+      tl.fromTo(
+        "#merchant",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out", immediateRender: true },
+        6.34
+      );
+      // beat-grid: amount 7.40s, category 8.44s
+      tl.fromTo(
+        "#amount-row",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out", immediateRender: true },
+        7.4
+      );
+      tl.fromTo(
+        "#category-row",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out", immediateRender: true },
+        8.44
+      );
+      // beat-locked: 10.54s
+      tl.fromTo(
+        "#logged-pill",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out", immediateRender: true },
+        10.54
+      );
+      tl.to("#receipt-scene", { opacity: 0, duration: 0.4, ease: "power1.in" }, 11.4);
+
+      tl.fromTo(
+        "#month-scene",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.35, ease: "power1.out", immediateRender: true },
+        11.4
+      );
+      tl.fromTo(
+        "#month-title",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: "power2.out", immediateRender: true },
+        11.6
+      );
+      // beat-locked: 12.65s
+      // beat-grid: stat in 12.65s, stat out 13.70s, stat net 14.76s
+      tl.fromTo(
+        "#stat-in",
+        { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out", immediateRender: true },
+        12.65
+      );
+      tl.fromTo(
+        "#stat-out",
+        { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out", immediateRender: true },
+        13.7
+      );
+      tl.fromTo(
+        "#stat-net",
+        { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out", immediateRender: true },
+        14.76
+      );
+      tl.fromTo(
+        "#budget-block",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: "power2.out", immediateRender: true },
+        15.2
+      );
+      tl.fromTo(
+        "#budget-fill",
+        { scaleX: 0 },
+        {
+          scaleX: 0.62,
+          duration: 0.7,
+          ease: "power2.out",
+          transformOrigin: "left center",
+          immediateRender: true,
+        },
+        15.35
+      );
+      tl.to("#month-scene", { opacity: 0, duration: 0.4, ease: "power1.in" }, 16.15);
+
+      tl.fromTo(
+        "#outro-scene",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "power1.out", immediateRender: true },
+        16.15
+      );
+      tl.fromTo(
+        "#wordmark",
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out", immediateRender: true },
+        16.45
+      );
+      tl.fromTo(
+        "#tagline",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", immediateRender: true },
+        17.45
+      );
+      tl.fromTo(
+        "#store-line",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: true },
+        18.7
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

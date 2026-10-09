@@ -7,6 +7,7 @@ const LIGHT_THEME_EXACT_PATHS = new Set([
   "/waitlist",
   "/whats-next",
   "/delete-account",
+  "/discover",
 ]);
 
 /**

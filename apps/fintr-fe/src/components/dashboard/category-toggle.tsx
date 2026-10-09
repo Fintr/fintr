@@ -38,21 +38,21 @@ const CategoryToggle: React.FC<CategoryToggleProps> = ({
         <TabsList className="grid h-full w-full grid-cols-2 rounded-md bg-white md:grid-cols-4 dark:rounded-lg dark:bg-card dark:shadow-sm">
           <TabsTrigger value="expense" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
-            <span className="hidden sm:inline">Expense</span>
+            <span>Expense</span>
           </TabsTrigger>
           <TabsTrigger value="income" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" />
-            <span className="hidden sm:inline">Income</span>
+            <span>Income</span>
           </TabsTrigger>
           {showV2Features && (
             <>
               <TabsTrigger value="goal" className="flex items-center gap-2">
                 <Target className="h-4 w-4" />
-                <span className="hidden sm:inline">Goal</span>
+                <span>Goal</span>
               </TabsTrigger>
               <TabsTrigger value="investment" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">Investment</span>
+                <span>Investment</span>
               </TabsTrigger>
             </>
           )}

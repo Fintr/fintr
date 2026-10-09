@@ -75,7 +75,7 @@ const ContactUs = () => {
                     onChange={handleChange}
                     placeholder="John Doe"
                     required
-                    className="w-full"
+                    className="w-full max-w-none"
                   />
                 </div>
                 <div>
@@ -93,7 +93,7 @@ const ContactUs = () => {
                     onChange={handleChange}
                     placeholder="john@example.com"
                     required
-                    className="w-full"
+                    className="w-full max-w-none"
                   />
                 </div>
               </div>
@@ -112,7 +112,7 @@ const ContactUs = () => {
                   onChange={handleChange}
                   placeholder="How can we help you?"
                   required
-                  className="w-full"
+                  className="w-full max-w-none"
                 />
               </div>
 

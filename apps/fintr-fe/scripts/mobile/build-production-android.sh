@@ -33,9 +33,10 @@ else
 fi
 
 # Step 1: Clean previous builds
+# Do not delete ios/App/App/capacitor.config.json. Xcode references that
+# generated file, and this Android-only sync does not recreate it.
 echo "Step 1: Cleaning previous builds..."
 rm -rf .next out
-rm -f ios/App/App/capacitor.config.json
 rm -f android/app/src/main/assets/capacitor.config.json
 echo "Clean complete"
 echo ""
