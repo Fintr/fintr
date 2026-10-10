@@ -292,8 +292,10 @@ const resolveMonthTotals = (
   const bucketIncome = bucket ? toNumber(bucket.totalIncome) : 0;
   const bucketExpenses = bucket ? toNumber(bucket.totalExpenses) : 0;
   const bucketHasTotals = !isBucketTotalsEmpty(bucketIncome, bucketExpenses);
-  const partialHasTotals =
-    partial.totalIncome > 0 || partial.totalExpenses > 0;
+  const partialHasTotals = !isBucketTotalsEmpty(
+    partial.totalIncome,
+    partial.totalExpenses,
+  );
   const bucketIsFresh =
     bucket != null && isMonthlySummaryBucketFresh(bucket, spaceCurrency);
 

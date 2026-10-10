@@ -130,6 +130,37 @@ describe("hydrate-from-local-transactions", () => {
     });
   });
 
+  it("hydrates a past month whose only transaction is a negative expense", async () => {
+    await putSpaceTransactions("fintr", [
+      {
+        id: "tx-refund",
+        date: "2026-07-20",
+        description: "Refund",
+        amount: -40,
+        categoryName: "Food",
+        fromAccountName: "Cash",
+        toAccountName: "",
+        type: CombinedTransactionTypeEnum.EXPENSE,
+        inSeries: false,
+        hasImage: false,
+      },
+    ]);
+
+    const hydrated = await hydrateMonthlyFinancialSummariesFromLocalTransactions(
+      "fintr",
+      {
+        currency: "PHP",
+        existingSummaries: [bucket({})],
+      },
+    );
+
+    expect(hydrated.find((row) => row.month === 7)).toMatchObject({
+      totalIncome: 0,
+      totalExpenses: -40,
+      netSavings: 40,
+    });
+  });
+
   it("detects stale non-empty buckets that disagree with local transactions", async () => {
     const tx: IndexTransaction = {
       id: "tx-aug-expense",

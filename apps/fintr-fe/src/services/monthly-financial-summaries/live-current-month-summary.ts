@@ -129,9 +129,9 @@ export const upsertLiveCurrentMonthSummary = (params: {
   );
   const existingIncome = existing ? toNumber(existing.totalIncome) : 0;
   const existingExpenses = existing ? toNumber(existing.totalExpenses) : 0;
-  const existingHasTotals = existingIncome > 0 || existingExpenses > 0;
+  const existingHasTotals = existingIncome !== 0 || existingExpenses !== 0;
   const liveHasTotals =
-    totals.totalIncome > 0 || totals.totalExpenses > 0;
+    totals.totalIncome !== 0 || totals.totalExpenses !== 0;
 
   if (!liveHasTotals && existingHasTotals) {
     return summaries;

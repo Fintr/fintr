@@ -29,6 +29,7 @@ import {
 } from "@/services/transactions/upsert-into-query-caches";
 import { invalidateLocalInsightsQueries } from "@/utils/invalidateSpaceQueries";
 import { CombinedTransactionTypeEnum } from "@/types/transactionTypes";
+import { signedTransactionAmount } from "@/utils/transactionFormAmount";
 import type {
   SpaceChange,
   SyncActor,
@@ -386,8 +387,10 @@ export const applyTransactionDeleted = async (params: {
       });
     }
 
+    // Rows already gone locally (own delete echo, replayed pull) were
+    // subtracted from the month bucket when they were removed.
     let nextSummaries = null;
-    for (const row of rows) {
+    for (const row of locallyPresentRows) {
       if (
         row.type !== CombinedTransactionTypeEnum.INCOME &&
         row.type !== CombinedTransactionTypeEnum.EXPENSE
@@ -397,7 +400,7 @@ export const applyTransactionDeleted = async (params: {
       nextSummaries = await applyLocalTransactionToMonthlySummaries({
         spaceCode: spaceId,
         date: row.date,
-        amount: row.amount,
+        amount: signedTransactionAmount(row.amount, row.bookedAmount),
         type:
           row.type === CombinedTransactionTypeEnum.INCOME ? "income" : "expense",
         mode: "remove",
