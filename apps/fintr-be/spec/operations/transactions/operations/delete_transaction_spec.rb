@@ -377,4 +377,100 @@ RSpec.describe Transactions::Operations::DeleteTransaction do
       end
     end
   end
+
+  describe 'monthly summary after create then delete' do
+    let(:income_category) { create(:category, space:, category_type: "income", name: "Salary") }
+
+    def create_entry(amount:, transaction_type:)
+      Transactions::Operations::CreateTransaction.new.call(
+        user_id: user.id,
+        space_id: space.id,
+        amount:,
+        date: Date.current,
+        description: "#{transaction_type} #{amount}",
+        transaction_type:,
+        category_name: transaction_type == "income" ? income_category.name : category.name,
+        account_name: account.name,
+        schedule_type: "one_time"
+      ).value!
+    end
+
+    def delete_entry(entry)
+      operation.call(
+        id: entry.id,
+        delete_scope: "this_only"
+      )
+    end
+
+    def current_month_totals
+      summary = MonthlyFinancialSummary.find_by!(
+        space:,
+        year: Date.current.year,
+        month: Date.current.month
+      )
+
+      {
+        total_income: summary.total_income.to_d,
+        total_expenses: summary.total_expenses.to_d,
+        net_savings: summary.net_savings.to_d
+      }
+    end
+
+    it 'returns to zero after deleting the only negative expense' do
+      entry = create_entry(amount: -40, transaction_type: "expense")
+      expect(current_month_totals[:total_expenses]).to eq(-40)
+
+      expect(delete_entry(entry)).to be_success
+
+      expect(current_month_totals).to eq(
+        total_income: 0,
+        total_expenses: 0,
+        net_savings: 0
+      )
+    end
+
+    it 'returns to zero after deleting the only negative income' do
+      entry = create_entry(amount: -40, transaction_type: "income")
+      expect(current_month_totals[:total_income]).to eq(-40)
+
+      expect(delete_entry(entry)).to be_success
+
+      expect(current_month_totals).to eq(
+        total_income: 0,
+        total_expenses: 0,
+        net_savings: 0
+      )
+    end
+
+    it 'returns to zero after deleting the only positive expense' do
+      entry = create_entry(amount: 40, transaction_type: "expense")
+
+      expect(delete_entry(entry)).to be_success
+
+      expect(current_month_totals).to eq(
+        total_income: 0,
+        total_expenses: 0,
+        net_savings: 0
+      )
+    end
+
+    it 'keeps other transactions intact when a negative expense is deleted' do
+      create_entry(amount: 500, transaction_type: "income")
+      create_entry(amount: 100, transaction_type: "expense")
+      entry = create_entry(amount: -40, transaction_type: "expense")
+      expect(current_month_totals).to eq(
+        total_income: 500,
+        total_expenses: 60,
+        net_savings: 440
+      )
+
+      expect(delete_entry(entry)).to be_success
+
+      expect(current_month_totals).to eq(
+        total_income: 500,
+        total_expenses: 100,
+        net_savings: 400
+      )
+    end
+  end
 end

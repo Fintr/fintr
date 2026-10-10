@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MonthlyFinancialSummary } from "@/services/monthly-financial-summaries/types";
 import type { IndexTransaction } from "@/types/transactionTypes";
@@ -207,6 +207,15 @@ describe("insights from monthly buckets", () => {
   });
 
   describe("insightsSummaryHybrid", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-08-20T12:00:00"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     const tx = (
       overrides: Partial<IndexTransaction>,
     ): IndexTransaction => ({
@@ -472,6 +481,30 @@ describe("insights from monthly buckets", () => {
         totalIncome: 500,
         totalExpenses: 120,
         netSavings: 380,
+      });
+    });
+
+    it("uses a current month that only has a negative expense over a stale bucket", () => {
+      expect(
+        insightsSummaryHybrid({
+          summaries: [
+            bucket({
+              month: 8,
+              totalIncome: 0,
+              totalExpenses: 40,
+              monthStartDate: "2026-08-01",
+              monthEndDate: "2026-08-31",
+            }),
+          ],
+          transactions: [tx({ id: "refund", date: "2026-08-12", amount: -40 })],
+          startDate: "2026-08-01",
+          endDate: "2026-08-31",
+          spaceCurrency: "PHP",
+        }),
+      ).toEqual({
+        totalIncome: 0,
+        totalExpenses: -40,
+        netSavings: 40,
       });
     });
   });

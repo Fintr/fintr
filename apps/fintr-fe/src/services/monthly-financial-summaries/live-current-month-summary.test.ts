@@ -41,6 +41,30 @@ const tx = (
 });
 
 describe("upsertLiveCurrentMonthSummary", () => {
+  it("replaces a stale bucket when the month only has a negative expense", () => {
+    const next = upsertLiveCurrentMonthSummary({
+      summaries: [
+        bucket({
+          id: "aug-stale",
+          month: 8,
+          totalIncome: 0,
+          totalExpenses: 40,
+          monthStartDate: "2026-08-01",
+          monthEndDate: "2026-08-31",
+        }),
+      ],
+      transactions: [tx({ id: "refund", amount: -40 })],
+      currency: "PHP",
+      today: "2026-08-12",
+    });
+
+    expect(next.find((row) => row.month === 8)).toMatchObject({
+      totalIncome: 0,
+      totalExpenses: -40,
+      netSavings: 40,
+    });
+  });
+
   it("synthesizes the current month bucket from calculated transactions", () => {
     const summaries = [
       bucket({ month: 7 }),

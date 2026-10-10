@@ -212,7 +212,7 @@ const upsertMonthSummaryFromTransactions = (
   const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
   const monthEnd = lastDayOfMonth(year, month);
   const hasTotals =
-    totals.totalIncome > 0 || totals.totalExpenses > 0;
+    totals.totalIncome !== 0 || totals.totalExpenses !== 0;
   const isCurrent = isCurrentCalendarMonth(year, month);
   const index = summaries.findIndex(
     (row) => row.year === year && row.month === month,
