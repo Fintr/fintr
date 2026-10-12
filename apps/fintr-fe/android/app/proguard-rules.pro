@@ -1,21 +1,16 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Capacitor, its plugins, and RevenueCat ship consumer rules in their AARs.
+# Only rules for code without bundled rules belong here.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Readable release stack traces; Play Console de-obfuscates with the mapping in the AAB.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# FintrAppearanceBridge is exposed to JS via addJavascriptInterface.
+-keepclassmembers class com.fintr.app.FintrAppearanceBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# MediaPipe (@capgo/capacitor-llm) ships no consumer rules and resolves Java
+# classes, fields, and callbacks by name from native code.
+-keep class com.google.mediapipe.** { *; }
+-dontwarn com.google.mediapipe.**
