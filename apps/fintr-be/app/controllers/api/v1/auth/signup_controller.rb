@@ -7,7 +7,7 @@ module Api
         skip_before_action :authorize
         skip_before_action :ensure_space_access!
 
-        rate_limit to: 5,
+        rate_limit to: 10,
                    within: 1.minute,
                    name: "short-term",
                    with: :render_too_many_signup_attempts,

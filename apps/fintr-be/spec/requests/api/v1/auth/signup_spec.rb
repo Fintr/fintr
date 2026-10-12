@@ -22,7 +22,7 @@ RSpec.describe "Api::V1::Auth::Signup", type: :request do
 
     context "when the IP is within the signup rate limit" do
       before do
-        allow(rate_limit_store).to receive(:increment).and_return(5)
+        allow(rate_limit_store).to receive(:increment).and_return(10)
         post "/api/v1/auth/signup", params:
       end
 
@@ -33,7 +33,7 @@ RSpec.describe "Api::V1::Auth::Signup", type: :request do
 
     context "when the IP exceeds the per-minute signup rate limit" do
       before do
-        allow(rate_limit_store).to receive(:increment).and_return(6)
+        allow(rate_limit_store).to receive(:increment).and_return(11)
         post "/api/v1/auth/signup", params:
       end
 
