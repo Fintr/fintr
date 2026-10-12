@@ -7,6 +7,17 @@ module Api
         skip_before_action :authorize
         skip_before_action :ensure_space_access!
 
+        rate_limit to: 10,
+                   within: 1.minute,
+                   name: "short-term",
+                   with: :render_too_many_signup_attempts,
+                   only: :create
+        rate_limit to: 20,
+                   within: 1.hour,
+                   name: "long-term",
+                   with: :render_too_many_signup_attempts,
+                   only: :create
+
         def create
           result = ::Auth::Operations::RegisterUser.new.call(signup_params)
 
@@ -24,6 +35,13 @@ module Api
         end
 
         private
+
+        def render_too_many_signup_attempts
+          render_error(
+            message: "Too many signup attempts. Please try again later.",
+            status: :too_many_requests
+          )
+        end
 
         def signup_params
           params.permit(
