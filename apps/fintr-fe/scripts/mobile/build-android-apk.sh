@@ -4,6 +4,9 @@ set -e
 echo "🤖 Building Android APK..."
 echo ""
 
+# shellcheck source=scripts/mobile/ensure-gradle-jdk.sh
+source "$(dirname "${BASH_SOURCE[0]}")/ensure-gradle-jdk.sh"
+
 cd android
 
 # Build release APK

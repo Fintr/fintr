@@ -11,6 +11,9 @@ LOCAL_CAPACITOR_SERVER_URL := http://localhost:5173
 # (Do not use localhost on Android emulator; it points to the emulator itself.)
 LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR := http://10.0.2.2:5173
 
+# Gradle 8.13 cannot run on JDK 25+; source this before any Gradle call.
+ENSURE_GRADLE_JDK := . ./scripts/mobile/ensure-gradle-jdk.sh
+
 .PHONY: help android-dev android-live android-prod-apk android-prod-aab android-reset-emulator android-stop-emulator android-clean-build ios-app ios-dev ios-prod ios-live ios-open ios-clean ios-reset-packages ios-stop-simulator sync-android sync-ios open-android open-ios
 
 # Default target
@@ -106,7 +109,7 @@ android-dev:
 	@echo "✅ Capacitor sync complete"
 	@echo ""
 	@echo "📱 Step 2/2: Running on Android..."
-	@CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap run android
+	@$(ENSURE_GRADLE_JDK) && CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap run android
 
 # Live reload development (build once, then live reload)
 android-live:
@@ -129,7 +132,7 @@ android-live:
 	@mkdir -p android/app/src/main/assets
 	@pnpm cap sync android
 	@echo "📱 Starting Android with livereload..."
-	@pnpm cap run android --livereload --external
+	@$(ENSURE_GRADLE_JDK) && pnpm cap run android --livereload --external
 
 # Production Android: same flow as scripts/mobile/build-production-android.sh without emulator
 android-prod-apk:
@@ -274,7 +277,7 @@ android-clean-build:
 		echo "❌ Android gradlew not found. Run 'pnpm cap sync android' first"; \
 		exit 1; \
 	fi
-	@cd android && ./gradlew clean 2>&1 | tail -5
+	@$(ENSURE_GRADLE_JDK) && cd android && ./gradlew clean 2>&1 | tail -5
 	@rm -rf android/app/build
 	@rm -rf android/.gradle
 	@echo "✅ Android build cleaned"
