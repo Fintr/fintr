@@ -70,3 +70,11 @@ describe("GridPicker account balances", () => {
     expect(screen.queryByText(/-₱24,430,110.77/)).not.toBeInTheDocument();
   });
 });
+
+describe("GridPicker sheet panel", () => {
+  it("keeps the panel on its own compositing layer so the slide-in does not blip on finish", () => {
+    renderPicker();
+
+    expect(screen.getByRole("dialog")).toHaveClass("will-change-transform");
+  });
+});
