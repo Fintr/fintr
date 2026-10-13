@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
+import { RESTORING_SESSION_CLASS } from "@/lib/early-error-detection-script";
 
 const mockAssign = vi.fn();
 const mockReplace = vi.fn();
@@ -141,6 +142,66 @@ describe("UnifiedAuthPage post-login redirect", () => {
 
     expect(mockReplace).not.toHaveBeenCalled();
     expect(mockAssign).not.toHaveBeenCalled();
+  });
+
+  describe("pre-paint session restore", () => {
+    const isFormHidden = () =>
+      document.documentElement.classList.contains(RESTORING_SESSION_CLASS);
+
+    beforeEach(() => {
+      document.documentElement.classList.add(RESTORING_SESSION_CLASS);
+    });
+
+    afterEach(() => {
+      document.documentElement.classList.remove(RESTORING_SESSION_CLASS);
+    });
+
+    it("marks the login form so the pre-paint class can hide it", async () => {
+      vi.mocked(AuthStorage.isAuthenticated).mockReturnValue(false);
+
+      const UnifiedAuthPage = (await import("./unified-auth-page")).default;
+      const { container } = render(<UnifiedAuthPage isLogin={true} />);
+
+      expect(container.querySelector("[data-auth-form]")).not.toBeNull();
+    });
+
+    it("reveals the login form once auth resolves to logged out", async () => {
+      vi.mocked(AuthStorage.isAuthenticated).mockReturnValue(false);
+
+      const UnifiedAuthPage = (await import("./unified-auth-page")).default;
+      render(<UnifiedAuthPage isLogin={true} />);
+
+      expect(isFormHidden()).toBe(false);
+    });
+
+    it("keeps the login form hidden while auth is still resolving", async () => {
+      mockUseAuth.mockReturnValue({
+        login: vi.fn(),
+        signup: vi.fn(),
+        isAuthenticated: false,
+        isLoading: true,
+      });
+
+      const UnifiedAuthPage = (await import("./unified-auth-page")).default;
+      render(<UnifiedAuthPage isLogin={true} />);
+
+      expect(isFormHidden()).toBe(true);
+    });
+
+    it("never reveals the login form for a valid stored session", async () => {
+      mockUseAuth.mockReturnValue({
+        login: vi.fn(),
+        signup: vi.fn(),
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
+      const UnifiedAuthPage = (await import("./unified-auth-page")).default;
+      render(<UnifiedAuthPage isLogin={true} />);
+
+      expect(isFormHidden()).toBe(true);
+      expect(screen.queryByLabelText(/Email address/i)).not.toBeInTheDocument();
+    });
   });
 
   it("shows the signup form as soon as Sign up is clicked", async () => {

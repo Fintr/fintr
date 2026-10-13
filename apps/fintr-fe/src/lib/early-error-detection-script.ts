@@ -1,3 +1,5 @@
+import { getAuthSessionStorageKeys } from "@/lib/auth-storage";
+
 /**
  * Native shells append FintrNativeApp to the WebView user agent. Opening `/`
  * downloads the marketing page and only then redirects to login.
@@ -14,12 +16,40 @@ export function shouldRedirectNativeHomeToAuth(
   return path === "/";
 }
 
+export const RESTORING_SESSION_CLASS = "fintr-restoring-session";
+
+/**
+ * Static HTML paints the login form before React can see the stored session. When
+ * an unexpired session is in storage, tag <html> so CSS hides the form until
+ * `UnifiedAuthPage` hands off to the dashboard. Mirrors `AuthStorage.isAuthenticated`.
+ */
+export function buildRestoringSessionScript(): string {
+  const keys = getAuthSessionStorageKeys();
+
+  return `
+          try {
+            var fintrAuthPath = location.pathname.replace(/\\/$/, "");
+            if (["/auth", "/login", "/signup"].indexOf(fintrAuthPath) !== -1) {
+              var fintrExpiresAt = Number(localStorage.getItem(${JSON.stringify(keys.expiresAt)}));
+              if (
+                fintrExpiresAt > Date.now() &&
+                localStorage.getItem(${JSON.stringify(keys.accessToken)}) &&
+                localStorage.getItem(${JSON.stringify(keys.idToken)}) &&
+                localStorage.getItem(${JSON.stringify(keys.user)})
+              ) {
+                document.documentElement.classList.add(${JSON.stringify(RESTORING_SESSION_CLASS)});
+              }
+            }
+          } catch (err) {}
+`;
+}
+
 /**
  * Inline bootstrap for root layout. Runs before React hydration to capture early
  * errors and recover from stale chunk loads after deploys.
  */
 export function buildEarlyErrorDetectionScript(): string {
-  return `
+  return `${buildRestoringSessionScript()}
           if (
             navigator.userAgent.indexOf("FintrNativeApp") !== -1 &&
             (location.pathname === "/" || location.pathname === "")
