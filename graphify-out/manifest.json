@@ -4014,8 +4014,8 @@
     "semantic_hash": "2fc4c7f7d9425166d43c0b9cc424fa85"
   },
   "apps/fintr-fe/android/app/build.gradle": {
-    "mtime": 1791865434.5331113,
-    "seen": 1791865456.443149,
+    "mtime": 1791865485.8265533,
+    "seen": 1791865799.604506,
     "ast_hash": "46f3b7821f29c2744b645b3399340baa",
     "semantic_hash": ""
   },
@@ -4128,8 +4128,8 @@
     "semantic_hash": "f303b18480ce80978b4e305ad4e0634d"
   },
   "apps/fintr-fe/capacitor.config.ts": {
-    "mtime": 1791862342.7848287,
-    "seen": 1791865345.2710981,
+    "mtime": 1791865485.8277893,
+    "seen": 1791865799.604519,
     "ast_hash": "4087bb928dc3a28c58c25b4942d2526b",
     "semantic_hash": ""
   },
@@ -4410,8 +4410,8 @@
     "semantic_hash": "1bab65973392267e31809009095df84a"
   },
   "apps/fintr-fe/package.json": {
-    "mtime": 1791861896.035498,
-    "seen": 1791865345.271138,
+    "mtime": 1791865485.829114,
+    "seen": 1791865799.604556,
     "ast_hash": "f430187b1195ee8607dc6f5b090e29e2",
     "semantic_hash": ""
   },
@@ -5100,8 +5100,8 @@
     "semantic_hash": "6943fcc084e579c0d21f0f1cf3760b77"
   },
   "apps/fintr-fe/src/components/auth/unified-auth-page.tsx": {
-    "mtime": 1791865412.556232,
-    "seen": 1791865430.847483,
+    "mtime": 1791865485.8331704,
+    "seen": 1791865799.604661,
     "ast_hash": "288097547204f5938ab690875f0b0428",
     "semantic_hash": ""
   },
@@ -5412,10 +5412,10 @@
     "semantic_hash": "b36e8ed2485259f0a5fbb98ab7db8d1e"
   },
   "apps/fintr-fe/src/components/dashboard/forms/GridPickerModalShell.tsx": {
-    "mtime": 1791789200.8102486,
-    "seen": 1791790455.2100701,
-    "ast_hash": "4277da10e5d11a60b335da6c98003a39",
-    "semantic_hash": "4277da10e5d11a60b335da6c98003a39"
+    "mtime": 1791865677.2132251,
+    "seen": 1791865799.604725,
+    "ast_hash": "8cdb5f4afec5e856d7ce6da50eb8e66b",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/forms/IncomeForm.tsx": {
     "mtime": 1790827741.1445127,
@@ -5988,8 +5988,8 @@
     "semantic_hash": "33aae56efdd14120ea4686b730611d07"
   },
   "apps/fintr-fe/src/components/session-expiration-modal.tsx": {
-    "mtime": 1791865345.7816832,
-    "seen": 1791865366.326505,
+    "mtime": 1791865485.834504,
+    "seen": 1791865799.604843,
     "ast_hash": "d0eb94a9e1d196d87001a0eb10013665",
     "semantic_hash": ""
   },
@@ -6492,8 +6492,8 @@
     "semantic_hash": "c5fe6903781737065d3cfeedce6bc18a"
   },
   "apps/fintr-fe/src/contexts/AuthContext.tsx": {
-    "mtime": 1791865345.7817929,
-    "seen": 1791865366.3265889,
+    "mtime": 1791865485.8356135,
+    "seen": 1791865799.604924,
     "ast_hash": "74b56e0747c4d957590a0f115a6630b6",
     "semantic_hash": ""
   },
@@ -6852,8 +6852,8 @@
     "semantic_hash": "f449aba4f1881039acc8902489a913b9"
   },
   "apps/fintr-fe/src/lib/auth-storage.ts": {
-    "mtime": 1791865345.7819116,
-    "seen": 1791865366.326698,
+    "mtime": 1791865485.836215,
+    "seen": 1791865799.6050172,
     "ast_hash": "fb815e7559dab03a9509b8cda7f0265c",
     "semantic_hash": ""
   },
@@ -7188,8 +7188,8 @@
     "semantic_hash": "5637b6277c0b829dea24802679ce2023"
   },
   "apps/fintr-fe/src/services/auth/login.ts": {
-    "mtime": 1791865345.7821827,
-    "seen": 1791865366.32686,
+    "mtime": 1791865485.839377,
+    "seen": 1791865799.605128,
     "ast_hash": "dc58ebf02c93c2118b4779a59660a2ca",
     "semantic_hash": ""
   },
@@ -10518,14 +10518,14 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/local-sync/drain-outbox.test.ts": {
-    "mtime": 1791865345.78224,
-    "seen": 1791865366.326955,
+    "mtime": 1791865485.839838,
+    "seen": 1791865799.6052139,
     "ast_hash": "30c62a18242447cf1f8951321e44336c",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/local-sync/drain-outbox.ts": {
-    "mtime": 1791865345.7822886,
-    "seen": 1791865366.326955,
+    "mtime": 1791865485.8404367,
+    "seen": 1791865799.6052139,
     "ast_hash": "e4b8752638ff50801e52e243b5e1e9f5",
     "semantic_hash": ""
   },
@@ -10578,8 +10578,8 @@
     "semantic_hash": "3ea60bddd10b9c3c250fda1f9cf1e186"
   },
   "apps/fintr-fe/src/services/local-sync/sync-errors.ts": {
-    "mtime": 1791865345.782338,
-    "seen": 1791865366.326966,
+    "mtime": 1791865485.84176,
+    "seen": 1791865799.605224,
     "ast_hash": "a01ac29806d9c8aa7236a9187127a96e",
     "semantic_hash": ""
   },
@@ -11838,8 +11838,8 @@
     "semantic_hash": "4327502bb4777aae078702237638722d"
   },
   "apps/fintr-fe/src/components/auth/unified-auth-page.test.tsx": {
-    "mtime": 1791865412.5561748,
-    "seen": 1791865430.8474822,
+    "mtime": 1791865485.832191,
+    "seen": 1791865799.60466,
     "ast_hash": "1e5d636ed4b59ccef7e1b8cce90ba978",
     "semantic_hash": ""
   },
@@ -13194,10 +13194,10 @@
     "semantic_hash": "6575844d60b152ab86e96ebd67f33037"
   },
   "apps/fintr-fe/src/components/dashboard/forms/GridPicker.test.tsx": {
-    "mtime": 1790246815.4028904,
-    "seen": 1791527268.695765,
-    "ast_hash": "1450810f840f0d4a740d60f76487197d",
-    "semantic_hash": "1450810f840f0d4a740d60f76487197d"
+    "mtime": 1791865677.213266,
+    "seen": 1791865799.604724,
+    "ast_hash": "bc5d6aed97acb6be47ca7c9352e93ca2",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/dashboard/insights/weekly-spending-card.test.tsx": {
     "mtime": 1790325833.9340956,
@@ -13404,14 +13404,14 @@
     "semantic_hash": "d7f4c6a0caf6b30af502c51bdc5b576b"
   },
   "apps/fintr-fe/src/lib/early-error-detection-script.test.ts": {
-    "mtime": 1791865412.556288,
-    "seen": 1791865430.847859,
+    "mtime": 1791865485.8365462,
+    "seen": 1791865799.6050382,
     "ast_hash": "48ba51d4dceb19defadaac7646ca1193",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/early-error-detection-script.ts": {
-    "mtime": 1791865412.5563965,
-    "seen": 1791865430.847859,
+    "mtime": 1791865485.8369348,
+    "seen": 1791865799.6050391,
     "ast_hash": "d0558904bc82c91b111d8af530f00e82",
     "semantic_hash": ""
   },
@@ -14364,14 +14364,14 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/native-shell-start-url.test.ts": {
-    "mtime": 1791863421.5987523,
-    "seen": 1791865345.271612,
+    "mtime": 1791865485.8373847,
+    "seen": 1791865799.6050618,
     "ast_hash": "49d3ac0a5647a91f086b0ad47950048b",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/native-shell-start-url.ts": {
-    "mtime": 1791863421.5989065,
-    "seen": 1791865345.271613,
+    "mtime": 1791865485.837798,
+    "seen": 1791865799.605063,
     "ast_hash": "d9f8f4bd332b744e04e38322df90018c",
     "semantic_hash": ""
   },
@@ -14520,32 +14520,32 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/scripts/mobile/native-start-on-auth.mjs": {
-    "mtime": 1791862342.7847297,
-    "seen": 1791865345.271153,
+    "mtime": 1791865485.8295429,
+    "seen": 1791865799.6045718,
     "ast_hash": "3a9dee56f916549cae23f6288f29a1fe",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/session-expiration-modal.test.tsx": {
-    "mtime": 1791863523.323699,
-    "seen": 1791865345.2714088,
+    "mtime": 1791865485.8337204,
+    "seen": 1791865799.604843,
     "ast_hash": "8304649696f64970791b9563b2022c5d",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/session-keepalive.test.ts": {
-    "mtime": 1791863523.3334165,
-    "seen": 1791865345.27164,
+    "mtime": 1791865485.838317,
+    "seen": 1791865799.6050901,
     "ast_hash": "9cb5ee9961dc8595669699b34c339e41",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/session-keepalive.ts": {
-    "mtime": 1791863523.337485,
-    "seen": 1791865345.27164,
+    "mtime": 1791865485.8388567,
+    "seen": 1791865799.6050901,
     "ast_hash": "7fb800bbedf5f8022ba840733dea9748",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/services/local-sync/sync-errors.test.ts": {
-    "mtime": 1791863523.3380976,
-    "seen": 1791865345.271775,
+    "mtime": 1791865485.8412368,
+    "seen": 1791865799.605223,
     "ast_hash": "b5ccb1e2cbd3e6c06c4a2bce8fd90dd6",
     "semantic_hash": ""
   }
