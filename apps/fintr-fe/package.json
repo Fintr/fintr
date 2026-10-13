@@ -13,6 +13,7 @@
     "lint": "next lint",
     "build:ios": "next build && npx cap sync ios",
     "build:android": "next build && npx cap sync android",
+    "capacitor:copy:after": "node scripts/mobile/native-start-on-auth.mjs",
     "ios": "npx cap open ios",
     "ios:simulator": "npx cap open ios",
     "android": "npx cap run android",
