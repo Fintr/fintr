@@ -5,12 +5,18 @@ import { useRouter } from 'next/navigation';
 import {
   loginWithCredentials,
   signupWithCredentials,
-  refreshAccessToken,
+  isRejectedRefresh,
   getUserProfile,
   LoginCredentials,
   SignupCredentials,
   LoginResponse,
 } from '@/services/auth/login';
+import { triggerSessionExpiration } from '@/lib/session-expiration-handler';
+import {
+  ensureFreshSession,
+  refreshStoredSession,
+  SESSION_CHECK_INTERVAL_MS,
+} from '@/lib/session-keepalive';
 import {
   AuthStorage,
   AuthUser,
@@ -140,52 +146,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  // Auto-refresh token when it's about to expire
+  const applyRefreshedTokens = useCallback((newTokens: LoginResponse) => {
+    setTokens(newTokens);
+    const userProfile = AuthStorage.decodeJWT(newTokens.id_token);
+    if (userProfile) {
+      setUser(userProfile);
+    }
+  }, []);
+
+  const hasSession = Boolean(tokens);
+
+  // Check the session on start, whenever the app returns to the foreground or comes
+  // back online, and every minute. Timers alone stall while a native app is
+  // backgrounded, which let the token expire unnoticed until the next save.
   useEffect(() => {
-    if (!tokens?.refresh_token) return;
+    if (!hasSession) return;
 
-    const refreshInterval = setInterval(async () => {
-      try {
-        if (!tokens.refresh_token) return;
-        const newTokens = await refreshAccessToken(tokens.refresh_token);
-        setTokens(newTokens);
-        
-        // Update storage with new tokens
-        const authData = AuthStorage.getAuthData();
-        if (authData) {
-          // Convert LoginResponse to AuthTokens format
-          const authTokens: AuthTokens = {
-            access_token: newTokens.access_token,
-            id_token: newTokens.id_token,
-            refresh_token: newTokens.refresh_token,
-            expires_in: newTokens.expires_in,
-            token_type: newTokens.token_type,
-            scope: newTokens.scope,
-          };
-
-          const updatedAuthData: AuthStorageData = {
-            ...authData,
-            tokens: authTokens,
-            expires_at: Date.now() + (newTokens.expires_in * 1000),
-            issued_at: Date.now(),
-          };
-          AuthStorage.setAuthData(updatedAuthData);
-          
-          // Update user profile from new ID token
-          const userProfile = AuthStorage.decodeJWT(newTokens.id_token);
-          if (userProfile) {
-            setUser(userProfile);
-            updatedAuthData.user = userProfile;
-            AuthStorage.setAuthData(updatedAuthData);
-          }
-        }
-      } catch (error) {
-        logout();
+    const checkSession = () => {
+      void ensureFreshSession({
+        onRefreshed: applyRefreshedTokens,
+        onExpired: triggerSessionExpiration,
+      });
+    };
+    const checkWhenVisible = () => {
+      if (document.visibilityState === 'visible') {
+        checkSession();
       }
-    }, (tokens.expires_in - 60) * 1000); // Refresh 1 minute before expiry
+    };
 
-    return () => clearInterval(refreshInterval);
-  }, [tokens]);
+    checkSession();
+    const intervalId = window.setInterval(checkSession, SESSION_CHECK_INTERVAL_MS);
+    document.addEventListener('visibilitychange', checkWhenVisible);
+    window.addEventListener('online', checkSession);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', checkWhenVisible);
+      window.removeEventListener('online', checkSession);
+    };
+  }, [hasSession, applyRefreshedTokens]);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
@@ -268,49 +267,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // First try to get token from state
       if (tokens?.access_token) {
-        // Check if token is expired and refresh if needed
-        const authData = AuthStorage.getAuthData();
-        if (authData) {
-          const now = Date.now();
-          const isExpired = authData.expires_at <= now;
+        // Refresh before sending a bearer the API would reject as expired
+        if (AuthStorage.isSessionExpired() && AuthStorage.getRefreshToken()) {
+          try {
+            const newTokens = await refreshStoredSession();
+            applyRefreshedTokens(newTokens);
 
-          if (isExpired) {
-            try {
-              if (tokens.refresh_token) {
-                const newTokens = await refreshAccessToken(tokens.refresh_token);
-                setTokens(newTokens);
-                
-                // Update storage with new tokens
-                const authTokens: AuthTokens = {
-                  access_token: newTokens.access_token,
-                  id_token: newTokens.id_token,
-                  refresh_token: newTokens.refresh_token,
-                  expires_in: newTokens.expires_in,
-                  token_type: newTokens.token_type,
-                  scope: newTokens.scope,
-                };
-
-                const updatedAuthData: AuthStorageData = {
-                  ...authData,
-                  tokens: authTokens,
-                  expires_at: Date.now() + (newTokens.expires_in * 1000),
-                  issued_at: Date.now(),
-                };
-                AuthStorage.setAuthData(updatedAuthData);
-                
-                const refreshedApiToken = resolveApiBearerToken(newTokens);
-                if (!isJwtToken(refreshedApiToken)) {
-                  console.error('🔑 getAccessToken: Refreshed tokens are not valid JWTs');
-                  logout();
-                  return null;
-                }
-
-                return refreshedApiToken;
-              }
-            } catch (error) {
+            const refreshedApiToken = resolveApiBearerToken(newTokens);
+            if (!isJwtToken(refreshedApiToken)) {
+              console.error('🔑 getAccessToken: Refreshed tokens are not valid JWTs');
               logout();
               return null;
             }
+
+            return refreshedApiToken;
+          } catch (error) {
+            if (isRejectedRefresh(error)) {
+              triggerSessionExpiration();
+            }
+            return null;
           }
         }
         
@@ -354,7 +329,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       return AuthStorage.getAccessToken();
     }
-  }, [tokens, logout]);
+  }, [tokens, logout, applyRefreshedTokens]);
 
   // Calculate isAuthenticated more efficiently
   const isAuthenticated = useMemo(() => {

@@ -212,6 +212,50 @@ describe("drainOutboxForSpace", () => {
     expect(remaining.every((row) => row.status === "pending")).toBe(true);
   });
 
+  it("keeps writes queued when the session is rejected so they sync after re-login", async () => {
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_TRANSACTION_CREATE,
+      clientMutationId: "cid-expired",
+      payload: {
+        amount: 1,
+        transactionType: "expense",
+        categoryName: "Food",
+        accountName: "Cash",
+        date: "2026-08-08",
+        scheduleType: ScheduleTypeEnum.ONE_TIME,
+      },
+    });
+    await enqueueOutboxRecord({
+      spaceId: "space-a",
+      commandType: OUTBOX_COMMAND_TRANSACTION_DELETE,
+      clientMutationId: "cid-del-expired",
+      payload: {
+        id: "server-tx-1",
+        deleteScope: DeleteScopeEnum.THIS_ONLY,
+        removedTransactions: [],
+      },
+    });
+
+    const expiredSession = {
+      success: false,
+      error: { message: "Bad credentials: Signature has expired" },
+    };
+    vi.mocked(createTransaction).mockRejectedValue(expiredSession);
+    vi.mocked(deleteTransaction).mockRejectedValue(expiredSession);
+
+    const result = await drainOutboxForSpace({
+      api: {} as never,
+      spaceId: "space-a",
+    });
+
+    expect(result.stoppedEarly).toBe(true);
+    expect(result.failed).toBe(0);
+    const remaining = await getLocalDb().outbox.toArray();
+    expect(remaining).toHaveLength(2);
+    expect(remaining.every((row) => row.status === "pending")).toBe(true);
+  });
+
   it("drains pending deletes", async () => {
     await enqueueOutboxRecord({
       spaceId: "space-a",

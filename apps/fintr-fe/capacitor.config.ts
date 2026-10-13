@@ -1,6 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-import { withNativeAuthStartPath } from './src/lib/native-shell-start-url';
+import {
+  NATIVE_APP_START_PATH,
+  toNativeServerUrl,
+} from './src/lib/native-shell-start-url';
 
 // When CAPACITOR_SERVER_URL is set, the app loads the web app from that URL.
 // - Development: set to http://localhost:5173 (or your machine IP) for live reload
@@ -32,37 +35,15 @@ const serverUrl =
       })()
     : rawCapacitorServerUrl;
 
-// Cache-busting version - change this value to force all apps to refresh their cache
-// This can be updated via admin panel to trigger cache refresh across all devices
-const CACHE_VERSION = process.env.CAPACITOR_CACHE_VERSION || Date.now().toString();
-
-const buildServerUrl = (baseUrl: string | undefined): string | undefined => {
-  if (!baseUrl) return undefined;
-
-  const authStartUrl = withNativeAuthStartPath(baseUrl);
-
-  // Ensure the URL has a path component (trailing slash) before the query string.
-  // Capacitor's WebViewLocalServer registers handlers for "https://host/" and
-  // "https://host/**". A bare URL like "https://www.fintr.ai?cv=123" has an
-  // empty path (""), which does NOT match either pattern, so
-  // shouldInterceptRequest returns null and the Capacitor bridge JS
-  // (PluginHeaders, nativeCallback, etc.) is never injected into the page.
-  // Adding the slash ensures path="/" which DOES match, triggering injection.
-  const [origin, existingQuery] = authStartUrl.split('?');
-  const base = origin.endsWith('/') ? origin : `${origin}/`;
-  const withSlash = existingQuery ? `${base}?${existingQuery}` : base;
-
-  const separator = withSlash.includes('?') ? '&' : '?';
-  return `${withSlash}${separator}cv=${CACHE_VERSION}`;
-};
-
 const serverConfig = serverUrl
   ? {
-      url: buildServerUrl(serverUrl),
+      url: toNativeServerUrl(serverUrl),
+      appStartPath: NATIVE_APP_START_PATH,
       errorPath: 'offline.html',
       ...(serverUrl.startsWith("http://") && { cleartext: true }),
     }
   : {
+      appStartPath: NATIVE_APP_START_PATH,
       errorPath: 'offline.html',
     };
 

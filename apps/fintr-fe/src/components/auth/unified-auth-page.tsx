@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import { smartAppleSignIn } from "@/services/auth/in-app-apple-signin";
 import { isNativeCapacitor } from "@/lib/capacitor";
 import { initCapacitorBridgeIfNeeded } from "@/lib/capacitor-bridge-init";
 import { cn } from "@/lib/utils";
+import { RESTORING_SESSION_CLASS } from "@/lib/early-error-detection-script";
 import {
   AUTH_REDIRECT_FALLBACK_MS,
   DEFAULT_AUTHENTICATED_PATH,
@@ -299,6 +300,14 @@ const UnifiedAuthPage = ({
   const hasValidStoredSession =
     isAuthenticated && AuthStorage.isAuthenticated();
 
+  // The bootstrap script hides the form before paint for stored sessions. Reveal it
+  // only once auth has resolved to logged out, so returning users never see it.
+  useLayoutEffect(() => {
+    if (!authLoading && !hasValidStoredSession) {
+      document.documentElement.classList.remove(RESTORING_SESSION_CLASS);
+    }
+  }, [authLoading, hasValidStoredSession]);
+
   if (hasValidStoredSession) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -311,7 +320,7 @@ const UnifiedAuthPage = ({
   }
 
   return (
-    <div className="p-8 rounded-lg max-w-md mx-auto">
+    <div data-auth-form className="p-8 rounded-lg max-w-md mx-auto">
       <div className="mb-8">
         {onBack && !isNativeCapacitor() && (
           <button

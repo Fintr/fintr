@@ -319,6 +319,11 @@ body > .profiler-results {
     );
   }
 
+  /* Set by the inline bootstrap when a stored session exists; see buildRestoringSessionScript. */
+  html.fintr-restoring-session [data-auth-form] {
+    visibility: hidden;
+  }
+
   /* Spacer below fixed mobile header so content doesn't sit under it.
      Matches MOBILE_STICKY_HEADER_BODY_HEIGHT_PX (py-2 + h-8 row + 1px rule). */
   .mobile-header-spacer {

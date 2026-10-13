@@ -120,6 +120,7 @@ import {
   type UpdateTransferType,
 } from "@/services/transactions/transfers/mutation";
 import { DeleteScopeEnum } from "@/constants/transactionConstants";
+import { isSessionAuthError } from "./sync-errors";
 
 export type DrainOutboxResult = {
   processed: number;
@@ -153,6 +154,11 @@ const extractCreatedId = (response: unknown): string | undefined => {
 };
 
 const isNetworkLikeError = (error: unknown): boolean => {
+  // A rejected session is retryable: keep the write queued until the user logs back in.
+  if (isSessionAuthError(error)) {
+    return true;
+  }
+
   if (error instanceof Error) {
     return (
       error.message === "Failed to create transaction" ||
