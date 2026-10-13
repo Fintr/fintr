@@ -86,6 +86,17 @@ const getAuth0Key = (key: string): string => {
 };
 
 /**
+ * localStorage keys that together make up a stored session. Exposed for the inline
+ * bootstrap script, which must check the session before React loads.
+ */
+export const getAuthSessionStorageKeys = () => ({
+  accessToken: getAuth0Key(AUTH0_KEYS.ACCESS_TOKEN),
+  idToken: getAuth0Key(AUTH0_KEYS.ID_TOKEN),
+  user: getAuth0Key(AUTH0_KEYS.USER),
+  expiresAt: getAuth0Key(AUTH0_KEYS.EXPIRES_AT),
+});
+
+/**
  * Unified Auth Storage Class
  */
 export class AuthStorage {
@@ -250,15 +261,36 @@ export class AuthStorage {
   }
 
   /**
+   * When the API will start rejecting requests. The bearer sent may be the id_token
+   * (when the access token is not a JWT), whose own `exp` can end before the stored
+   * `expires_at` derived from the access token's `expires_in`.
+   */
+  static getSessionExpiresAt(): number | null {
+    const authData = this.getAuthData();
+    if (!authData) return null;
+
+    const bearerExp = this.decodeJWT(resolveApiBearerToken(authData.tokens))?.exp;
+    if (typeof bearerExp !== 'number') {
+      return authData.expires_at;
+    }
+
+    return Math.min(authData.expires_at, bearerExp * 1000);
+  }
+
+  static isSessionExpired(): boolean {
+    const expiresAt = this.getSessionExpiresAt();
+    return expiresAt === null || expiresAt <= Date.now();
+  }
+
+  /**
    * Check if token needs refresh (expires in next 5 minutes)
    */
   static needsRefresh(): boolean {
-    const authData = this.getAuthData();
-    if (!authData) return false;
+    const expiresAt = this.getSessionExpiresAt();
+    if (expiresAt === null) return false;
 
-    const now = Date.now();
     const fiveMinutes = 5 * 60 * 1000;
-    return authData.expires_at - now < fiveMinutes;
+    return expiresAt - Date.now() < fiveMinutes;
   }
 
   /**

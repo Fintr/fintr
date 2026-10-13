@@ -185,11 +185,20 @@ export const refreshAccessToken = async (refreshToken: string): Promise<LoginRes
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(parseApiErrorMessage(data, "Token refresh failed"));
+      throw Object.assign(
+        new Error(parseApiErrorMessage(data, "Token refresh failed")),
+        { status: response.status },
+      );
     }
 
     return parseAuthTokenPayload(data);
   } catch (error) {
     throw error;
   }
+};
+
+/** The auth server refused the refresh token (4xx), as opposed to a network or 5xx failure. */
+export const isRejectedRefresh = (error: unknown): boolean => {
+  const status = (error as { status?: unknown } | null)?.status;
+  return typeof status === "number" && status >= 400 && status < 500;
 };

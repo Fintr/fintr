@@ -12,7 +12,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { SESSION_EXPIRED_EVENT_NAME } from '@/lib/session-expiration-handler';
+import {
+  resetSessionExpirationFlag,
+  SESSION_EXPIRED_EVENT_NAME,
+} from '@/lib/session-expiration-handler';
 import { AuthStorage } from '@/lib/auth-storage';
 
 export default function SessionExpirationModal() {
@@ -53,8 +56,9 @@ export default function SessionExpirationModal() {
     setIsOpen(false);
     // Call logout to ensure all state is cleared and redirect to login
     logout();
-    // Reset the flag when user clicks okay (in case they log back in)
+    // Reset the flags when user clicks okay (in case they log back in)
     hasHandledExpiration.current = false;
+    resetSessionExpirationFlag();
   };
 
   return (
