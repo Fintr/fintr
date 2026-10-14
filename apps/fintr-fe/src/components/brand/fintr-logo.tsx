@@ -2,18 +2,17 @@
 
 import { cn } from "@/lib/utils";
 
-export const FINTR_LOGO_LIGHT_SRC =
-  "https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png";
+/** Bundled from `public/` — must stay on-origin for offline / Capacitor. */
+export const FINTR_LOGO_LIGHT_SRC = "/fintr-logo.png";
 
-/** Deep navy wordmark for light backgrounds (Fintr/Fintr-Logos). */
-export const FINTR_LOGO_NAVY_SRC =
-  "https://raw.githubusercontent.com/Fintr/Fintr-Logos/refs/heads/main/Fintr_Logo_Deep%20Navy_Transparent.svg";
+/** Deep navy wordmark for light backgrounds. */
+export const FINTR_LOGO_NAVY_SRC = "/fintr-logo-dark.png";
 
 /** Logo on #FAFAF8 for splash / loading screens (matches native Splash.imageset). */
 export const FINTR_LOGO_SPLASH_SRC = "/fintr-logo-splash.png";
 
 /** White transparent wordmark for dark backgrounds (Fintr/Fintr-Logos). */
-export const FINTR_LOGO_DARK_SRC = "https://raw.githubusercontent.com/Fintr/Fintr-Logos/refs/heads/main/Fintr_Logo_White_Transparent.svg";
+export const FINTR_LOGO_DARK_SRC = "/fintr-logo-white-transparent.svg";
 
 interface FintrLogoProps {
   className?: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FINTR_LOGO_LIGHT_SRC } from "@/components/brand/fintr-logo";
 import { FintrSocialIconLinks } from "@/components/social/fintr-social";
 
 export default function Footer() {
@@ -10,7 +11,7 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <Link href="/" className="flex items-center shrink-0 no-underline">
             <img
-              src="/fintr-logo.png"
+              src={FINTR_LOGO_LIGHT_SRC}
               alt="Fintr"
               width={50}
               height={50}

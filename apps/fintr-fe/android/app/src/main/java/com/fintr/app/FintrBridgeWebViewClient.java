@@ -13,12 +13,9 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Capacitor's default WebViewClient calls super.onReceivedError() before loading
- * server.errorPath, which causes Android to show the system "Webpage not available"
- * screen. We load the bundled offline page first for main-frame failures.
- *
- * The offline URL must match bridge.getErrorUrl() exactly (no query params), or
- * Capacitor's local asset server will not intercept the request.
+ * Capacitor's default WebViewClient can surface the system "Webpage not available"
+ * screen on main-frame failures. We optionally load server.errorPath when configured;
+ * production builds omit errorPath so the bundled online-first shell keeps loading.
  */
 public class FintrBridgeWebViewClient extends BridgeWebViewClient {
 

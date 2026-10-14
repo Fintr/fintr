@@ -2,13 +2,26 @@
 
 import { useEffect, useState } from "react";
 
+import { usePathname } from "next/navigation";
+
 import { useBrowserOnline } from "@/hooks/useOfflineReadMode";
+import { isLoginFlowAuthPage } from "@/lib/auth-routes";
 
 export const OFFLINE_STATUS_BANNER_VISIBLE_MS = 3000;
 
+export const OFFLINE_STATUS_BANNER_MESSAGE_APP =
+  "You're offline — you can keep using Fintr. Changes will sync when you reconnect.";
+
+export const OFFLINE_STATUS_BANNER_MESSAGE_LOGIN =
+  "You need to be online to log in.";
+
 export function OfflineStatusBanner() {
+  const pathname = usePathname() ?? "";
   const isOnline = useBrowserOnline();
   const [isVisible, setIsVisible] = useState(() => !isOnline);
+  const message = isLoginFlowAuthPage(pathname)
+    ? OFFLINE_STATUS_BANNER_MESSAGE_LOGIN
+    : OFFLINE_STATUS_BANNER_MESSAGE_APP;
 
   useEffect(() => {
     if (isOnline) {
@@ -39,8 +52,7 @@ export function OfflineStatusBanner() {
         paddingTop: "max(8px, env(safe-area-inset-top))",
       }}
     >
-      You&apos;re offline — you can keep using Fintr. Changes will sync when you
-      reconnect.
+      {message}
     </div>
   );
 }

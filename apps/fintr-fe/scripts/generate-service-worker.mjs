@@ -87,7 +87,6 @@ function precachePriorityTier(url) {
     url.startsWith("/dashboard/")
     || url === "/dashboard.html"
     || url === "/index.html"
-    || url === "/offline.html"
   ) {
     return 1;
   }

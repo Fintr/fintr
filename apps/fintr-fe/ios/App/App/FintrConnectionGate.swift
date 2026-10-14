@@ -4,8 +4,7 @@ import WebKit
 
 /// Reveals the WebView immediately. A startup reachability probe of the same URL
 /// the WebView is loading stalls a single-threaded dev server for the whole compile
-/// and kept login hidden for tens of seconds. Capacitor still loads offline.html
-/// when the main frame fails.
+/// and kept login hidden for tens of seconds. Production omits server.errorPath.
 final class FintrConnectionGate: NSObject {
     private weak var webView: WKWebView?
     private weak var bridge: CAPBridgeProtocol?

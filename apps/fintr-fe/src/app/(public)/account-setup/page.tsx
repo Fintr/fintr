@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FINTR_LOGO_LIGHT_SRC } from "@/components/brand/fintr-logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -743,7 +744,7 @@ const AccountSetupFlow = () => {
         <div className="mb-8">
           <div className="flex justify-center mb-6">
             <img
-              src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+              src={FINTR_LOGO_LIGHT_SRC}
               alt="Fintr Logo"
               className="h-12"
             />

@@ -2,6 +2,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { FINTR_LOGO_LIGHT_SRC } from "@/components/brand/fintr-logo";
 
 const SignupSuccessRedirect = () => {
   const router = useRouter();
@@ -18,7 +19,7 @@ const SignupSuccessRedirect = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <img
-        src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+        src={FINTR_LOGO_LIGHT_SRC}
         alt="Fintr Logo"
         className="h-16 mb-8"
       />

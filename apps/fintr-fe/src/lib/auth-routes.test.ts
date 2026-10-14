@@ -4,6 +4,7 @@ import {
   getOriginalRedirectPath,
   isAuthPage,
   isAuthenticatedAppPath,
+  isLoginFlowAuthPage,
   navigateAfterAuthentication,
 } from "./auth-routes";
 
@@ -28,6 +29,21 @@ describe("isAuthPage", () => {
     expect(isAuthPage("/dashboard")).toBe(false);
     expect(isAuthPage("/dashboard/home")).toBe(false);
     expect(isAuthPage("/dashboard/insights")).toBe(false);
+  });
+});
+
+describe("isLoginFlowAuthPage", () => {
+  it("treats login and signup routes as requiring network to authenticate", () => {
+    expect(isLoginFlowAuthPage("/login")).toBe(true);
+    expect(isLoginFlowAuthPage("/signup")).toBe(true);
+    expect(isLoginFlowAuthPage("/auth")).toBe(true);
+    expect(isLoginFlowAuthPage("/auth-callback")).toBe(true);
+    expect(isLoginFlowAuthPage("/login/")).toBe(true);
+  });
+
+  it("does not treat consent or dashboard routes as login flow pages", () => {
+    expect(isLoginFlowAuthPage("/consent")).toBe(false);
+    expect(isLoginFlowAuthPage("/dashboard/home")).toBe(false);
   });
 });
 

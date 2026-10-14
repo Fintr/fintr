@@ -7,7 +7,7 @@
  * homepage. Native users never need the homepage: replace the copied `index.html` with
  * the pre-rendered `auth.html`. The web export in `out/` is untouched.
  *
- * iOS refuses to launch unless `public/<appStartPath>` exists on disk.
+ * iOS refuses to launch unless `public/<appStartPath>` exists on disk (e.g. auth/).
  */
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -34,5 +34,7 @@ if (!existsSync(authHtml)) {
 }
 
 copyFileSync(authHtml, indexHtml);
-mkdirSync(path.join(rootDir, publicDir, "auth"), { recursive: true });
+const authDir = path.join(rootDir, publicDir, "auth");
+mkdirSync(authDir, { recursive: true });
+copyFileSync(authHtml, path.join(authDir, "index.html"));
 console.log(`[native-start-on-auth] ${platform}: index.html now serves /auth`);

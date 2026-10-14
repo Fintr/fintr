@@ -14,6 +14,20 @@ const AUTH_PAGES = [
 
 export const isAuthPage = (path: string): boolean => AUTH_PAGES.includes(path);
 
+const LOGIN_FLOW_AUTH_PAGES = [
+  "/login",
+  "/signup",
+  "/auth",
+  "/auth-callback",
+];
+
+/** Auth screens where sign-in requires network (not offline-first app usage). */
+export const isLoginFlowAuthPage = (path: string): boolean => {
+  const normalized = normalizePath(path);
+
+  return LOGIN_FLOW_AUTH_PAGES.includes(normalized);
+};
+
 export const isAuthenticatedAppPath = (path: string): boolean => {
   const normalized = path.replace(/\/$/, "") || "/";
 

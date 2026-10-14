@@ -13,8 +13,10 @@ LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR := http://10.0.2.2:5173
 
 # Gradle 8.13 cannot run on JDK 25+; source this before any Gradle call.
 ENSURE_GRADLE_JDK := . ./scripts/mobile/ensure-gradle-jdk.sh
+# Capacitor/native-run use SDK platform-tools adb — avoid mixing with Homebrew adb.
+ENSURE_ANDROID_ADB := . ./scripts/mobile/ensure-android-adb.sh
 
-.PHONY: help android-dev android-live android-prod-apk android-prod-aab android-reset-emulator android-stop-emulator android-clean-build ios-app ios-dev ios-prod ios-live ios-open ios-clean ios-reset-packages ios-stop-simulator sync-android sync-ios open-android open-ios
+.PHONY: help android-dev android-live android-prod android-prod-apk android-prod-aab android-adb-restart android-reset-emulator android-stop-emulator android-clean-build ios-app ios-dev ios-prod ios-live ios-open ios-clean ios-reset-packages ios-stop-simulator sync-android sync-ios open-android open-ios
 
 # Default target
 help:
@@ -22,6 +24,8 @@ help:
 	@echo "  Android:"
 	@echo "    android-dev               - Sync and run Android (requires pnpm dev running)"
 	@echo "    android-live              - Dev build with live reload (build + sync + livereload)"
+	@echo "    android-prod              - Bundled out/ shell on emulator/device (no dev server / remote WebView)"
+	@echo "    android-adb-restart       - Fix stuck adb (when cap run install loops / kill-server fails)"
 	@echo "    android-prod-apk          - Production Android: signed release APK (requires android/keystore.properties)"
 	@echo "    android-prod-aab          - Same as android-prod-apk but bundleRelease for Play Store"
 	@echo "    android-reset-emulator    - Stop Android emulator, wipe data, and cold boot"
@@ -33,7 +37,7 @@ help:
 	@echo "  iOS:"
 	@echo "    ios-app                   - Production iOS: runs scripts/mobile/build-production.sh (clean, prod URL, sync, open Xcode)"
 	@echo "    ios-dev                   - Capacitor loads app from $(LOCAL_CAPACITOR_SERVER_URL) (run pnpm dev first)"
-	@echo "    ios-prod                  - Load web from $(PRODUCTION_WEB_URL) in the WebView"
+	@echo "    ios-prod                  - Bundled out/ shell on simulator/device (no dev server / remote WebView)"
 	@echo "    ios-live                  - iOS dev build with live reload"
 	@echo "    ios-open                  - Open iOS project in Xcode"
 	@echo "    ios-clean                 - Clean iOS build and derived data"
@@ -101,6 +105,7 @@ android-dev:
 	@echo "💡 CAPACITOR_SERVER_URL is forced to $(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR)"
 	@echo "💡 Make sure pnpm dev is running in another terminal!"
 	@echo "💡 Tip: For live reload development, use: make android-live"
+	@echo "💡 Tip: For bundled shell (store-like, no pnpm dev), use: make android-prod"
 	@echo ""
 	@sleep 2
 	@echo "🔄 Step 1/2: Syncing Capacitor to Android..."
@@ -109,7 +114,7 @@ android-dev:
 	@echo "✅ Capacitor sync complete"
 	@echo ""
 	@echo "📱 Step 2/2: Running on Android..."
-	@$(ENSURE_GRADLE_JDK) && CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap run android
+	@$(ENSURE_ANDROID_ADB) && $(ENSURE_GRADLE_JDK) && CAPACITOR_SERVER_URL=$(LOCAL_CAPACITOR_SERVER_URL_ANDROID_EMULATOR) pnpm cap run android
 
 # Live reload development (build once, then live reload)
 android-live:
@@ -132,7 +137,50 @@ android-live:
 	@mkdir -p android/app/src/main/assets
 	@pnpm cap sync android
 	@echo "📱 Starting Android with livereload..."
-	@$(ENSURE_GRADLE_JDK) && pnpm cap run android --livereload --external
+	@$(ENSURE_ANDROID_ADB) && $(ENSURE_GRADLE_JDK) && pnpm cap run android --livereload --external
+
+# Bundled Capacitor shell (FIN-194): static out/ in the APK, not localhost or fintr.ai WebView URL
+android-prod:
+	@echo "🚀 Starting Android build (bundled out/ shell)..."
+	@echo ""
+	@echo "📋 This will:"
+	@echo "   1. Build Next.js (pnpm build) with NEXT_PUBLIC_APP_BASE_URL=$(PRODUCTION_WEB_URL)"
+	@echo "   2. Sync Capacitor with CAPACITOR_SERVER_URL unset (bundled webDir)"
+	@echo "   3. Run on Android emulator or device (cap run android, debug install)"
+	@echo ""
+	@echo "💡 API URLs come from your .env / .env.mobile.production — not the WebView shell."
+	@echo "💡 Signed release artifacts: make android-prod-apk or make android-prod-aab"
+	@echo ""
+	@sleep 2
+	@echo "🔨 Step 1/3: Building Next.js app..."
+	@NEXT_PUBLIC_APP_BASE_URL=$(PRODUCTION_WEB_URL) pnpm build || (echo "❌ Build failed. Fix errors and try again."; exit 1)
+	@echo "✅ Next.js build complete"
+	@echo ""
+	@echo "🔄 Step 2/3: Syncing Capacitor to Android..."
+	@mkdir -p android/app/src/main/assets
+	@unset CAPACITOR_SERVER_URL && pnpm cap sync android || (echo "❌ Capacitor sync failed"; exit 1)
+	@if grep -q '"url"' android/app/src/main/assets/capacitor.config.json 2>/dev/null; then \
+		echo "❌ Expected no server.url in android/app/src/main/assets/capacitor.config.json (bundled shell)"; \
+		exit 1; \
+	fi
+	@echo "✅ Capacitor sync complete (bundled shell)"
+	@echo ""
+	@echo "📱 Step 3/3: Running on Android..."
+	@unset CAPACITOR_SERVER_URL && $(ENSURE_ANDROID_ADB) && $(ENSURE_GRADLE_JDK) && pnpm cap run android
+
+android-adb-restart:
+	@echo "🔄 Restarting Android Debug Bridge (SDK platform-tools)..."
+	@SDK="$${ANDROID_SDK_ROOT:-$${ANDROID_HOME:-$$HOME/Library/Android/sdk}}" && \
+	export PATH="$$SDK/platform-tools:$$PATH" && \
+	(adb kill-server 2>/dev/null || pkill -9 adb 2>/dev/null || true) && \
+	sleep 2 && \
+	adb start-server
+	@echo ""
+	@adb devices -l
+	@echo ""
+	@echo "If no device is listed, start an emulator (Android Studio) or run: make android-reset-emulator"
+	@echo "If install still fails, install the APK manually:"
+	@echo "  adb install -r android/app/build/outputs/apk/debug/app-debug.apk"
 
 # Production Android: same flow as scripts/mobile/build-production-android.sh without emulator
 android-prod-apk:
@@ -157,7 +205,7 @@ ios-dev:
 	@echo "⚠️  Start the dev server first: pnpm dev  (listens on port 5173)"
 	@echo "💡 Physical device: use your Mac LAN IP instead of localhost, then cap sync/run with that URL"
 	@echo "💡 Tip: For live reload flags, use: make ios-live"
-	@echo "💡 Tip: To load $(PRODUCTION_WEB_URL) in the WebView, use: make ios-prod"
+	@echo "💡 Tip: For bundled shell (no pnpm dev), use: make ios-prod"
 	@echo "💡 Tip: To open in Xcode, use: make ios-open"
 	@echo ""
 	@sleep 2

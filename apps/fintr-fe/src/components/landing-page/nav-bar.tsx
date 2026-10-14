@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/auth-routes";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppStoreBadge } from "@/components/landing-page/app-store-badge";
+import { FINTR_LOGO_LIGHT_SRC } from "@/components/brand/fintr-logo";
 
 export default function Navbar() {
   const { isAuthenticated } = useAuth();
@@ -49,7 +50,7 @@ export default function Navbar() {
         <div className="max-w-[1200px] mx-auto pl-6 sm:px-10 lg:px-12 py-3 flex justify-between items-center gap-4">
           <Link href="/" className="flex items-center shrink-0 no-underline">
             <img
-              src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+              src={FINTR_LOGO_LIGHT_SRC}
               alt="Fintr"
               width={40}
               height={40}
