@@ -11,7 +11,7 @@ import java.net.URL;
  * Shows the WebView immediately. A startup HEAD/GET of the same URL the WebView is
  * loading stalls a single-threaded dev server for the whole page compile, which
  * kept the login screen hidden for tens of seconds on Android and iOS test builds.
- * Main-frame failures still fall through to offline.html.
+ * Main-frame failures are handled by the WebView client (no bundled error page).
  */
 public final class FintrConnectionGate {
 
@@ -29,7 +29,7 @@ public final class FintrConnectionGate {
     this.activity = activity;
   }
 
-  /** Main-frame failures may open offline.html once the shell has started. */
+  /** Main-frame error handling is enabled once the shell has started. */
   public boolean shouldHandleOfflineError() {
     return initialGateComplete;
   }

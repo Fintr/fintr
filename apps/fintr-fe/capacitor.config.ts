@@ -39,20 +39,17 @@ const serverConfig = serverUrl
   ? {
       url: toNativeServerUrl(serverUrl),
       appStartPath: NATIVE_APP_START_PATH,
-      errorPath: 'offline.html',
       ...(serverUrl.startsWith("http://") && { cleartext: true }),
     }
   : {
       appStartPath: NATIVE_APP_START_PATH,
-      errorPath: 'offline.html',
     };
 
 const config: CapacitorConfig = {
   appId: 'com.fintr.app',
   appName: 'Fintr',
   webDir: 'out',
-  // Server URL: app loads web content from this URL (dev: localhost, prod: https://www.fintr.ai)
-  // errorPath: bundled offline.html shown when the remote server cannot be reached
+  // Server URL: dev live reload only. Production store builds leave url unset (bundled out/).
   server: serverConfig,
   // FintrNativeApp is appended to the WebView user-agent so that JavaScript running inside
   // the WebView (including code served from https://www.fintr.ai) can reliably detect it is
