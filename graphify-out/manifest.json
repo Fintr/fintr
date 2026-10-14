@@ -4014,14 +4014,14 @@
     "semantic_hash": "2fc4c7f7d9425166d43c0b9cc424fa85"
   },
   "apps/fintr-fe/android/app/build.gradle": {
-    "mtime": 1791971574.048139,
-    "seen": 1791971588.1056771,
+    "mtime": 1791971601.3299963,
+    "seen": 1791981332.482105,
     "ast_hash": "e65f43f0513d4f3547f347c2b753ec94",
     "semantic_hash": ""
   },
   "apps/fintr-fe/android/app/capacitor.build.gradle": {
-    "mtime": 1791971224.3443818,
-    "seen": 1791971573.541124,
+    "mtime": 1791981194.1145637,
+    "seen": 1791981332.482107,
     "ast_hash": "831d901008ff731a81fb0dccf23a0531",
     "semantic_hash": "831d901008ff731a81fb0dccf23a0531"
   },
@@ -4098,8 +4098,8 @@
     "semantic_hash": "e09009f426117a6529cb28bef144353f"
   },
   "apps/fintr-fe/android/capacitor.settings.gradle": {
-    "mtime": 1791971224.344291,
-    "seen": 1791971573.541132,
+    "mtime": 1791981194.1143537,
+    "seen": 1791981332.482115,
     "ast_hash": "af12d550c331a19ffa2aa38e585cbdeb",
     "semantic_hash": "af12d550c331a19ffa2aa38e585cbdeb"
   },
@@ -4818,9 +4818,9 @@
     "semantic_hash": "60ee057118c55531d9de227f55e6a7cf"
   },
   "apps/fintr-fe/src/app/(public)/account-setup/page.tsx": {
-    "mtime": 1791475514.4943845,
-    "seen": 1791527268.6956842,
-    "ast_hash": "ae0581f4b616fb9332890e2e1cc32d94",
+    "mtime": 1791972964.3578608,
+    "seen": 1791981332.4822268,
+    "ast_hash": "30e1dd1258dd681778a529e029844906",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/app/(public)/auth/page.tsx": {
@@ -4860,10 +4860,10 @@
     "semantic_hash": "7e68f4e52b575968f2247a0c5ff7d669"
   },
   "apps/fintr-fe/src/app/(public)/signup-success/page.tsx": {
-    "mtime": 1782142971.4423792,
-    "seen": 1791527268.6956868,
-    "ast_hash": "9cff42ce217d5d170f7d22d3909dbb3f",
-    "semantic_hash": "9cff42ce217d5d170f7d22d3909dbb3f"
+    "mtime": 1791972964.3523228,
+    "seen": 1791981332.4822311,
+    "ast_hash": "f8028080488f980c8bec1c068d9acf87",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/app/(public)/terms-of-service/page.tsx": {
     "mtime": 1782142971.443078,
@@ -5106,10 +5106,10 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/brand/fintr-logo.tsx": {
-    "mtime": 1791122083.4891996,
-    "seen": 1791527268.6957178,
-    "ast_hash": "5a4dd7d9968b315913a1a6424ca3619c",
-    "semantic_hash": "5a4dd7d9968b315913a1a6424ca3619c"
+    "mtime": 1791972964.3471358,
+    "seen": 1791981332.4822688,
+    "ast_hash": "0dce09585eae74f5a5a55e6957105ef1",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/cache-version-checker.tsx": {
     "mtime": 1782142971.4827518,
@@ -5844,10 +5844,10 @@
     "semantic_hash": "635077c406315a37e9232ac8ce007556"
   },
   "apps/fintr-fe/src/components/landing-page/dashboard-preview.tsx": {
-    "mtime": 1790246815.4275596,
-    "seen": 1791527268.6958542,
-    "ast_hash": "302cadc74aefbcd0854a9ec44c6d159e",
-    "semantic_hash": "302cadc74aefbcd0854a9ec44c6d159e"
+    "mtime": 1791972964.3387928,
+    "seen": 1791981332.4824388,
+    "ast_hash": "616df2db4d8fab35e13a9df8e3dea93f",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/landing-page/features-section.tsx": {
     "mtime": 1782142971.5324318,
@@ -5862,10 +5862,10 @@
     "semantic_hash": "e29417307cde04dab0a75888254fb60b"
   },
   "apps/fintr-fe/src/components/landing-page/footer.tsx": {
-    "mtime": 1782142971.5297022,
-    "seen": 1791527268.6958551,
-    "ast_hash": "8fd6168ecb481dea86f80299024a1883",
-    "semantic_hash": "8fd6168ecb481dea86f80299024a1883"
+    "mtime": 1791972964.3387077,
+    "seen": 1791981332.482441,
+    "ast_hash": "4a1ed2062ad8c4fa2b0cfc74d9530968",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/landing-page/hero-section.tsx": {
     "mtime": 1790246815.4277852,
@@ -5886,10 +5886,10 @@
     "semantic_hash": "5e8fc3ae15d4caa821e98b0d09c9bfd8"
   },
   "apps/fintr-fe/src/components/landing-page/mobileapp-section.tsx": {
-    "mtime": 1782142971.5318642,
-    "seen": 1791527268.6958568,
-    "ast_hash": "e747993304f754a0471d5b926265a99c",
-    "semantic_hash": "e747993304f754a0471d5b926265a99c"
+    "mtime": 1791972964.3395128,
+    "seen": 1791981332.482443,
+    "ast_hash": "7042671b588fbcc80cfaf652b5207c8b",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/landing-page/money-problems-section.tsx": {
     "mtime": 1782142971.5265408,
@@ -5898,9 +5898,9 @@
     "semantic_hash": "7c622e31580c7c54c11e9b5991a86a19"
   },
   "apps/fintr-fe/src/components/landing-page/nav-bar.tsx": {
-    "mtime": 1790272924.9225657,
-    "seen": 1791527268.695858,
-    "ast_hash": "020e513b5febecd990d81a24cad0aa08",
+    "mtime": 1791972964.3469985,
+    "seen": 1791981332.482445,
+    "ast_hash": "94057025afee403e86be0d24133927c4",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/landing-page/pricing-section.tsx": {
@@ -11904,16 +11904,16 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/offline/offline-status-banner.test.tsx": {
-    "mtime": 1790246815.4286597,
-    "seen": 1791527268.695864,
-    "ast_hash": "0e7a06c0e12df032a6c384fb6d1baef7",
-    "semantic_hash": "0e7a06c0e12df032a6c384fb6d1baef7"
+    "mtime": 1791973643.4197686,
+    "seen": 1791981332.482452,
+    "ast_hash": "46e44dcb166a888218e599345031d0fd",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/offline/offline-status-banner.tsx": {
-    "mtime": 1790246815.4287426,
-    "seen": 1791527268.695866,
-    "ast_hash": "610d47d80d12e421fea2c7f71ec1afa4",
-    "semantic_hash": "610d47d80d12e421fea2c7f71ec1afa4"
+    "mtime": 1791973643.4206243,
+    "seen": 1791981332.482453,
+    "ast_hash": "af3e1341ec2117c25a691742cc613198",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/ui/category-filter-combobox.test.tsx": {
     "mtime": 1790246815.435643,
@@ -12006,16 +12006,16 @@
     "semantic_hash": "aa07cefb271b4f33a53af18cfde8052a"
   },
   "apps/fintr-fe/src/lib/auth-routes.test.ts": {
-    "mtime": 1790246815.4545982,
-    "seen": 1791527268.696018,
-    "ast_hash": "3b17bbdcd5d1ee7935d7bc2103883dd9",
-    "semantic_hash": "3b17bbdcd5d1ee7935d7bc2103883dd9"
+    "mtime": 1791973643.419622,
+    "seen": 1791981332.482657,
+    "ast_hash": "ebd16ccddefd91a6339dd4187916ac58",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/auth-routes.ts": {
-    "mtime": 1790246815.454654,
-    "seen": 1791527268.696018,
-    "ast_hash": "d0afcd93b03b4c39a842384dd89a5297",
-    "semantic_hash": "d0afcd93b03b4c39a842384dd89a5297"
+    "mtime": 1791973643.4196215,
+    "seen": 1791981332.4826581,
+    "ast_hash": "6ee0178e468fafbc5442d180cd707cb5",
+    "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/badges/warm-badge-images.test.ts": {
     "mtime": 1790246815.4548392,
@@ -14364,15 +14364,15 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/native-shell-start-url.test.ts": {
-    "mtime": 1791968646.4299119,
-    "seen": 1791971573.5416589,
-    "ast_hash": "49d3ac0a5647a91f086b0ad47950048b",
+    "mtime": 1791972487.413632,
+    "seen": 1791981332.4827101,
+    "ast_hash": "6d3fa8229a9fea69acf558e584aafa7a",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/lib/native-shell-start-url.ts": {
-    "mtime": 1791968646.4294884,
-    "seen": 1791971573.5416589,
-    "ast_hash": "d9f8f4bd332b744e04e38322df90018c",
+    "mtime": 1791972487.4136448,
+    "seen": 1791981332.4827101,
+    "ast_hash": "9fa65943637ceb6665efb161e09ed87b",
     "semantic_hash": ""
   },
   "apps/fintr-fe/.impeccable/live/accept-receipts/6a539e98.json": {
@@ -14520,9 +14520,9 @@
     "semantic_hash": ""
   },
   "apps/fintr-fe/scripts/mobile/native-start-on-auth.mjs": {
-    "mtime": 1791968646.2517796,
-    "seen": 1791971573.5411892,
-    "ast_hash": "3a9dee56f916549cae23f6288f29a1fe",
+    "mtime": 1791972487.4136317,
+    "seen": 1791981332.482178,
+    "ast_hash": "682dd03f4355c05fdbd7912961df6af5",
     "semantic_hash": ""
   },
   "apps/fintr-fe/src/components/session-expiration-modal.test.tsx": {
@@ -14547,6 +14547,18 @@
     "mtime": 1791968646.1383278,
     "seen": 1791971573.5418181,
     "ast_hash": "b5ccb1e2cbd3e6c06c4a2bce8fd90dd6",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/scripts/mobile/ensure-android-adb.sh": {
+    "mtime": 1791972408.4921026,
+    "seen": 1791981332.482174,
+    "ast_hash": "510de3a566d07fdb651129deaa4ea2f0",
+    "semantic_hash": ""
+  },
+  "apps/fintr-fe/src/components/brand/fintr-logo.test.ts": {
+    "mtime": 1791972964.347158,
+    "seen": 1791981332.4822688,
+    "ast_hash": "ccbd40ddcd4e9e23d24746b05e9ece78",
     "semantic_hash": ""
   }
 }

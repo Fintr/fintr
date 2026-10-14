@@ -3,6 +3,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Button } from "../ui/button";
 import { ArrowRight, Smartphone, Download, Bell, Zap } from "lucide-react";
+import { FINTR_LOGO_LIGHT_SRC } from "@/components/brand/fintr-logo";
 
 interface MobileAppSectionProps {
   title?: string;
@@ -91,7 +92,7 @@ const MobileAppSection = ({
                   <div className="p-4 flex-1 flex flex-col">
                     <div className="flex items-center justify-center mb-4 mt-2">
                       <img
-                        src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+                        src={FINTR_LOGO_LIGHT_SRC}
                         alt="Fintr Logo"
                         className="h-10"
                       />

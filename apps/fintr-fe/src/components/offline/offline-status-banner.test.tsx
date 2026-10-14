@@ -1,10 +1,17 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { usePathname } from "next/navigation";
+
 import { OfflineStatusBanner } from "./offline-status-banner";
+
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/dashboard/home"),
+}));
 
 describe("OfflineStatusBanner", () => {
   beforeEach(() => {
+    vi.mocked(usePathname).mockReturnValue("/dashboard/home");
     Object.defineProperty(navigator, "onLine", {
       configurable: true,
       writable: true,
@@ -27,6 +34,21 @@ describe("OfflineStatusBanner", () => {
     expect(
       screen.queryByRole("status", { name: /offline/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("tells the user they need to be online on login routes", () => {
+    vi.mocked(usePathname).mockReturnValue("/login");
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      writable: true,
+      value: false,
+    });
+
+    render(<OfflineStatusBanner />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /need to be online to log in/i,
+    );
   });
 
   it("tells the user they can keep working while offline", () => {

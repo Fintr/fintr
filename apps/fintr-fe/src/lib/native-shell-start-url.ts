@@ -1,8 +1,11 @@
 /**
  * Capacitor `server.appStartPath`: native shells open on the login screen instead of
- * the marketing homepage. No leading slash — Android appends it to a `/`-terminated URL.
+ * the marketing homepage.
+ *
+ * Must include a leading slash. Bundled Android uses `https://localhost` without a
+ * trailing slash before appStartPath is appended; `auth` becomes `https://localhostauth`.
  */
-export const NATIVE_APP_START_PATH = "auth";
+export const NATIVE_APP_START_PATH = "/auth";
 
 /**
  * Capacitor iOS treats any URL that does not start with `server.url` as external and

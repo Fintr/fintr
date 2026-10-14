@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "../ui/card";
 import { Button } from "../ui/button";
+import { FINTR_LOGO_LIGHT_SRC } from "@/components/brand/fintr-logo";
 import {
   BarChart3,
   PieChart,
@@ -72,7 +73,7 @@ const DashboardPreview = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <img
-                    src="https://raw.githubusercontent.com/paoloparaiso/Fintr/c273332c59168c59539d499b2ee119186af8f88a/Fintr_Logo.png"
+                    src={FINTR_LOGO_LIGHT_SRC}
                     alt="Fintr Logo"
                     className="h-8 w-auto"
                   />

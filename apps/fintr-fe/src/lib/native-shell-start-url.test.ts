@@ -24,7 +24,10 @@ describe("toNativeServerUrl", () => {
 });
 
 describe("NATIVE_APP_START_PATH", () => {
-  it("starts on the login screen without a leading slash", () => {
-    expect(NATIVE_APP_START_PATH).toBe("auth");
+  it("starts on /auth with a leading slash for bundled https://localhost", () => {
+    expect(NATIVE_APP_START_PATH).toBe("/auth");
+    expect(`https://localhost${NATIVE_APP_START_PATH}`).toBe(
+      "https://localhost/auth",
+    );
   });
 });
