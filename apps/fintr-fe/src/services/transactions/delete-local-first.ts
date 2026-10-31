@@ -441,7 +441,6 @@ const deleteIndexRowsOptimistic = async (params: {
     queryClient.invalidateQueries({
       queryKey: ["recurringSeries", spaceId],
       exact: false,
-      refetchType: "active",
     });
   }
 

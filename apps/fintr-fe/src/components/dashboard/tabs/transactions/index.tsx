@@ -18,7 +18,6 @@ import { getCurrentMonthDates } from "@/utils/dateUtils";
 import { ListView } from "./list-view";
 import { SheetsView } from "./sheets-view";
 import { CalendarView } from "./calendar-view";
-import { useDashboardData } from "@/hooks/async/useDashboardData";
 import { useInfiniteTransactions } from "@/hooks/async/useInfiniteTransactions";
 import { ArrowUpRight, ArrowDownLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -79,6 +78,7 @@ import {
   normalizeFilterValues,
   serializeFilterValues,
 } from "@/utils/transactionFilterValues";
+import { periodSummaryFromTransactionTotals } from "@/utils/transactionPeriodSummary";
 
 interface TransactionsTabProps {
   // Define any props if needed, but not used in this component
@@ -100,9 +100,6 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
   const [startDate] = useAtom(dateFilterStartDateAtom);
   const [endDate] = useAtom(dateFilterEndDateAtom);
   const [monthYear] = useAtom(dateFilterMonthYearAtom);
-  
-  // Fetch dashboard data with date filters
-  const { data: dashboardData } = useDashboardData(startDate, endDate);
   
   // Format the description to show selected month/year
   const getDescription = () => {
@@ -833,17 +830,28 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
     }
   };
 
-  // Get financial summary data
-  const financialSummary = dashboardData?.financialSummary;
-  const netSavings = financialSummary?.netSavings ? parseFloat(financialSummary.netSavings) : 0;
-  const totalIncome = financialSummary?.totalIncome ? parseFloat(financialSummary.totalIncome) : 0;
-  const totalExpenses = financialSummary?.totalExpenses ? parseFloat(financialSummary.totalExpenses) : 0;
+  const pageTotals = data?.pages?.[0]?.totals ?? null;
+  const periodSummary = pageTotals
+    ? periodSummaryFromTransactionTotals(pageTotals)
+    : null;
+  const netSavings = periodSummary?.netSavings ?? 0;
+  const totalIncome = periodSummary?.totalIncome ?? 0;
+  const totalExpenses = periodSummary?.totalExpenses ?? 0;
   const hasTransactionPages = Boolean(data?.pages?.length);
+  const showMobileSummaryLoading = isLoading && !hasTransactionPages;
 
   return (
     <>
-      {/* Mobile Financial Summary Cards */}
+      {/* Mobile Financial Summary Cards — same totals as TransactionTotalsDisplay */}
+      {(periodSummary || showMobileSummaryLoading) && (
       <div className="mb-4 space-y-4 px-2 pt-4 md:hidden md:px-0">
+        {showMobileSummaryLoading && !periodSummary ? (
+          <>
+            <div className="rounded-2xl bg-primary/80 p-6 shadow-lg animate-pulse dark:bg-card h-28" />
+            <div className="rounded-2xl bg-primary/80 p-6 shadow-lg animate-pulse dark:bg-card h-28" />
+          </>
+        ) : periodSummary ? (
+          <>
         {/* Period net card */}
         <div className="relative overflow-hidden rounded-2xl bg-primary p-6 shadow-lg dark:border-0 dark:bg-card dark:shadow-sm">
           {/* Decorative shapes */}
@@ -903,7 +911,10 @@ const TransactionsTab = ({ }: TransactionsTabProps) => {
             </div>
           </div>
         </div>
+          </>
+        ) : null}
       </div>
+      )}
 
       <div className="px-2 md:px-0">
         <Card className="border-0 shadow-none bg-transparent px-0 py-0 overflow-visible">
