@@ -233,6 +233,7 @@ describe("applyTransactionDeleted — monthly summary", () => {
       totalExpenses: 60,
     });
     const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     await applyTransactionDeleted({
       spaceId,
@@ -250,5 +251,11 @@ describe("applyTransactionDeleted — monthly summary", () => {
       totalExpenses: 100,
       netSavings: -100,
     });
+
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["recurringSeries", spaceId],
+      }),
+    );
   });
 });

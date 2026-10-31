@@ -427,6 +427,21 @@ export const applyTransactionDeleted = async (params: {
     });
   }
 
+  queryClient.invalidateQueries({
+    queryKey: ["recurringSeries", spaceId],
+    exact: false,
+  });
+  if (targetSpace && targetSpace !== spaceId) {
+    queryClient.invalidateQueries({
+      queryKey: ["recurringSeries", targetSpace],
+      exact: false,
+    });
+  }
+  queryClient.invalidateQueries({
+    queryKey: ["dashboard", "transactions", spaceId],
+    exact: false,
+  });
+
   void syncLoanRealtimeAfterDelete(queryClient, targetSpace || spaceId, rows);
 
   if (notifyActor) {

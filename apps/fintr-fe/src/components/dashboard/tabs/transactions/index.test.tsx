@@ -18,20 +18,23 @@ vi.mock("@/hooks/async/useTransactionCategories", () => ({
   }),
 }));
 
-vi.mock("@/hooks/async/useDashboardData", () => ({
-  useDashboardData: () => ({ data: undefined }),
-}));
-
 vi.mock("@/hooks/async/useInfiniteTransactions", () => ({
   useInfiniteTransactions: () => ({
-    data: undefined,
+    data: {
+      pages: [
+        {
+          transactions: [],
+          totals: { income: 0, expense: 0, transfer: 0 },
+        },
+      ],
+    },
     error: null,
     fetchNextPage: vi.fn(),
     hasNextPage: false,
     isFetching: false,
     isFetchingNextPage: false,
     isError: false,
-    isSuccess: false,
+    isSuccess: true,
     isLoading: false,
   }),
 }));
