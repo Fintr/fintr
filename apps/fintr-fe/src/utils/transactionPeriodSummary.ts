@@ -15,7 +15,7 @@ export const periodSummaryFromTransactionTotals = (
 
   return {
     totalIncome: income,
-    totalExpenses: Math.abs(expense),
-    netSavings: income + expense,
+    totalExpenses: expense,
+    netSavings: income - expense,
   };
 };
